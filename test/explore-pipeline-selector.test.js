@@ -15,7 +15,7 @@ const exploreSources = [
   'sai/commands/explore/steps/artifact-review-language-gate.md',
   'sai/commands/explore/steps/slicing-assessment.md',
   'sai/commands/explore/steps/crystallization-protocol.md',
-  'sai/policies/ready-to-propose-format.md',
+  'sai/policies/issue-format.md',
   'sai/commands/explore/steps/crystallization-language-gates.md',
   'sai/commands/explore/steps/review-loop.md',
   'sai/commands/explore/steps/pipeline-selector.md',
@@ -243,8 +243,8 @@ test('Claude Code and opencode share the native route-picker contract', () => {
   assert.match(selector, /No route intent, panel entry, or dispatch occurs on picker presentation alone/i);
 });
 
-test('the Ready to Propose format carries no post-block close cue; the block emit gates the close instead', () => {
-  const format = spec('sai/policies/ready-to-propose-format.md');
+test('the change document format carries no post-document close cue; the document emit gates the close instead', () => {
+  const format = spec('sai/policies/issue-format.md');
   const protocol = spec('sai/commands/explore/steps/crystallization-protocol.md');
 
   assert.doesNotMatch(format, /When `\/sai-explore` emits a `Ready to Propose` block/);
@@ -663,19 +663,19 @@ test('Step 4: the later Manual choice emits every path-specific sai-1 handoff', 
     'the spec places the handoff after the explicit native Manual choice');
 });
 
-test('Step 4: the Ready-to-Propose payload stays bounded and the Manual handoff stays outside it', () => {
-  const format = spec('sai/policies/ready-to-propose-format.md');
-  const payloadStart = format.indexOf('## Ready to Propose');
-  const separator = format.indexOf('\n---', payloadStart);
+test('Step 4: the change document payload stays bounded and the Manual handoff stays outside it', () => {
+  const format = spec('sai/policies/issue-format.md');
+  const payloadStart = format.indexOf('# Show the greeting in a banner');
+  const separator = format.indexOf('\n```', payloadStart);
 
   assert.ok(payloadStart >= 0 && separator > payloadStart,
-    'the ready-to-propose format should retain its heading and separator');
+    'the change document format should retain its example document');
 
   const payload = format.slice(payloadStart, separator);
-  assert.match(payload, /\*\*Capabilities in scope\*\*/);
-  assert.match(payload, /\*\*Edge Cases\*\*/);
-  assert.match(payload, /\*\*Implementation Details\*\*/);
-  assert.match(payload, /\*\*Overview language\*\*:/);
+  assert.match(payload, /^## Scope$/m);
+  assert.match(payload, /^## Edge cases$/m);
+  assert.match(payload, /^## Implementation notes$/m);
+  assert.match(payload, /^## Change$/m);
   assert.doesNotMatch(payload, /(?:next[- ]step|handoff)[\s\S]{0,240}`?\/sai-1-spec`?/i,
     'the payload must not contain a path-specific next-step');
 

@@ -28,7 +28,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Build Command**: "The un-numbered `/sai-build` command (cards at `sai/commands/build/`) that chains `/sai-3-implement`, one `/sai-4-review` pass, an assessment of its findings, and a second `/sai-3-implement` run for the findings it selects, in one session for a disk-resolved change name, with no approval between segments. Not the explore crystallization-close **Direct Build - Unattended** lane (`direct-build-unattended` / `sai-direct-build-worker`)."
 *Avoid*: sai-9-build, implement-apply macro, batch apply, build worker, Direct Build - Unattended, direct-build-unattended, sai-direct-build-worker
 
-**Plan Command**: "The un-numbered `/sai-plan` command (cards at `sai/commands/plan/`) that chains `/sai-1-spec` and `/sai-2-design` as **Segments** in one session from a Ready to Propose block or a change that already has its specs, with no approval between segments; `/sai-1-spec` and `/sai-2-design` are always unattended goal-driven commands outside the shared orchestration."
+**Plan Command**: "The un-numbered `/sai-plan` command (cards at `sai/commands/plan/`) that chains `/sai-1-spec` and `/sai-2-design` as **Segments** in one session from a change document or a change that already has its specs, with no approval between segments; `/sai-1-spec` and `/sai-2-design` are always unattended goal-driven commands outside the shared orchestration."
 *Avoid*: plan pipeline, sai-0-plan, interactive spec, supervised spec phase
 
 **Segment**: "One phase run inside a composition, such as the spec or design segment of `/sai-plan`, whose coordinator card is followed in the composing session and whose artifacts on disk are its only interface to the next segment."
@@ -37,7 +37,7 @@ Prompt and instruction library that orchestrates a structured AI-assisted develo
 **Assumption**: "An answer the coordinator of a plan **Segment** gives to a worker question, recorded with its source in the run directory and the closing report only."
 *Avoid*: auto-answer, decision record, persisted note
 
-**Direct Build - Unattended**: "The explore crystallization-close selector lane with route id `direct-build-unattended`, visible label `Direct Build - Unattended`, and managed implementer `sai-direct-build-worker` (matrix phase/binding `direct-build`); code-first unattended implementation from a Ready to Propose block, followed by backfill and archive under `--direct-build-prepare` / `--direct-build-execute`. Distinct from `/sai-build` / `meta-build`."
+**Direct Build - Unattended**: "The explore crystallization-close selector lane with route id `direct-build-unattended`, visible label `Direct Build - Unattended`, and managed implementer `sai-direct-build-worker` (matrix phase/binding `direct-build`); code-first unattended implementation from a change document, followed by backfill and archive under `--direct-build-prepare` / `--direct-build-execute`. Distinct from `/sai-build` / `meta-build`."
 *Avoid*: Auto, autofast, auto-fast, Build - Unattended, build-unattended, sai-build
 
 **Cause Locus**: "The coordinator's evidence-backed classification of a non-clean closure by ownership — inside the reporting worker's authorized boundary, inside the boundary of another worker still resumable in this run, or outside every in-run boundary — never by the kind of artifact the cause sits in."

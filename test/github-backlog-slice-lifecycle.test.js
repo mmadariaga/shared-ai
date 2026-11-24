@@ -5,14 +5,13 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const detector = require('../sai/tools/ready-to-propose');
+const detector = require('../sai/tools/change-document');
+const { document } = require('./helpers/change-document-fixture');
 const github = require('../sai/tools/to-backlog-github');
 const source = require('../sai/tools/from-backlog-github');
 const assignment = require('../sai/tools/backlog-assignment-github');
 const identity = require('../sai/tools/backlog-slice-identity');
-function block(name, dependencies = 'None') {
-  return ['## Ready to Propose', ...detector.STRICT_FIELDS.filter(field => !field.optional || field.label === 'Depends on').map(field => `**${field.label}**: ${field.label === 'Change name' ? name : field.label === 'Depends on' ? dependencies : field.inline ? 'None' : field.label === 'Out of scope Implementation Details' ? '\n- None' : '\n- I1: agreed source content'}`), '---'].join('\n');
-}
+const block = (name, dependencies = 'None', notes) => document(name, { dependencies, ...(notes ? { notes } : {}) });
 function fake({ native = false } = {}) {
   const state = { native, issues: [], members: new Set(), parents: new Map(), blockers: new Map(), calls: [], fail: null, failNumber: null, failNative: false, lostCreation: false, sleeps: [], reads: new Map(), visibleAfter: 0, noItemId: false, autoAdd: false, archived: false, otherProject: false, nullItems: false, hierarchyResponse: null };
   // Direct reads see a member after `visibleAfter` earlier reads of it; the lagging items connection is never read.
@@ -94,7 +93,7 @@ function fake({ native = false } = {}) {
     if (method === 'PATCH') issue.assignees = JSON.parse(input).assignees;
     return JSON.stringify({ id: issue.number, html_url: issue.url, body: issue.body, assignees: issue.assignees.map(login => ({ login })) });
   } };
-  return { state, io, request: { provider: 'github', repository: 'owner/repo', project: project.url, title: 'Existing agreed parent', description: 'Parent content in full', blocks: block('dependent', 'blocker') + '\n' + block('blocker') } };
+  return { state, io, request: { provider: 'github', repository: 'owner/repo', project: project.url, title: 'Existing agreed parent', description: 'Parent content in full', documents: [block('dependent', 'blocker'), block('blocker')] } };
 }
 function receipt(t) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-slices-')); fs.chmodSync(directory, 0o700);
@@ -110,9 +109,9 @@ async function publish(t, fixture) {
 test('published GitHub set updates only changed content without creations, membership or relation mutations', async t => {
   const f = fake({ native: true }), published = await publish(t, f);
   assert.equal(published.result.status, 'complete');
-  const request = { origin: f.state.issues[0].url, title: f.request.title, description: f.request.description, blocks: block('blocker') + '\n' + block('dependent', 'blocker') };
+  const request = { origin: f.state.issues[0].url, title: f.request.title, description: f.request.description, documents: [block('blocker'), block('dependent', 'blocker')] };
   assert.equal((await github['query-set-update'](request, f.io)).status, 'no_changes');
-  request.blocks = request.blocks.replace('**What**: None', '**What**: refined child');
+  request.documents = [block('blocker', 'None', 'refined child'), block('dependent', 'blocker')];
   const ready = await github['query-set-update'](request, f.io);
   assert.equal(ready.status, 'ready');
   const start = f.state.calls.length, file = receipt(t);
@@ -128,17 +127,17 @@ test('published GitHub set updates only changed content without creations, membe
 });
 
 test('dependency validator separates singleton and complete sets, format, duplicate, self, absent and cycles', () => {
-  assert.equal(detector.checkStrict(block('dependent', 'blocker')).ok, true);
-  for (const deps of ['blocker blocker', 'blocker,', 'blocker; second', 'blocker, blocker', 'dependent']) assert.equal(detector.checkStrict(block('dependent', deps)).ok, false, deps);
-  assert.equal(detector.validateDependencySet(block('dependent', 'blocker')).ok, false);
-  assert.equal(detector.validateDependencySet(block('one', 'two') + '\n' + block('two', 'one')).ok, false);
-  const text = block('dependent', 'one, two') + '\n' + block('one') + '\n' + block('two') + '\n' + block('independent');
-  assert.deepEqual(detector.validateDependencySet(text).order, ['one', 'two', 'dependent', 'independent']);
-  assert.notEqual(detector.hashBlock(block('one')), detector.hashBlock(block('one', 'two')));
-  assert.deepEqual(detector.extractBlockTexts(text)[0], block('dependent', 'one, two'));
-  const withOrigin = block('one').replace('**What**:', '**Backlog origin**: https://github.com/owner/repo/issues/2\n**What**:');
-  assert.equal(detector.checkStrict(withOrigin).ok, true);
-  assert.equal(detector.checkStrict(withOrigin.replace('https://github.com/owner/repo/issues/2', 'https://other.test/issues/2')).ok, false);
+  assert.equal(detector.checkDocument(block('dependent', 'blocker')).ok, true);
+  for (const deps of ['blocker blocker', 'blocker,', 'blocker; second', 'blocker, blocker', 'dependent']) assert.equal(detector.checkDocument(block('dependent', deps)).ok, false, deps);
+  assert.equal(detector.readSet([block('dependent', 'blocker')]).ok, false);
+  assert.equal(detector.readSet([block('one', 'two'), block('two', 'one')]).ok, false);
+  const texts = [block('dependent', 'one, two'), block('one'), block('two'), block('independent')];
+  assert.deepEqual(detector.readSet(texts).order, ['one', 'two', 'dependent', 'independent']);
+  assert.notEqual(detector.hashDocument(block('one')), detector.hashDocument(block('one', 'two')));
+  assert.equal(detector.readSet(texts).documents[0].text, block('dependent', 'one, two'));
+  const withOrigin = document('one', { origin: 'https://github.com/owner/repo/issues/2' });
+  assert.equal(detector.checkDocument(withOrigin).ok, true);
+  assert.equal(detector.checkDocument(withOrigin.replace('https://github.com/owner/repo/issues/2', 'https://other.test/issues/2')).ok, false);
 });
 for (const native of [false, true]) test(`set publication and complete import: ${native ? 'native' : 'written'} hierarchy`, async t => {
   const fixture = fake({ native });
@@ -149,7 +148,8 @@ for (const native of [false, true]) test(`set publication and complete import: $
   assert.equal(result.representation.hierarchy, native ? 'native' : 'written');
   assert.equal(result.representation.dependencies, native ? 'native' : 'written');
   if (native) assert.deepEqual(fixture.state.blockers.get(3), [2]);
-  assert.ok(fixture.state.issues[2].body.startsWith(block('dependent', 'blocker')));
+  assert.ok(fixture.state.issues[2].body.startsWith(detector.splitDocument(block('dependent', 'blocker')).description));
+  assert.equal(fixture.state.issues[2].title, detector.splitDocument(block('dependent', 'blocker')).title);
   fixture.state.issues[0].assignees = ['parent-owner'];
   const imported = await source.readSet(source.normalize(fixture.state.issues[0].url), fixture.io);
   assert.equal(imported.status, 'complete', JSON.stringify(imported));
@@ -166,10 +166,10 @@ for (const native of [false, true]) test(`set publication and complete import: $
   assert.deepEqual(fixture.state.issues[0].assignees, ['parent-owner']);
 });
 test('one-slice set creates parent and child; simple publication API remains unchanged', async t => {
-  const fixture = fake(); fixture.request.blocks = block('one');
+  const fixture = fake(); fixture.request.documents = [block('one')];
   assert.equal((await publish(t, fixture)).result.status, 'complete');
   assert.equal(fixture.state.issues.length, 2);
-  assert.equal((await github.query({ ...fixture.request, blocks: undefined }, fixture.io)).proposal.operation, undefined);
+  assert.equal((await github.query({ ...fixture.request, documents: undefined }, fixture.io)).proposal.operation, undefined);
   assert.equal(typeof github.publish, 'function');
 });
 test('partial creation has read-only recovery and approved continuation without duplicates', async t => {
@@ -563,47 +563,52 @@ test('an explicit published child retains child-only scope even when it has nati
   assert.deepEqual(imported.sources.map(row => [row.role, row.item.number]), [['selected', 2], ['parent-context', 1]]);
   assert.equal(imported.origin.issue, fixture.state.issues[1].url);
 });
-// Skipped until the backlog slice that switches `to-backlog` to change documents lands: set publication still
-// transports `Ready to Propose` blocks, and the store now registers change documents only.
-test('H2 publication -> amended stored block/hash -> spec provenance -> cold implementation identity', { skip: 'to-backlog publishes blocks until the change-document-backlog change lands' }, async t => {
+test('H2 publication -> amended stored document/hash -> spec provenance -> cold implementation identity', async t => {
   const fixture = fake();
   const publication = (await publish(t, fixture)).result;
   const root = path.join(__dirname, '..');
   const { sessionFile } = require('../bin/sai-state');
-  function cli(args, input = '') {
-    const result = spawnSync(process.execPath, [path.join(root, 'bin/sai-state.js'), ...args], { input, encoding: 'utf8' });
+  const transfer = require('../sai/tools/transfer');
+  function cli(args) {
+    const result = spawnSync(process.execPath, [path.join(root, 'bin/sai-state.js'), ...args], { input: '{"intent":"next-step"}', encoding: 'utf8' });
     assert.equal(result.status, 0, result.stdout + result.stderr);
     return JSON.parse(result.stdout);
   }
   const id = cli(['spawn', '--key', `origin-transport-${process.pid}-${require('node:crypto').randomUUID()}`]).id;
   t.after(() => fs.rmSync(sessionFile(id), { force: true }));
-  for (let step = 0; step < 3; step++) cli(['emit', id, 'explore-idea@1', '-'], '{"intent":"next-step"}');
-  cli(['emit', id, 'explore-slice@1', '--ready-to-propose', '-'], fixture.request.blocks);
-  const before = cli(['block', id, 'dependent']);
-  const storedSet = publication.correspondence.slices.map(slice => cli(['block', id, slice.change_name]).text).join('\n\n');
-  const attached = spawnSync(process.execPath, [path.join(root, 'sai/tools/ready-to-propose.js'), 'attach-origin'], { input: JSON.stringify({ text: storedSet, correspondence: publication.correspondence }), encoding: 'utf8' });
+  for (let step = 0; step < 3; step++) cli(['emit', id, 'explore-idea@1', '-']);
+  const work = transfer.open('claude').dir;
+  t.after(() => transfer.close(work));
+  const write = (name, text) => transfer.put(work, name, Buffer.from(text)).path;
+  const emit = (files, amend) => cli(['emit', id, 'explore-slice@1', ...(amend ? ['--amend', amend] : []), ...files.flatMap(file => ['--document-file', file])]);
+  emit(fixture.request.documents.map((text, index) => write(`original-${index}.md`, text)));
+  const exported = name => cli(['block', id, name, '--export', '--harness', 'claude']);
+  const before = exported('dependent');
+  const references = publication.correspondence.slices.map(slice => { const stored = exported(slice.change_name); return { document_file: stored.document_file, hash: stored.hash }; });
+  const input = write('attach.json', JSON.stringify({ document_files: references, correspondence: publication.correspondence }));
+  const attached = spawnSync(process.execPath, [path.join(root, 'sai/tools/change-document.js'), 'attach-origin', '--harness', 'claude', '--input-file', input], { encoding: 'utf8' });
   assert.equal(attached.status, 0, attached.stdout + attached.stderr);
   const transported = JSON.parse(attached.stdout);
-  for (const updated of transported.blocks) {
-    cli(['emit', id, 'explore-slice@1', '--ready-to-propose', '--amend', updated.name, '-'], updated.text);
-  }
-  const cold = cli(['block', id, 'dependent']);
+  t.after(() => transfer.close(transported.transfer_dir));
+  for (const updated of transported.documents) emit([updated.document_file], updated.name);
+  const cold = exported('dependent');
   assert.notEqual(cold.hash, before.hash);
-  assert.equal(cold.hash, detector.hashBlock(cold.text));
-  assert.equal(cold.text.replace(/^\*\*Backlog origin\*\*:.*\n/m, ''), before.text);
-  const intake = detector.checkDispatchable(cold.text);
-  assert.equal(intake.dispatchable, true);
-  const provenance = intake.blocks[0].backlog_origin;
+  const text = fs.readFileSync(cold.document_file, 'utf8');
+  assert.equal(cold.hash, detector.hashDocument(text));
+  assert.equal(text.replace(/^- Backlog origin:.*\n/m, ''), fs.readFileSync(before.document_file, 'utf8'));
+  const intake = detector.checkDocument(text);
+  assert.equal(intake.ok, true);
+  const provenance = intake.change.backlog_origin;
   assert.equal(provenance, publication.correspondence.slices.find(slice => slice.change_name === 'dependent').issue);
   assert.notEqual(provenance, publication.correspondence.parent);
   // Spec's writer contract uses the parsed value in YAML; a cold start needs no prior map.
   const writer = fs.readFileSync(path.join(root, 'sai/commands/spec/worker.md'), 'utf8');
-  assert.match(writer, /validator's returned `backlog_origin`/);
+  assert.match(writer, /backlog_origin/);
   const metadata = `backlog_origin: ${provenance}\n`;
   const standaloneReference = /^backlog_origin: (.+)$/m.exec(metadata)[1];
   assert.equal((await assignment.inspect({ reference: standaloneReference }, fixture.io)).issue, provenance);
   const wrong = structuredClone(publication.correspondence); wrong.slices.pop();
-  assert.throws(() => detector.attachBacklogOrigins(fixture.request.blocks, wrong), /complete stored block set|correspondence dependency/);
+  assert.throws(() => detector.attachBacklogOrigins(fixture.request.documents, wrong), /complete stored document set|correspondence dependency/);
 });
 test('per-slice chain: later branches start from the previous branch, hold on uncommitted work and detect an occupied name', async () => {
   const { execute } = require('../sai/tools/new-change-branch');
@@ -751,7 +756,7 @@ for (const native of [false, true]) test(`an origin that is a published child ta
   assert.equal(first.result.status, 'complete');
   const origin = fixture.state.issues[1], parent = fixture.state.issues[0].url;
   const baseline = (await github['read-update']({ reference: origin.url }, fixture.io)).baseline;
-  const request = { ...fixture.request, blocks: block('sub-one'), origin: origin.url, origin_baseline: baseline, description: 'Agreed sub objective' };
+  const request = { ...fixture.request, documents: [block('sub-one')], origin: origin.url, origin_baseline: baseline, description: 'Agreed sub objective' };
   const ready = await github['query-set'](request, fixture.io);
   assert.equal(ready.status, 'ready', JSON.stringify(ready));
   const result = await github['publish-set']({ ...request, confirmation: ready.confirmation, receipt: receipt(t) }, fixture.io);
@@ -776,7 +781,7 @@ for (const native of [false, true]) test(`an origin that is a published child ta
   const dependencies = JSON.stringify([...fixture.state.blockers]);
   const members = [...fixture.state.members];
   const updateRequest = { origin: parent, title: fixture.request.title, description: fixture.request.description,
-    blocks: block('dependent', 'blocker') + '\n' + block('blocker').replace('**What**: None', '**What**: Refined upper slice') };
+    documents: [block('dependent', 'blocker'), block('blocker', 'None', 'Refined upper slice')] };
   const prepared = await github['query-set-update'](updateRequest, fixture.io);
   assert.equal(prepared.status, 'ready', JSON.stringify(prepared));
   const start = fixture.state.calls.length;
@@ -796,25 +801,24 @@ for (const native of [false, true]) test(`an origin that is a published child ta
   assert.match(JSON.parse(mutations[0].input).query, /updateIssue/);
   assert.equal(fixture.state.issues.length, 4);
 });
-test('origin transport replaces the adopted origin in slice blocks with the child URL and refuses other origins', async t => {
+test('origin transport replaces the adopted origin in slice documents with the child URL and refuses other origins', async t => {
   const fixture = fake(), origin = await withOrigin(fixture);
-  const named = text => text.replace('**What**:', `**Backlog origin**: ${origin.url}\n**What**:`);
-  const blocks = named(block('dependent', 'blocker')) + '\n' + named(block('blocker'));
-  const request = { ...fixture.request, blocks };
+  const named = (name, dependencies = 'None', url = origin.url) => document(name, { dependencies, origin: url });
+  const documents = [named('dependent', 'blocker'), named('blocker')];
+  const request = { ...fixture.request, documents };
   const ready = await github['query-set'](request, fixture.io);
   const result = await github['publish-set']({ ...request, confirmation: ready.confirmation, receipt: receipt(t) }, fixture.io);
   assert.equal(result.status, 'complete', JSON.stringify(result));
-  const attached = detector.attachBacklogOrigins(blocks, result.correspondence);
-  for (const entry of attached.blocks) {
+  const attached = detector.attachBacklogOrigins(documents, result.correspondence);
+  for (const entry of attached.documents) {
     const slice = result.correspondence.slices.find(row => row.change_name === entry.name);
     assert.equal(entry.backlog_origin, slice.issue);
-    assert.equal(detector.checkStrict(entry.text).ok, true);
-    assert.equal(detector.checkStrict(entry.text).blocks[0].backlog_origin, slice.issue);
+    assert.equal(detector.checkDocument(entry.text).ok, true);
+    assert.equal(detector.checkDocument(entry.text).change.backlog_origin, slice.issue);
     assert.ok(!entry.text.includes(origin.url));
-    assert.equal(detector.hashBlock(entry.text), entry.hash);
+    assert.equal(detector.hashDocument(entry.text), entry.hash);
   }
-  const other = named(block('blocker')).replace(origin.url, 'https://github.com/owner/repo/issues/77');
-  assert.throws(() => detector.attachBacklogOrigins(block('dependent', 'blocker') + '\n' + other, result.correspondence), /conflicts with publication/);
+  assert.throws(() => detector.attachBacklogOrigins([block('dependent', 'blocker'), named('blocker', 'None', 'https://github.com/owner/repo/issues/77')], result.correspondence), /conflicts with publication/);
 });
 test('E15: the GitHub set and set-update proposals report auto_approve and their tokens bind the key', async t => {
   const f = fake({ native: true }), keyed = { ...f.io, autoApprove: true };
@@ -827,7 +831,7 @@ test('E15: the GitHub set and set-update proposals report auto_approve and their
   assert.equal(f.state.issues.length, 0);
   const published = await github['publish-set']({ ...f.request, confirmation: on.confirmation, receipt: receipt(t) }, keyed);
   assert.equal(published.status, 'complete', JSON.stringify(published));
-  const request = { origin: f.state.issues[0].url, title: 'Refined objective', description: f.request.description, blocks: block('blocker') + '\n' + block('dependent', 'blocker') };
+  const request = { origin: f.state.issues[0].url, title: 'Refined objective', description: f.request.description, documents: [block('blocker'), block('dependent', 'blocker')] };
   const updateOff = await github['query-set-update'](request, f.io), updateOn = await github['query-set-update'](request, keyed);
   assert.equal(updateOff.status, 'ready', JSON.stringify(updateOff));
   assert.equal(Object.hasOwn(updateOff.proposal, 'auto_approve'), false);

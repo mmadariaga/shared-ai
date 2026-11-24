@@ -6,13 +6,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const identity = require('../sai/tools/backlog-slice-identity');
-const detector = require('../sai/tools/ready-to-propose');
+const { document } = require('./helpers/change-document-fixture');
 const { digest } = require('../sai/tools/to-backlog-github');
 const { bind } = require('../sai/tools/backlog-set-update');
 
-function block(name) {
-  return ['## Ready to Propose', ...detector.STRICT_FIELDS.filter(field => !field.optional || field.label === 'Depends on').map(field => `**${field.label}**: ${field.label === 'Change name' ? name : field.inline ? 'None' : '\n- I1: source'}`), '---'].join('\n');
-}
 function fixture(t, provider) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-set-update-')); fs.chmodSync(directory, 0o700);
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
@@ -51,7 +48,7 @@ function fixture(t, provider) {
       return { status: current.baseline.title === saved.title && current.baseline.description === saved.description ? 'complete' : 'pending' };
     }
   };
-  const tool = bind(provider, () => adapter), request = { origin: url(1), title: 'refined parent', description: 'refined objective', blocks: block('two') + '\n' + block('one') };
+  const tool = bind(provider, () => adapter), request = { origin: url(1), title: 'refined parent', description: 'refined objective', documents: [document('two'), document('one')] };
   return { tool, request, rows, state, file: path.join(directory, 'update.json') };
 }
 for (const provider of ['github', 'gitlab', 'azuredevops']) {
@@ -85,8 +82,8 @@ for (const provider of ['github', 'gitlab', 'azuredevops']) {
   });
   test(`${provider}: missing or ambiguous child correspondence blocks the entire set`, async t => {
     const f = fixture(t, provider);
-    const mismatched = f.request.blocks.replace('**What**:', `**Backlog origin**: ${f.rows[0].issue.url}\n**What**:`);
-    await assert.rejects(async () => await f.tool['query-set-update']({ ...f.request, blocks: mismatched }), /Block origin/);
+    const mismatched = [document('two', { origin: f.rows[0].issue.url }), document('one')];
+    await assert.rejects(async () => await f.tool['query-set-update']({ ...f.request, documents: mismatched }), /Document origin/);
     f.rows[2].baseline.description = f.rows[1].baseline.description;
     await assert.rejects(async () => await f.tool['query-set-update'](f.request), /correspondence/);
     f.rows.pop();
@@ -137,8 +134,8 @@ test('azuredevops E8 I6: a set update writes each work item in its own descripti
   assert.equal(ready.status, 'ready');
   assert.match(described[0], /^refined objective\n\nChild: one — .*\nChild: two — .*\n```\nsai-backlog-slices@1 /);
   assert.doesNotMatch(described[0], /<p>|<pre>/);
-  assert.match(described[1], /^<pre>.*<\/pre>\n<p>Parent: .*<\/p>\n<pre>sai-backlog-slices@1 /s);
-  assert.match(described[2], /^```\n## Ready to Propose[\s\S]*\n```\n\nParent: .*\n```\nsai-backlog-slices@1 /);
+  assert.match(described[1], /^<h2>Problem<\/h2>[\s\S]*<h2>Change<\/h2>[\s\S]*\n<p>Parent: .*<\/p>\n<pre>sai-backlog-slices@1 /);
+  assert.match(described[2], /^## Problem\n[\s\S]*\n## Change\n[\s\S]*\n\nParent: .*\n```\nsai-backlog-slices@1 /);
   assert.doesNotMatch(described[2], /<p>|<pre>/);
   for (const [i, row] of f.rows.entries()) assert.equal(identity.decode(described[i]).role, i ? 'child' : 'parent', `item ${i}`);
   assert.equal((await f.tool['update-set']({ ...f.request, receipt: f.file, confirmation: ready.confirmation })).status, 'complete');

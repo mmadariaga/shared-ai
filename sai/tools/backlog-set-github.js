@@ -1,14 +1,14 @@
 'use strict';
 
 const fs = require('node:fs');
-const blocks = require('./ready-to-propose');
+const documents = require('./change-document');
 const identity = require('./backlog-slice-identity');
 const { rest } = require('./backlog-assignment-github');
 const origin = require('./backlog-set-origin');
 function adapter() { return require('./to-backlog-github'); }
 
 async function query(request, io) {
-  const validation = blocks.validateDependencySet(request.blocks);
+  const validation = documents.readSet(Array.isArray(request.documents) ? request.documents : []);
   if (!validation.ok) return { status: 'needs_input', reason: 'invalid-dependencies', validation };
   let ready = request.origin ? undefined : await adapter().query(request, io), existing;
   if (request.origin) {
@@ -20,10 +20,9 @@ async function query(request, io) {
   const fields = (await adapter().api(io, 'query{__type(name:"Issue"){fields{name}}}', {})).__type?.fields;
   if (!Array.isArray(fields)) throw new Error('Hierarchy capability inspection is incomplete');
   const hierarchy = fields.some(field => field.name === 'parent') && fields.some(field => field.name === 'subIssues') ? 'native' : 'written';
-  const texts = blocks.extractBlockTexts(request.blocks);
   const slices = validation.order.map(name => {
-    const index = validation.blocks.findIndex(block => block.name === name);
-    return { change_name: name, title: name, description: texts[index], depends_on: validation.blocks[index].dependencies };
+    const document = validation.documents.find(row => row.name === name);
+    return { change_name: name, title: document.title, description: document.description, depends_on: document.dependencies };
   });
   const dependencies = fields.some(field => field.name === 'blockedBy') ? 'native' : 'written';
   const proposal = { ...ready.proposal, ...(io.autoApprove === true ? { auto_approve: true } : {}), operation: 'set', ...(existing ? { origin: existing } : {}), slices, hierarchy, dependencies, relations: existing ? origin.RELATIONS : 'Append verified issue links and sai-backlog-slices@1 correspondence without altering agreed source content; create separately verified native relations when supported' };

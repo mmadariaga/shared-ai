@@ -1,7 +1,7 @@
 'use strict';
 
 const fs = require('node:fs');
-const blocks = require('./ready-to-propose');
+const documents = require('./change-document');
 const identity = require('./backlog-slice-identity');
 const digest = value => require('./to-backlog-github').digest(value);
 const receiptPath = value => require('./to-backlog-github').receiptPath(value);
@@ -21,21 +21,21 @@ function bind(provider, adapter, same = (a, b) => a === b) {
       : `${description}\n\n${links.join('\n')}\n${identity.encode(value)}`;
   }
   async function query(request, io) {
-    const validation = blocks.validateDependencySet(request.blocks);
+    const validation = documents.readSet(Array.isArray(request.documents) ? request.documents : []);
     if (!validation.ok) return { status: 'blocked', reason: 'invalid-dependencies', validation };
     const api = adapter();
     const parent = await api['read-update']({ reference: request.origin }, io);
     const marker = identity.decode(parent.baseline.description, parent.issue.url);
     if (!marker || marker.role !== 'parent' || marker.platform !== provider || marker.parent !== parent.issue.url) return { status: 'blocked', reason: 'unverifiable-correspondence' };
-    const names = validation.blocks.map(row => row.name), previous = identity.slicesOf(marker, parent.issue.url).map(slice => slice.change_name);
+    const names = validation.documents.map(row => row.name), previous = identity.slicesOf(marker, parent.issue.url).map(slice => slice.change_name);
     const added = names.filter(name => !previous.includes(name)), removed = previous.filter(name => !names.includes(name));
-    const dependencies = validation.blocks.filter(row => digest([...row.dependencies].sort()) !== digest([...(marker.slices.find(slice => slice.change_name === row.name)?.depends_on || [])].sort())).map(row => row.name);
+    const dependencies = validation.documents.filter(row => digest([...row.dependencies].sort()) !== digest([...(marker.slices.find(slice => slice.change_name === row.name)?.depends_on || [])].sort())).map(row => row.name);
     if (added.length || removed.length || dependencies.length) return { status: 'blocked', reason: 'composition-changed', added, removed, dependencies };
     if (typeof request.title !== 'string' || !request.title.trim() || typeof request.description !== 'string') throw new Error('Complete parent title and description required');
-    const texts = blocks.extractBlockTexts(request.blocks), items = [];
+    const items = [];
     const parentDescription = provider !== 'azuredevops' || markdownItem(parent) ? request.description : require('./azure-markdown').convert(request.description);
     const inputs = [{ current: parent, title: request.title, description: parentDescription, marker }];
-    // Resolve the complete correspondence before preparing any write, independent of block order.
+    // Resolve the complete correspondence before preparing any write, independent of document order.
     for (const slice of identity.slicesOf(marker, parent.issue.url)) {
       const current = await api['read-update']({ reference: slice.issue }, io);
       const child = identity.decode(current.baseline.description, slice.issue), upper = identity.upper(child);
@@ -43,12 +43,12 @@ function bind(provider, adapter, same = (a, b) => a === b) {
       delete expected.child_of;
       if (current.issue.url !== slice.issue || !upper || correspondence(upper) !== correspondence(expected)) throw new Error('Child correspondence is missing, ambiguous, or incompatible; no updates were written');
       if (current.repository !== parent.repository) throw new Error('Child destination differs from the parent');
-      const index = validation.blocks.findIndex(row => row.name === slice.change_name);
-      if (validation.blocks[index].backlog_origin && validation.blocks[index].backlog_origin !== slice.issue) throw new Error('Block origin conflicts with the published child correspondence; no updates were written');
-      const text = texts[index];
-      const description = provider !== 'azuredevops' ? text : markdownItem(current) ? identity.fenced(text) : `<pre>${identity.escape(text)}</pre>`;
+      const document = validation.documents.find(row => row.name === slice.change_name);
+      if (document.backlog_origin && document.backlog_origin !== slice.issue) throw new Error('Document origin conflicts with the published child correspondence; no updates were written');
+      // A Markdown work item takes the document as written; an HTML one takes its conversion.
+      const description = provider !== 'azuredevops' || markdownItem(current) ? document.description : require('./azure-markdown').convert(document.description);
       // An adopted parent keeps its own descendants and child_of; upper verifies only its place in this set.
-      inputs.push({ current, title: slice.change_name, description, marker: child });
+      inputs.push({ current, title: document.title, description, marker: child });
     }
     for (const input of inputs) {
       const content = { reference: input.current.issue.url, baseline: input.current.baseline, title: input.title, description: render(input.description, input.marker, markdownItem(input.current)) };

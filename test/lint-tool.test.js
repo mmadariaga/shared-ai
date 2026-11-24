@@ -312,57 +312,16 @@ test('lint.js glossary-format: missing H1 fails', () => {
 });
 
 // ============================================================================
-// ready-to-propose checks
+// change-document checks
 // ============================================================================
 
-test('lint.js ready-to-propose: valid block passes', () => {
+const { document } = require('./helpers/change-document-fixture');
+
+test('lint.js change-document: a valid change document passes', () => {
   const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
   try {
-    const testFile = path.join(tmpdir, 'proposal.md');
-    const block = `## Ready to Propose
-
-**Change name**: example-change
-**What**: This is what we're doing.
-**Why**: This is why we're doing it.
-**Capabilities in scope**:
-- capability-one: description
-
-**Research Leads**:
-- path/to/file.js - relevant note
-
-**Decisions & Rationale**:
-- Decision one with rationale.
-
-**Alternatives Considered**:
-- Alternative one.
-
-**Trade-offs Accepted**:
-- Trade-off one.
-
-**Model / Re-framings**:
-- Model one.
-
-**Key constraints**:
-- Constraint one.
-
-**Terms**:
-- None
-
-**Edge Cases**:
-- E1: edge case one.
-
-**Implementation Details**:
-- I1: implementation detail one.
-
-**Out of scope Implementation Details**:
-- None
-
-**Overview language**: None
-
----
-`;
-    fs.writeFileSync(testFile, block);
-    const result = tool(['ready-to-propose', 'proposal.md'], tmpdir);
+    fs.writeFileSync(path.join(tmpdir, 'document.md'), document('example-change'));
+    const result = tool(['change-document', 'document.md'], tmpdir);
     assert.equal(result.status, 0);
     assert.match(result.stdout, /check passed/);
   } finally {
@@ -370,154 +329,35 @@ test('lint.js ready-to-propose: valid block passes', () => {
   }
 });
 
-test('lint.js ready-to-propose: block with Request Additional Notes passes', () => {
+test('lint.js change-document: a document without a Change name fails with the tool problem name', () => {
   const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
   try {
-    const testFile = path.join(tmpdir, 'proposal.md');
-    const block = `## Ready to Propose
-
-**Change name**: example-change
-**What**: This is what we're doing.
-**Why**: This is why we're doing it.
-**Capabilities in scope**:
-- capability-one: description
-**Research Leads**:
-- None
-**Decisions & Rationale**:
-- None
-**Alternatives Considered**:
-- None
-**Trade-offs Accepted**:
-- None
-**Model / Re-framings**:
-- None
-**Key constraints**:
-- Constraint one.
-**Terms**:
-- None
-**Edge Cases**:
-- E1: edge case one.
-**Implementation Details**:
-- I1: implementation detail one.
-**Out of scope Implementation Details**:
-- None
-**Request Additional Notes**:
-The user prefers short examples; see the earlier discussion about naming.
-- A bullet note is also allowed.
-**Overview language**: None
-
----
-`;
-    fs.writeFileSync(testFile, block);
-    const result = tool(['ready-to-propose', 'proposal.md'], tmpdir);
-    assert.equal(result.status, 0);
-    assert.match(result.stdout, /check passed/);
-  } finally {
-    fs.rmSync(tmpdir, { recursive: true });
-  }
-});
-
-test('lint.js ready-to-propose: block without Out of scope Implementation Details fails', () => {
-  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
-  try {
-    const testFile = path.join(tmpdir, 'proposal.md');
-    const block = `## Ready to Propose
-
-**Change name**: example-change
-**What**: This is what we're doing.
-**Why**: This is why we're doing it.
-**Capabilities in scope**:
-- capability-one: description
-**Research Leads**:
-- None
-**Decisions & Rationale**:
-- None
-**Alternatives Considered**:
-- None
-**Trade-offs Accepted**:
-- None
-**Model / Re-framings**:
-- None
-**Key constraints**:
-- Constraint one.
-**Edge Cases**:
-- E1: edge case one.
-**Implementation Details**:
-- I1: implementation detail one.
-**Overview language**: None
-
----
-`;
-    fs.writeFileSync(testFile, block);
-    const result = tool(['ready-to-propose', 'proposal.md'], tmpdir);
-    assert.notEqual(result.status, 0);
-    assert.match(result.stdout + result.stderr, /Out of scope Implementation Details/);
-  } finally {
-    fs.rmSync(tmpdir, { recursive: true });
-  }
-});
-
-test('lint.js ready-to-propose: missing block heading fails', () => {
-  const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
-  try {
-    const testFile = path.join(tmpdir, 'proposal.md');
-    fs.writeFileSync(testFile, '# Some other heading\n\nContent here.\n');
-    const result = tool(['ready-to-propose', 'proposal.md'], tmpdir);
+    fs.writeFileSync(path.join(tmpdir, 'document.md'), document('example-change').replace(/^- Change name:.*\n/m, ''));
+    const result = tool(['change-document', 'document.md'], tmpdir);
     assert.equal(result.status, 1);
-    assert.match(result.stdout, /MISSING_BLOCK_HEADING/);
+    assert.match(result.stdout, /MISSING_CHANGE_NAME/);
   } finally {
     fs.rmSync(tmpdir, { recursive: true });
   }
 });
 
-test('lint.js ready-to-propose: delegates to the detector strict profile (Change name required)', () => {
+test('lint.js change-document: a retired Ready to Propose block fails', () => {
   const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-'));
   try {
-    const testFile = path.join(tmpdir, 'proposal.md');
-    const block = `## Ready to Propose
-
-**What**: This is what we're doing.
-**Why**: This is why we're doing it.
-**Capabilities in scope**:
-- capability-one: description
-**Research Leads**:
-- None
-**Decisions & Rationale**:
-- None
-**Alternatives Considered**:
-- None
-**Trade-offs Accepted**:
-- None
-**Model / Re-framings**:
-- None
-**Key constraints**:
-- Constraint one.
-**Terms**:
-- None
-**Edge Cases**:
-- None
-**Implementation Details**:
-- None
-**Out of scope Implementation Details**:
-- None
-**Overview language**: None
-
----
-`;
-    fs.writeFileSync(testFile, block);
-    const result = tool(['ready-to-propose', 'proposal.md'], tmpdir);
+    fs.writeFileSync(path.join(tmpdir, 'block.md'), '## Ready to Propose\n\n**Change name**: example-change\n**What**: A thing.\n\n---\n');
+    const result = tool(['change-document', 'block.md'], tmpdir);
     assert.equal(result.status, 1);
-    assert.match(result.stdout, /MISSING_SECTION/);
-    assert.match(result.stdout, /Change name/);
+    assert.match(result.stdout, /RETIRED_FORMAT/);
   } finally {
     fs.rmSync(tmpdir, { recursive: true });
   }
 });
 
-test('lint.js ready-to-propose: carries no section list of its own', () => {
+test('lint.js change-document: carries no section list of its own', () => {
   const source = fs.readFileSync(TOOL, 'utf8');
-  assert.match(source, /require\('\.\/ready-to-propose\.js'\)/);
-  assert.doesNotMatch(source, /'\*\*Research Leads\*\*'/);
+  assert.match(source, /require\('\.\/change-document\.js'\)/);
+  assert.doesNotMatch(source, /ready-to-propose/);
+  assert.doesNotMatch(source, /'Implementation notes'/);
 });
 
 // ============================================================================

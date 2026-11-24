@@ -6,82 +6,59 @@ const fs = require('fs');
 const path = require('path');
 
 const repoRoot = path.join(__dirname, '..');
-const { checkStrict, checkDispatchable } = require('../sai/tools/ready-to-propose');
+const { checkDocument } = require('../sai/tools/change-document');
+const { document } = require('./helpers/change-document-fixture');
 const { derivePanelCells, renderBulk } = require('../sai/tools/status');
 
 const read = relative => fs.readFileSync(path.join(repoRoot, relative), 'utf8');
 
-function block(extra = {}) {
-  const fields = {
-    'Change name': ' no-specs-demo',
-    What: ' Renames an internal helper.',
-    Why: ' The name is misleading.',
-    Specs: null,
-    'Capabilities in scope': '\n- helper: renamed',
-    'Research Leads': '\n- None',
-    'Decisions & Rationale': '\n- None',
-    'Alternatives Considered': '\n- None',
-    'Trade-offs Accepted': '\n- None',
-    'Model / Re-framings': '\n- None',
-    'Key constraints': '\n- No behavior change.',
-    Terms: '\n- None',
-    'Edge Cases': '\n- None',
-    'Implementation Details': '\n- None',
-    'Out of scope Implementation Details': '\n- None',
-    'Overview language': ' None',
-    ...extra,
-  };
-  const lines = ['## Ready to Propose', ''];
-  for (const [label, value] of Object.entries(fields)) {
-    if (value !== null) lines.push(`**${label}**:${value}`);
-  }
-  return [...lines, '', '---', ''].join('\n');
+// A dispatchable document whose `## Change` section carries the given `Specs:` line (null: no line).
+function withSpecs(value) {
+  const text = document('no-specs-demo');
+  return value === null ? text : `${text}- Specs:${value}\n`;
 }
 
 function problems(verdict) {
-  return [...verdict.violations, ...verdict.blocks.flatMap(entry => entry.violations)].map(entry => entry.problem);
+  return verdict.violations.map(entry => entry.problem);
 }
 
 // ---------------------------------------------------------------------------
-// Ready to Propose: the no-specs field (I3, E9, E8)
+// Change document: the no-specs field (I3, E9, E8)
 // ---------------------------------------------------------------------------
 
-test('a block with `**Specs**: none — <reason>` passes the strict and dispatchable checks', () => {
-  const text = block({ Specs: ' none — pure refactor, no behavior changes' });
-  assert.deepEqual(problems(checkStrict(text)), []);
-  const verdict = checkDispatchable(text);
-  assert.equal(verdict.ok, true, JSON.stringify(problems(verdict)));
+test('a document with `Specs: none — <reason>` passes the check and skips the specs', () => {
+  const verdict = checkDocument(withSpecs(' none — pure refactor, no behavior changes'));
+  assert.deepEqual(problems(verdict), []);
+  assert.equal(verdict.change.skip_specs, true);
+  assert.equal(verdict.change.specs_reason, 'pure refactor, no behavior changes');
 });
 
-test('E9: an empty reason, a missing dash, or any other value fails the dispatchable check', () => {
+test('E9: an empty reason, a missing dash, or any other value fails the check', () => {
   for (const value of [' none —', ' none — ', ' none', ' some', ' None — reason']) {
-    const verdict = checkDispatchable(block({ Specs: value }));
+    const verdict = checkDocument(withSpecs(value));
     assert.equal(verdict.ok, false, `"${value}" must fail`);
     assert.ok(problems(verdict).some(problem => /SPECS/.test(problem)), `"${value}" names the Specs field`);
   }
-  assert.ok(problems(checkDispatchable(block({ Specs: ' none —' }))).includes('EMPTY_SPECS_REASON'));
+  assert.ok(problems(checkDocument(withSpecs(' none —'))).includes('EMPTY_SPECS_REASON'));
 });
 
-test('the Specs line belongs right after Why, and an empty label is rejected', () => {
-  const afterWhy = block().replace('**Capabilities in scope**:', '**Specs**: none — reason\n**Capabilities in scope**:');
-  assert.deepEqual(problems(checkStrict(afterWhy)), []);
-  const misplaced = block({ Specs: ' none — reason' }).replace('**Specs**: none — reason\n', '')
-    .replace('**Overview language**', '**Specs**: none — reason\n**Overview language**');
-  assert.ok(problems(checkStrict(misplaced)).includes('WRONG_SECTION_ORDER'));
-  assert.ok(problems(checkStrict(block({ Specs: '' }))).includes('EMPTY_SECTION'));
+test('the Specs line is one key of the Change section, in any position, and an empty value is rejected', () => {
+  const before = document('no-specs-demo').replace('- Change name: no-specs-demo\n', '- Specs: none — reason\n- Change name: no-specs-demo\n');
+  assert.deepEqual(problems(checkDocument(before)), []);
+  assert.ok(problems(checkDocument(withSpecs(''))).includes('INVALID_SPECS_FIELD'));
 });
 
-test('E8: a block without the Specs line is valid and keeps today\'s behavior', () => {
-  const verdict = checkDispatchable(block());
+test('E8: a document without the Specs line is valid and keeps today\'s behavior', () => {
+  const verdict = checkDocument(withSpecs(null));
   assert.equal(verdict.ok, true, JSON.stringify(problems(verdict)));
-  assert.match(read('sai/policies/ready-to-propose-format.md'), /A block without the line keeps the rule that every phase requires at least one non-empty spec file/);
+  assert.equal(verdict.change.skip_specs, false);
+  assert.match(read('sai/policies/issue-format.md'), /A\s+document without the line keeps the rule that every phase requires at least one\s+non-empty spec file/);
 });
 
-test('the format policy defines the field in the block structure and the field rules', () => {
-  const policy = read('sai/policies/ready-to-propose-format.md');
-  assert.match(policy, /\*\*Specs\*\*: none — <reason; omit the line when the change has specs>/);
-  assert.match(policy, /- \*\*Specs\*\*: optional; the no-specs field/);
-  assert.match(policy, /Files already under `specs\/` win over the line/);
+test('the format policy defines the field in the Change section', () => {
+  const policy = read('sai/policies/issue-format.md');
+  assert.match(policy, /`Specs:` — optional; `none — <reason>` declares that the change has no/);
+  assert.match(policy, /files already under `specs\/` win over the line/);
 });
 
 // ---------------------------------------------------------------------------

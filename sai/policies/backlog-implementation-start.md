@@ -87,7 +87,7 @@ under `--fast-track` and Direct Build alike, for every provider.
 
 Resolve the selected issue from a publication's structured correspondence for
 the explicitly selected change name, explicit originating-issue provenance, the
-selected change's `**Backlog origin**` line, or `.openspec.yaml`'s
+selected change's `Backlog origin:` line, or `.openspec.yaml`'s
 `backlog_origin`. A supplied parent does not select a child: ask which child
 to implement and wait. With no provenance, run no remote operation. Use the
 selected provider's publication correspondence to match an explicitly selected change name,

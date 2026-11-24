@@ -45,6 +45,28 @@ function validateInstructions(entry) {
   if (!/^providers\/[a-z0-9-]+\.md$/.test(entry.instructions)) throw new Error('Invalid provider instruction reference');
 }
 
+// A caller hands a change document over as a file reference, never as text: the tool verifies the file against its
+// hash, and the title line becomes the issue title and the rest the description, so no model rewrites the agreement.
+// `document` (one change) fills `title` and `description`; `documents` (a slice set) become the verified texts.
+function resolveDocuments(request, documents = require('./change-document')) {
+  const load = reference => typeof reference === 'string' ? reference
+    : documents.verifyDocumentFile(reference?.document_file, reference?.document_hash);
+  const resolved = { ...request };
+  if (request.document !== undefined) {
+    if (request.title !== undefined || request.description !== undefined) throw new Error('A request names either a document or a title and description, not both');
+    const text = load(request.document);
+    const checked = documents.checkDocument(text);
+    if (!checked.ok) throw new Error(`The document is not a complete change document: ${[...new Set(checked.violations.map(entry => entry.problem))].join(', ')}`);
+    Object.assign(resolved, documents.splitDocument(text));
+    delete resolved.document;
+  }
+  if (request.documents !== undefined) {
+    if (!Array.isArray(request.documents) || !request.documents.length) throw new Error('documents must list at least one change document reference');
+    resolved.documents = request.documents.map(load);
+  }
+  return resolved;
+}
+
 async function dispatch(operation, request, registry, io) {
   const entry = registry.providers.find(item => item.id === request.provider);
   if (!entry?.capabilities.includes(operation)) return { status: 'unsupported', provider: request.provider };
@@ -151,7 +173,7 @@ async function main(rawArgv) {
       const addressProvider = addressed.length === 1 ? addressed[0].provider : undefined;
       result = projectSettings.report(result, { warnings, notices: [...(settings.notices || []), ...projectSettings.notices(config, request.explicit, result, addressProvider)] });
     } else {
-      result = await dispatch(operation, request, registry, withAutoApprove(io, cwd));
+      result = await dispatch(operation, resolveDocuments(request), registry, withAutoApprove(io, cwd));
     }
     process.stdout.write(JSON.stringify(result) + '\n');
     return ['resolved', 'ready', 'complete', 'no_changes'].includes(result.status) ? 0 : 1;
@@ -162,4 +184,4 @@ async function main(rawArgv) {
 }
 
 if (require.main === module) main(process.argv.slice(2)).then(code => { process.exitCode = code; });
-module.exports = { run, address, detect, resolve, dispatch, withAutoApprove, main };
+module.exports = { run, address, detect, resolve, resolveDocuments, dispatch, withAutoApprove, main };

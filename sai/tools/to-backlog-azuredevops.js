@@ -305,8 +305,8 @@ const set = require('./backlog-provider-set').bind('azuredevops', {
   query: async (request, io) => await query(request, io, request.description_format !== 'html'), equivalent,
   // The originating work item keeps its own format; every work item the set creates is Markdown.
   formatOf: (p, index) => index ? 'markdown' : p.format, origin: readOrigin, representation: { hierarchy: 'native', dependencies: 'native' },
-  // Preserve every character of the agreed block, including the Markdown separator.
-  renderBlock: text => sliceIdentity.fenced(text),
+  // A change document is Markdown: it is written as it is, and raw HTML Azure would rewrite is refused before any write.
+  renderDocument: text => checkMarkdown(text),
   append: (description, links, value, format) => format === 'markdown' ? `${description}\n\n${links.join('\n')}\n${sliceIdentity.encodeMarkdown(value)}`
     : `${description}\n<p>${links.map(sliceIdentity.escape).join('<br>')}</p>\n${sliceIdentity.encodeHtml(value)}`,
   inventory: async (p, io) => { const rows = []; for (const number of await list(p, io)) rows.push(await setRead(p, { number }, io)); return rows; }, read: setRead,

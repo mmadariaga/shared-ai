@@ -5,110 +5,9 @@ TBD - created by archiving change ready-to-propose-detector. Update Purpose afte
 
 ## Requirements
 
-### Requirement: Loose profile implements backfill's nine-literal quorum
-
-The `loose` profile SHALL strip every `**` and then require each of the nine plain literals `Change name`, `What`, `Why`, `Capabilities in scope`, `Alternatives Considered`, `Trade-offs Accepted`, `Key constraints`, `Edge Cases`, and `Implementation Details` as a case-sensitive substring with its exact spacing, anywhere and in any order. It MUST NOT require the `## Ready to Propose` heading, a position, or content, and it MUST NOT require or count `Request Additional Notes`. Each missing literal SHALL be reported as a named violation.
-
-#### Scenario: Literals anywhere without bold or heading pass
-- **WHEN** text contains the nine literals in any order, without bold markers and without the heading
-- **THEN** the `loose` verdict is `"ok": true` and the tool exits 0
-
-#### Scenario: Casing or spacing variants do not match
-- **WHEN** a literal appears only with different casing or spacing
-- **THEN** the `loose` verdict names that literal as missing and the tool exits 1
-
-### Requirement: Strict profile implements the canonical block format
-
-The `strict` profile SHALL validate every block per `sai/policies/ready-to-propose-format.md`. Each block starts at a `## Ready to Propose` heading line and SHALL end at a `---` line. The block SHALL carry the field labels in this order: `Change name`, `What`, `Why`, `Capabilities in scope`, `Research Leads`, `Decisions & Rationale`, `Alternatives Considered`, `Trade-offs Accepted`, `Model / Re-framings`, `Key constraints`, `Terms`, `Edge Cases`, `Implementation Details`, `Out of scope Implementation Details`, an optional `Request Additional Notes`, and `Overview language`. `Change name`, `What`, `Why`, and `Overview language` SHALL carry their value on the label line, and the change name MUST be kebab-case. Mandatory sections SHALL carry content or `- None`. `Request Additional Notes`, when present, MUST carry content other than only `- None`. `Overview language` SHALL be the last non-blank line before `---`. Change names MUST be unique across the set, and the extracted names SHALL be returned in block order. Set-level distribution rules (each `E` once per set, `I` coverage) are outside the profile. Because labels are always English, the prose language of a block SHALL NOT affect the verdict.
-
-#### Scenario: Multiple blocks keep their names in order
-- **WHEN** two valid blocks with different change names are piped to `check --profile strict`
-- **THEN** the verdict passes and `names` lists both change names in block order
-
-#### Scenario: Duplicate change names fail
-- **WHEN** two otherwise valid blocks carry the same change name
-- **THEN** the verdict carries a `DUPLICATE_CHANGE_NAME` violation and the tool exits 1
-
-#### Scenario: Fields omitted by the former lint list are required
-- **WHEN** a block lacks `**Change name**`, `**What**`, `**Why**`, `**Terms**`, or `**Overview language**`
-- **THEN** the verdict reports each missing field as `MISSING_SECTION` and the tool exits 1
-
-#### Scenario: Prose in another language passes
-- **WHEN** a block has English labels and Spanish prose
-- **THEN** the `strict` verdict passes
-
-### Requirement: Strict profile is a superset of the loose profile
-
-Every text that passes the `strict` profile SHALL also pass the `loose` profile. A text MAY pass `loose` and fail `strict`.
-
-#### Scenario: A strict-valid block passes loose
-- **WHEN** a block that passes `strict` is checked with `loose`
-- **THEN** the `loose` verdict passes
-
-#### Scenario: Loose-only text fails strict
-- **WHEN** text that carries the nine literals but not the full canonical format is checked with both profiles
-- **THEN** `loose` passes and `strict` fails
-
-### Requirement: Detector is documented and distributed without a manifest change
-
-`sai/policies/tool-resolution.md` SHALL document the invocation shape `node <tool-path> check --profile loose|strict|dispatchable --block-file <path>`, adding `--verdicts-file <path>` when judgment verdicts exist, with the tool composing the `<<<VERDICTS>>>` line itself. `AGENTS.md` SHALL register `ready-to-propose.js` in its `sai/tools/` registry row. The tool SHALL reach both Claude Code and opencode through the existing `sai-tools` projection with no `sai/install-manifest.json` edit.
-
-#### Scenario: The detector is registered and projected
-- **WHEN** `AGENTS.md`, `sai/policies/tool-resolution.md`, and `sai/install-manifest.json` are read
-- **THEN** the registry row and the `--block-file` invocation shape name `ready-to-propose.js`, and the manifest carries no detector-specific entry
-
-### Requirement: Deterministic stdin detector with loose, strict, and dispatchable profiles
-
-The repository SHALL provide `sai/tools/ready-to-propose.js` with the sub-command `check --profile loose|strict|dispatchable`. It SHALL read the text to check from stdin, SHALL accept one or more blocks, and SHALL always print exactly one JSON verdict carrying `ok`, `profile`, `names`, `blocks` (each with `index`, `line`, `name`, and `violations`), and set-level `violations`; the `dispatchable` verdict SHALL additionally carry per-block `hash` and `flagged` and set-level `flagged`, `judgment`, and `dispatchable`. For `loose` and `strict` it MUST exit 0 when the text is valid for the profile and 1 when violations are found; for `dispatchable` it MUST exit 0 only when `dispatchable` is true and 1 otherwise; it MUST exit 2 on a usage or I/O error. `--json` SHALL be accepted and change nothing, and the tool SHALL take no `--cwd`.
-
-#### Scenario: Valid text on stdin yields a JSON verdict and exit 0
-- **WHEN** a canonical block is piped to `check --profile strict`
-- **THEN** the tool prints one JSON verdict with `"ok": true` and the extracted change name, and exits 0
-
-#### Scenario: Usage errors exit 2
-- **WHEN** the tool runs without the `check` sub-command, without `--profile`, or with an unknown profile or flag
-- **THEN** it writes a usage message to stderr and exits 2
-
-#### Scenario: Dispatchable exit follows dispatchability
-- **WHEN** a structurally valid block with an unjudged flagged line is piped to `check --profile dispatchable`
-- **THEN** the verdict carries `"ok": true` and `"dispatchable": false`, and the tool exits 1
-
-### Requirement: Convert sub-command builds a draft block from an issue
-
-`sai/tools/ready-to-propose.js` SHALL provide `convert [--change-name <name>] [--declared-clean]`, reading an issue description from stdin as Markdown or HTML and printing one JSON object. HTML comments SHALL be removed before parsing and SHALL never carry block content. The result SHALL report `ready_to_propose_form` (true only when the `Maturity` section reads `Ready to propose`) and `proposed_change_name` derived from the `Goal`. For an issue without the form, the tool SHALL return no block and exit 0. For an issue with the form, the tool SHALL build the block from the issue's own text, map `Goal`, `Problem`, `Scope`, `Research leads`, `Decisions`, `Non-goals`, `Edge cases`, and `Implementation notes` to their block fields, write `- None` in every field without a source, keep the `E` and `I` items literal, and validate the block with the `dispatchable` profile. It SHALL reject the conversion, exiting 1 with `rejections`, when the issue has entries in `Open questions`, lacks a mandatory section, has an empty `Problem`, `Goal`, or `Scope`, has a scope item that does not read as a verifiable capability, has an `E` or `I` item without its identifier, or fails the `dispatchable` profile. `--declared-clean` SHALL add a `Request Additional Notes` line stating that the user declared no drift without validating it. A missing flag value SHALL be a usage error exiting 2.
-
-#### Scenario: Ready to Propose issue converts
-
-- **WHEN** an issue whose `Maturity` reads `Ready to propose` and whose sections are complete is piped to `convert`
-- **THEN** the tool returns a `dispatchable` block with literal `E`/`I` lists and `- None` in every unsourced field, and exits 0
-
-#### Scenario: HTML issue converts like Markdown
-
-- **WHEN** the same issue is piped as HTML containing an HTML comment
-- **THEN** the tool returns the same block and the comment's content appears nowhere in it
-
-#### Scenario: Open questions reject the conversion
-
-- **WHEN** a Ready to Propose issue still has entries in `Open questions`
-- **THEN** the tool returns `converted: false` with a rejection and exits 1
-
-#### Scenario: Issue without the form returns no block
-
-- **WHEN** an issue whose `Maturity` is not `Ready to propose` is piped to `convert`
-- **THEN** the tool returns `ready_to_propose_form: false`, no block, and exits 0
-
-### Requirement: Issue format constants match the policy
-
-The `convert` sub-command SHALL hold the issue sections and `Maturity` values as constants, and a test SHALL check that they match `sai/policies/issue-format.md`. `sai/policies/tool-resolution.md` SHALL document the `convert` invocation shape.
-
-#### Scenario: Constants agree with the policy
-
-- **WHEN** the regression test reads the tool constants and the issue format policy
-- **THEN** the mandatory sections, optional sections, and `Maturity` values match
-
 ### Requirement: Issue HTML detection ignores tags inside code
 
-The issue description HTML detection of `sai/tools/ready-to-propose.js` SHALL set aside backtick code spans and fenced code blocks before it looks for structural HTML tags (`h1`-`h6`, `p`, `div`, `ul`, `ol`, `li`, `br`), and SHALL treat the description as Markdown when it finds no structural tag outside code, when an opening Markdown heading is present, or when it is otherwise in doubt. The tool SHALL export this decision as `isHtmlDescription` so other adapters reuse the same detector.
+The issue description HTML detection of `sai/tools/change-document.js` SHALL set aside backtick code spans and fenced code blocks before it looks for structural HTML tags (`h1`-`h6`, `p`, `div`, `ul`, `ol`, `li`, `br`), and SHALL treat the description as Markdown when it finds no structural tag outside code, when an opening Markdown heading is present, or when it is otherwise in doubt. The tool SHALL export this decision as `isHtmlDescription` so other adapters, the Azure DevOps import included, reuse the same detector.
 
 #### Scenario: Tags only inside code
 
@@ -119,59 +18,6 @@ The issue description HTML detection of `sai/tools/ready-to-propose.js` SHALL se
 
 - **WHEN** an issue description has structural HTML tags outside code and no Markdown heading
 - **THEN** the detector treats it as HTML.
-
-### Requirement: Strict profile validates the optional Explore origin label
-
-`sai/tools/ready-to-propose.js` SHALL register `Explore origin` as an optional inline label of the strict field order, after `Backlog origin` and before `What`. A value of the form `<harness> <sessionID>[, [<harness> ]<sessionID>…]` SHALL be accepted, where the harness is `opencode` with a `ses_...` session ID or `claude` with a UUID session ID, the first entry names its harness, and a later entry without a harness inherits the previous entry's. The bare session IDs SHALL be returned per block, in order, as the `explore_origin` list; a block without the label SHALL return an empty list. Any other value, including an entry whose ID shape does not match its harness or a first entry without a harness, SHALL produce an `INVALID_EXPLORE_ORIGIN` violation, and a label out of order SHALL fail like any misplaced label, so the block fails the strict and dispatchable checks.
-
-#### Scenario: a valid list is returned in order
-- **WHEN** a block carrying `**Explore origin**: opencode ses_a, ses_b` after `**Backlog origin**` is checked with the strict profile
-- **THEN** the verdict passes and the block's `explore_origin` is `["ses_a", "ses_b"]`
-
-#### Scenario: a malformed value fails
-- **WHEN** a block carries `**Explore origin**: ses_a` without the `opencode` prefix
-- **THEN** the verdict carries an `INVALID_EXPLORE_ORIGIN` violation and the block is not dispatchable
-
-#### Scenario: a mixed-harness list is returned bare
-- **WHEN** a block carrying `**Explore origin**: claude <uuid>, opencode ses_a, ses_b` is checked with the strict profile
-- **THEN** the verdict passes and the block's `explore_origin` is `["<uuid>", "ses_a", "ses_b"]`
-
-#### Scenario: an id that does not match its harness fails
-- **WHEN** a block carries `**Explore origin**: claude ses_a`
-- **THEN** the verdict carries an `INVALID_EXPLORE_ORIGIN` violation and the block is not dispatchable
-
-### Requirement: Convert reads the sections of an issue of any maturity
-
-`ready-to-propose.js convert` SHALL accept an issue of any `Maturity` and, whatever the block conversion outcome, SHALL also return `sections`, `open_questions`, `seed`, and `declared_clean_note`. `sections` SHALL report, for `explore-change` (from `Problem`, `Goal`, and `Scope`), `review-edge-cases` (the `Edge cases` list), and `implementation-details` (the `Implementation notes` list), a `status` of `present`, `explicitly-empty` (the section says none), or `absent` (missing, blank, or not agreed), and for a list its literal `items`. `open_questions` SHALL list each `Open questions` entry with the section it `affects`, where an entry that maps to no single section affects `explore-change`. `seed` SHALL be the `explore-idea@1` sections event: a section SHALL be `agreed` with the source `issue` only when its status is not `absent` and no open question affects it, otherwise `open`, and each list section that is not absent SHALL carry its item identifiers (the item's own `E#`/`I#`, else the next unused number), never item text.
-
-#### Scenario: Partial issue returns its sections
-
-- **WHEN** an issue whose `Maturity` is not `Ready to propose` with a complete `Edge cases` list and no `Implementation notes` is converted
-- **THEN** the output reports `review-edge-cases` `present`, `implementation-details` `absent`, and a seed with the edge-case section `agreed` and the implementation-details section `open`
-
-#### Scenario: Explicit none seeds an agreed empty list
-
-- **WHEN** the issue's `Implementation notes` section reads `None`
-- **THEN** `implementation-details` is `explicitly-empty` and the seed records it `agreed` with an empty list
-
-#### Scenario: Open question opens the affected section
-
-- **WHEN** an `Open questions` entry names an `I` item
-- **THEN** the entry `affects` `implementation-details` and the seed records that section `open`
-
-### Requirement: Compare sub-command classifies an amendment
-
-`ready-to-propose.js compare --stored-file <path> --block-file <path>` SHALL read exactly one block from each file, compare them field by field, and print `{ok, amend_kind, changed_fields}`. `amend_kind` SHALL be `metadata` when only `Backlog origin` or `Explore origin` changed (an identical block included) and `content` when any other field was added, removed, or changed. A missing option, an unreadable file, or a file with other than one block SHALL print `{ok: false, error}` and exit 1.
-
-#### Scenario: Origin-only change is metadata
-
-- **WHEN** the amended block differs from the stored one only in `Backlog origin`
-- **THEN** `compare` prints `amend_kind: metadata` with `changed_fields` naming `Backlog origin`
-
-#### Scenario: Scope change is content
-
-- **WHEN** the amended block changes an `Implementation Details` item
-- **THEN** `compare` prints `amend_kind: content`
 
 ### Requirement: Change document validator names each failed dispatchable check
 
@@ -229,11 +75,30 @@ The issue description HTML detection of `sai/tools/ready-to-propose.js` SHALL se
 - **WHEN** `sections` receives an issue description
 - **THEN** it prints the stage state, the open questions, and the seed as JSON with exit 0.
 
-### Requirement: The change document tool coexists with the block detector
+### Requirement: The Ready to Propose block tool and policy are retired
 
-`sai/tools/change-document.js` SHALL be added next to `sai/tools/ready-to-propose.js`, which SHALL remain the tool of every block consumer, and the issue optional-section constants of `ready-to-propose.js` SHALL list the same optional sections as `sai/policies/issue-format.md`.
+`sai/tools/ready-to-propose.js` and `sai/policies/ready-to-propose-format.md` SHALL NOT exist. `sai/tools/change-document.js` SHALL be the only tool of the crystallized change format and `sai/policies/issue-format.md` its only definition; every consumer that read the block tool, including the backlog slice-set publishers, the Azure DevOps import, and `lint.js`, SHALL require `change-document.js` instead. `sai/install-manifest.json` SHALL declare both retired paths, for Claude Code and opencode, so an installation removes the installed copies. A reference to either retired path outside the manifest's retirement declarations and historical records SHALL NOT remain in the installable surfaces.
 
-#### Scenario: The block detector keeps working
+#### Scenario: No retired block tool or policy remains
 
-- **WHEN** a consumer validates a `Ready to Propose` block after this change
-- **THEN** `ready-to-propose.js` validates it as before.
+- **WHEN** the repository's tools, policies, skills, and commands are searched for `ready-to-propose.js` and `ready-to-propose-format.md`
+- **THEN** neither file exists and the only references are the retirement declarations of `sai/install-manifest.json`.
+
+#### Scenario: The retired paths are declared for both harnesses
+
+- **WHEN** `sai/install-manifest.json` is read
+- **THEN** it declares `tools/ready-to-propose.js` and `policies/ready-to-propose-format.md` as retired paths for `claude` and `opencode`.
+
+### Requirement: The change document tool prints the publication form of a document
+
+`sai/tools/change-document.js split --document-file <path> [--document-hash <sha256>]` SHALL print the publication form of one change document: its `# <title>` line as `title` and, from the first non-blank line after it, the rest of the document with only trailing whitespace removed as `description`. With `--document-hash` it SHALL verify the file first. A file that is not exactly one change document SHALL NOT be split. The module SHALL also export `readSet`, which validates a document set and returns its dependency order and, per document, its name, title, description, dependencies, backlog origin, text, and hash, with `ok` false when the set or any document fails its structural checks.
+
+#### Scenario: A document is split for publication
+
+- **WHEN** `split` runs on a verified change document
+- **THEN** it prints the title line as `title` and the rest of the document, untouched, as `description`.
+
+#### Scenario: A set is read for publication
+
+- **WHEN** `readSet` receives the documents of a slice set
+- **THEN** it returns the blocker-first order and each document's name, title, description, dependencies, and backlog origin.

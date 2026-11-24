@@ -20,9 +20,9 @@ The repository SHALL provide a single runnable validator at `sai/tools/lint.js` 
 - **AND** exit 0 when all checks pass, exit 1 with findings when structure is violated
 
 #### Scenario: ready-to-propose check validates crystallized block structure
-- **WHEN** the ready-to-propose check is invoked on a block containing `## Ready to Propose`
-- **THEN** it validates the block with the `strict` profile of `sai/tools/ready-to-propose.js`: presence and order of every canonical field (Change name, What, Why, Capabilities in scope, Research Leads, Decisions & Rationale, Alternatives Considered, Trade-offs Accepted, Model / Re-framings, Key constraints, Terms, Edge Cases, Implementation Details, Out of scope Implementation Details, optional Request Additional Notes, Overview language)
-- **AND** exit 0 when the block conforms, exit 1 with findings when fields are missing, misordered, or malformed
+- **WHEN** the change-document check, which replaces the retired ready-to-propose check, is invoked on a crystallized change document
+- **THEN** it validates the document with the structural checks of `sai/tools/change-document.js`, the single definition of `sai/policies/issue-format.md`
+- **AND** exit 0 when the document conforms, exit 1 with findings when sections or `## Change` lines are missing, misordered, or malformed
 
 #### Scenario: artifact-review check validates finding format and severity
 - **WHEN** the artifact-review check is invoked on artifact review findings
@@ -58,45 +58,6 @@ Each sub-check SHALL be read-only. Invocation of any check SHALL NOT modify the 
 - **THEN** `sai/policies/todo-structure.md` deliberately has no check because it defines coordinator-owned rendering behavior and state semantics rather than statically validatable file-format rules
 - **AND** the policy file carries a cross-reference note explaining this exclusion
 
-### Requirement: Ready-to-propose check accepts the optional Request Additional Notes field
-
-The `lint.js ready-to-propose` check SHALL accept a `Ready to Propose` block both with and without an optional `**Request Additional Notes**` field between `**Out of scope Implementation Details**` and `**Overview language**`. The field SHALL NOT break the required-section order check.
-
-#### Scenario: Block with the notes field passes
-
-- **WHEN** the ready-to-propose check runs on a block whose `**Request Additional Notes**` field, holding paragraph and bullet content, sits between `**Out of scope Implementation Details**` and `**Overview language**`
-- **THEN** the check exits 0 and reports that the check passed
-
-### Requirement: Ready-to-propose check requires the Out of scope Implementation Details section
-
-The `lint.js ready-to-propose` check SHALL treat `**Out of scope Implementation Details**` as a required section that follows `**Implementation Details**` in the required-section order.
-
-#### Scenario: Block without the section fails
-
-- **WHEN** the ready-to-propose check runs on a block that has every other required section but no `**Out of scope Implementation Details**`
-- **THEN** the check exits non-zero and its report names `Out of scope Implementation Details`
-
-#### Scenario: Block with the section as None passes
-
-- **WHEN** the ready-to-propose check runs on a block whose `**Out of scope Implementation Details**` is exactly `- None` after `**Implementation Details**`
-- **THEN** the check exits 0
-
-### Requirement: Ready-to-propose check delegates to the detector dispatchable profile
-
-The `lint.js ready-to-propose` check SHALL obtain its verdict from the deterministic checks of the `dispatchable` profile of `sai/tools/ready-to-propose.js` and MUST NOT carry a section list of its own. It SHALL report each set-level and block-level detector violation as a lint finding with its line, problem, and detail. Hygiene pre-filter flags and their judgment SHALL NOT be lint findings.
-
-#### Scenario: Missing Change name fails through delegation
-- **WHEN** the ready-to-propose check runs on a block that has every other canonical field but no `**Change name**`
-- **THEN** the check exits 1 and its report carries `MISSING_SECTION` naming `Change name`
-
-#### Scenario: lint.js holds no section list
-- **WHEN** the `sai/tools/lint.js` source is read
-- **THEN** it requires `./ready-to-propose.js` and contains no list of block section labels
-
-#### Scenario: Empty implementation section is a lint finding
-- **WHEN** the check runs on a block whose `**Implementation Details**` is exactly `- None`
-- **THEN** the report carries `NO_IMPLEMENTATION_ITEM`
-
 ### Requirement: Shared line-numbered AI attribution detection
 
 The shared detector SHALL report recognized AI authorship credit lines as violations with file, one-based line, problem AI_ATTRIBUTION, and detail. It SHALL recognize generated-with, authored-by, assisted-by and AI Co-Authored-By credits, including model-family/version identities and known AI bot identities. Human coauthor credits SHALL be allowed without an attribution exception. The commit-rules CLI SHALL reject these credits by default; --allow-attribution SHALL skip only that check.
@@ -112,3 +73,27 @@ The shared detector SHALL report recognized AI authorship credit lines as violat
 #### Scenario: CLI exception preserves format validation
 - **WHEN** commit-rules receives --allow-attribution with an invalid Conventional Commits subject and an AI credit
 - **THEN** the credit check is skipped but the format violation remains.
+
+### Requirement: Change-document check delegates to the change document tool
+
+The `lint.js change-document` check SHALL obtain its verdict from the structural checks of `sai/tools/change-document.js` and MUST NOT carry a section list of its own. It SHALL report each violation of the tool as a lint finding with its line, problem, and detail. Hygiene pre-filter flags and their judgment SHALL NOT be lint findings. `lint.js` SHALL NOT offer a `ready-to-propose` check.
+
+#### Scenario: A valid change document passes
+
+- **WHEN** the change-document check runs on a dispatchable change document
+- **THEN** it exits 0 with no findings
+
+#### Scenario: Missing Change name fails through delegation
+
+- **WHEN** the change-document check runs on a document whose `## Change` section has no `Change name:` line
+- **THEN** it exits 1 and reports the tool's `MISSING_CHANGE_NAME` problem
+
+#### Scenario: A retired block fails
+
+- **WHEN** the change-document check runs on a `Ready to Propose` block
+- **THEN** it exits 1 and reports the `RETIRED_FORMAT` problem
+
+#### Scenario: lint.js holds no section list
+
+- **WHEN** the `lint.js` source is read
+- **THEN** it requires `./change-document.js`, does not mention `ready-to-propose`, and contains no list of document section names

@@ -7,11 +7,11 @@ Support a GitHub-first lifecycle for agreed crystallized slices through faithful
 
 ### Requirement: GitHub slice publication preserves agreed work
 
-GitHub, GitLab and Azure DevOps create with an explicitly crystallized slice set SHALL publish the existing whole-objective parent and one child per agreed slice, including a one-slice set. Each child's original block SHALL remain intact before appended relationship references, with lossless escaping when the provider stores HTML. The workflow SHALL NOT repeat decomposition approval. It SHALL show complete parent and child contents, destination, visibility, applicable Project or work-item type, and relationship representations and require explicit publication confirmation. Ordinary non-sliced requests and non-sliced origin updates SHALL retain their existing paths. A crystallized slice set with an originating issue SHALL publish under that issue as its parent instead of creating a new parent.
+GitHub, GitLab and Azure DevOps create with an explicitly crystallized slice set SHALL publish the existing whole-objective parent and one child per agreed slice, including a one-slice set. The set SHALL arrive as `documents`, one verified change document file reference (`{document_file, document_hash}`) per slice, and each child issue SHALL be its change document: the document's title line as the issue title and the rest of the document, unchanged and with no model drafting, as the description, followed by the appended relationship references and the `sai-backlog-slices@1` correspondence marker. The workflow SHALL NOT repeat decomposition approval. It SHALL show complete parent and child contents, destination, visibility, applicable Project or work-item type, and relationship representations and require explicit publication confirmation. Ordinary non-sliced requests and non-sliced origin updates SHALL retain their existing paths. A crystallized slice set with an originating issue SHALL publish under that issue as its parent instead of creating a new parent. Issues published in the retired block form SHALL NOT be supported.
 
 #### Scenario: One agreed slice
 
-- **WHEN** a supported provider receives an explicitly sliced one-block set and exact publication approval
+- **WHEN** a supported provider receives an explicitly sliced one-document set and exact publication approval
 - **THEN** it creates a parent and one child rather than treating the slice as ordinary single-item capture.
 
 #### Scenario: No slices
@@ -23,6 +23,11 @@ GitHub, GitLab and Azure DevOps create with an explicitly crystallized slice set
 
 - **WHEN** the request updates an originating issue without a crystallized slice set
 - **THEN** the existing origin-update path remains authoritative without replacement-parent creation.
+
+#### Scenario: A child issue is its change document
+
+- **WHEN** a slice set of change documents is prepared for publication on any supported provider
+- **THEN** each child's title is its document's title line and its description is the rest of its document followed by the relationship references and the `sai-backlog-slices@1` marker.
 
 ### Requirement: Relationship operations are separately verified and truthfully represented
 
@@ -112,16 +117,16 @@ GitHub, GitLab and Azure DevOps import SHALL retrieve a selected parent's comple
 
 ### Requirement: Actual child identities survive cold workflow dispatch
 
-After completed set publication on any supported provider in Explore, the identity transport owner SHALL verify complete correspondence against the stored block set, attach each actual child URL as `**Backlog origin**`, validate and persist amendments, recompute hashes and reread the results before branch actions or route disclosure. It SHALL preserve other agreed block content and reject conflicting origins. Partial transport SHALL remain pending. Spec creation SHALL preserve the validator-returned selected issue URL as `backlog_origin` in change metadata without changing other metadata keys. Manual handoff SHALL display the amended stored block.
+After completed set publication on any supported provider in Explore, the identity transport owner SHALL verify complete correspondence against the stored change document set, attach each actual child URL as the `Backlog origin:` line of the document's `## Change` section through `change-document.js attach-origin`, validate and persist amendments, recompute hashes and reread the results before branch actions or route disclosure. It SHALL preserve other agreed document content and reject conflicting origins. Partial transport SHALL remain pending. Spec creation SHALL preserve the validator-returned selected issue URL as `backlog_origin` in change metadata without changing other metadata keys. Manual handoff SHALL display the amended stored document.
 
 #### Scenario: Fresh standalone implementation
 
-- **WHEN** a published slice on any supported provider proceeds through amended block delivery and spec creation into a fresh implementation invocation
+- **WHEN** a published slice on any supported provider proceeds through amended document delivery and spec creation into a fresh implementation invocation
 - **THEN** the selected child identity is available from change metadata without title inference or conversation memory.
 
 #### Scenario: Incomplete origin transport
 
-- **WHEN** correspondence does not cover every stored block or an origin conflicts
+- **WHEN** correspondence does not cover every stored document or an origin conflicts
 - **THEN** transport remains pending and no branch action, route disclosure or cold dispatch proceeds.
 
 ### Requirement: Responsibility is checked only at implementation start
@@ -498,11 +503,11 @@ When the originating issue carries a `sai-backlog-slices@1` marker with role `ch
 
 ### Requirement: Published slice sets support content-only updates with stable correspondence
 
-The shared to-backlog workflow SHALL route an imported origin carrying a published parent marker to a separate set-content-update operation before new-set preparation. GitHub, GitLab and Azure DevOps SHALL resolve every child by its recorded change name and canonical URL, validate the complete correspondence and unchanged dependency edges before any write, and preserve existing child origins. Block order alone SHALL NOT change composition. Added, removed or renamed slices, changed dependencies, conflicting block origins, or missing, unreadable, ambiguous or incompatible child correspondence SHALL prevent the entire proposed update. Existing single-issue updates and new-set publication SHALL retain their separate workflows.
+The shared to-backlog workflow SHALL route an imported origin carrying a published parent marker to a separate set-content-update operation before new-set preparation, with the complete refined set as `documents`, one verified change document file reference per document. GitHub, GitLab and Azure DevOps SHALL resolve every child by its recorded change name and canonical URL, validate the complete correspondence and unchanged dependency edges before any write, and preserve existing child origins. Each updated child SHALL take its document's title line as its title and the rest of the document as its description. Document order alone SHALL NOT change composition. Added, removed or renamed slices, changed dependencies, conflicting document origins, or missing, unreadable, ambiguous or incompatible child correspondence SHALL prevent the entire proposed update. Existing single-issue updates and new-set publication SHALL retain their separate workflows.
 
 #### Scenario: Reordered blocks preserve identities
 
-- **WHEN** the complete refined block set has the same change names and dependencies in a different order
+- **WHEN** the complete refined document set has the same change names and dependencies in a different order
 - **THEN** preparation resolves the same recorded child URLs and permits content comparison without creating or reassociating issues.
 
 #### Scenario: Composition differs
@@ -512,7 +517,7 @@ The shared to-backlog workflow SHALL route an imported origin carrying a publish
 
 #### Scenario: Correspondence cannot be verified
 
-- **WHEN** a child cannot be read, its marker is ambiguous or incompatible, or a supplied block origin conflicts with its recorded child URL
+- **WHEN** a child cannot be read, its marker is ambiguous or incompatible, or a supplied document's `Backlog origin:` conflicts with its recorded child URL
 - **THEN** preparation rejects the update without inferring a mapping or writing any issue.
 
 ### Requirement: Published set updates bind one explicit approval to exact combined content
@@ -574,7 +579,7 @@ Set-update execution SHALL retain a private durable record of destinations, appr
 
 ### Requirement: Azure set content updates follow each work item's own description format
 
-An Azure DevOps published set content update SHALL choose the description format of each work item separately from that work item's own read, and SHALL NOT pre-convert the parent description before that choice. A Markdown work item SHALL receive its description, relationship lines, and a fenced `sai-backlog-slices@1` marker in Markdown, with a child block kept as a fenced code block. Any other work item SHALL receive HTML, with a child block in an escaped pre block, relationship lines in an escaped paragraph, and the escaped pre block marker. Equivalence for each work item SHALL use the comparison rule of that work item's format.
+An Azure DevOps published set content update SHALL choose the description format of each work item separately from that work item's own read, and SHALL NOT pre-convert the parent description before that choice. A Markdown work item SHALL receive its description, relationship lines, and a fenced `sai-backlog-slices@1` marker in Markdown, with a child change document written as it is, with no code fence around it. Any other work item SHALL receive HTML, with a child change document converted from Markdown to HTML, relationship lines in an escaped paragraph, and the escaped pre block marker. Equivalence for each work item SHALL use the comparison rule of that work item's format.
 
 #### Scenario: Mixed formats in one set
 

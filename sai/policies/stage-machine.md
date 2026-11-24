@@ -128,9 +128,9 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   a verdict. A file that is not one change document (no `# <title>` first line,
   or a second document), an unreadable file, or an unparseable verdicts file is
   a delivery failure instead (`INVALID_EVENT` with `reason: "EVENT_UNPARSEABLE"`
-  or `"DOCUMENT_READ_FAILED"`, exit 1). A change document is a retired
+  or `"DOCUMENT_READ_FAILED"`, exit 1). A `Ready to Propose` block is a retired
   format: it answers `reason: "RETIRED_FORMAT"` (exit 1), is rejected, and is
-  never converted; the retired `--ready-to-propose` and `--document-file` forms
+  never converted; the retired `--ready-to-propose` and `--block-file` forms
   are a usage error (exit 2). A dispatchable set is accepted only while
   `explore-idea@1` in the same session is at its `crystallize` stage (an absent
   state counts as `explore-change`); at any other stage nothing is recorded and

@@ -83,13 +83,11 @@ test('the overview question and gate 9 retired from the route round and the Plan
   assert.doesNotMatch(readArtifact('sai/commands/explore/steps/crystallization-language-gates.md'), /gate 9/i);
 });
 
-test('Ready to Propose keeps the Overview language line as the literal None', () => {
-  const policy = readArtifact('sai/policies/ready-to-propose-format.md');
-  const fields = policy.match(/\*\*Overview language\*\*:\s*[^\n]*/g) || [];
+test('the change document format has no Overview language field', () => {
+  const policy = readArtifact('sai/policies/issue-format.md');
 
-  assert.ok(fields.length > 0, 'Ready to Propose should include an Overview language field');
-  assert.match(policy, /\*\*Overview language\*\*: None\n/);
-  assert.match(policy, /Overview language\*\*: the literal `None`\. The change overview and its `--overview-lang` option retired/);
+  assert.doesNotMatch(policy, /Overview language/);
+  assert.doesNotMatch(policy, /Model \/ Re-framings/);
 });
 
 test('both bindings carry the idea-list marker in their pinned machine-readable field', () => {

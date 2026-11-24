@@ -52,8 +52,22 @@ sections 2–4 below. Without slices, keep these sections.
 A single ordinary non-sliced proposal is not a slice set: keep one-issue capture
 unless the crystallized context explicitly identifies it as a sliced set.
 
-For both **create** and **update**, Fetch `@sai/policies/issue-format.md` and read it
-before drafting. Apply its format and final drafting checks; on update, use its preservation boundary.
+**A stored change document is published as it is.** When the caller supplies a
+change document (one file whose first line is `# <title>`, with its sha256 hash),
+the title line is the issue title and the rest is the description. Draft nothing and
+rewrite nothing: pass the verified file reference as `document` (`{"document_file":
+"<absolute path>", "document_hash": "<sha256>"}`) in the request of the selected
+branch's read-only proposal operation, in place of `title` and `description`. The
+tool verifies the file against its hash, requires a complete change document, and
+fills the title and the description itself; a missing, unreadable, or mismatched
+file, or an incomplete document, ends the run with the tool's message. The review
+and confirmation of section 3 show that exact title and description. The rest of
+this section, from the format fetch to the clarification questions, applies only to
+a request without a stored document.
+
+For both **create** and **update** of a request without a stored document, Fetch
+`@sai/policies/issue-format.md` and read it before drafting. Apply its format and
+final drafting checks; on update, use its preservation boundary.
 
 Read the conversation, prioritizing recent messages while retaining earlier
 decisions that still apply. Draft only a title and description as content, and prepare any

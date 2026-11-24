@@ -130,14 +130,7 @@ takes one — never substitute one for the other.
   <review.md> [--cwd <project-root>]`. It always prints one JSON object
   (`status: ok` with the merge-base, fingerprint, and floors, or with the stored
   block's `state`; or `status: blocked` with a `message`).
-- `change-document.js`: `node <tool-path> check --document-file <path>`, adding `--verdicts-file <path>` when judgment verdicts exist and `--slice` for a member of a slice set; `check-set` with one `--document-file <path>` per document; `verify-file --document-file <path> --document-hash <sha256>`; `hash --document-file <path>`; `compare --stored-file <path> --document-file <path>`; `sections --input-file <path>` for an issue description. It always prints one JSON verdict and takes no `--cwd`.
-- `ready-to-propose.js` (the retired block format, kept for the backlog tools): `node <tool-path> check --profile loose|strict|dispatchable
-  --block-file <path>`, adding `--verdicts-file <path>` when judgment verdicts
-  exist (the tool composes the `<<<VERDICTS>>>` line itself). It always prints one JSON verdict; `--json` is
-  accepted and changes nothing, and it takes no `--cwd`. `convert [--change-name
-  <name>] [--declared-clean] --input-file <path>` reads an issue description
-  (Markdown or HTML) from the input file and prints one JSON object: the Ready to Propose form check, the draft
-  block, and the dispatchable validation or the rejection reasons.
+- `change-document.js`: `node <tool-path> check --document-file <path>`, adding `--verdicts-file <path>` when judgment verdicts exist and `--slice` for a member of a slice set; `check-set` with one `--document-file <path>` per document; `verify-file --document-file <path> --document-hash <sha256>`; `hash --document-file <path>`; `split --document-file <path> [--document-hash <sha256>]` for the title line and the description of a publication; `compare --stored-file <path> --document-file <path>`; `sections [--origin <issue-url>] --input-file <path>` for an issue description; `set-origin --document-file <path> --origin <issue-url> --harness <claude|opencode>`; and `attach-origin --harness <claude|opencode> --input-file <path>` with the JSON `{document_files: [{document_file, hash}], correspondence}` in the input file. It always prints one JSON verdict and takes no `--cwd`.
 - `change-telemetry.js`: `node <tool-path> collect --harness <claude|opencode> --command <sai-plan|sai-build|sai-explore-plan|sai-explore-direct-build> --change <change-name> --cwd <project-root> --status <status> [--run-dir <dir>]`, per `@sai/policies/change-telemetry.md`. It always prints one JSON line (`written` or `skipped`), takes no `--json`, and exits 2 only for a usage error. `node <tool-path> explore-origin --harness <claude|opencode> --session <sessionID>` prints `{"outcome": "found", "session": <explore root session>}` or `{"outcome": "skipped", "reason": ...}` under the same rules.
 - `decision-records.js`: `node <tool-path> inventory --family <adr|ddr> --json
   --cwd <project-root>`. It always prints one JSON object with `index_exists`,
