@@ -20,8 +20,12 @@ const BASE = Date.parse('2026-02-01T10:00:00.000Z');
 const at = seconds => BASE + seconds * 1000;
 const envelope = (name, args) => `Fetch the card.\n\nInvocationEnvelope:\n  command_name: ${name}\n  arguments_value: ${args}\n\n<!-- User customizations below this line -->`;
 
-// A scratch project, its opencode data home, and a builder for the database.
-function scratch() {
+const PART_COLUMNS = 'message_id text NOT NULL, session_id text NOT NULL, ordinal integer NOT NULL, type text NOT NULL, data text NOT NULL';
+
+// A scratch project, its opencode data home, and a builder for the database. `parts` creates the `session_part` table
+// of opencode v2.4.1 and stores the content of each request there (`data.content` stays empty); without it the
+// database has the legacy layout only.
+function scratch({ parts = false } = {}) {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'change-telemetry-'));
   const project = path.join(base, 'project');
   const data = path.join(base, 'data');
@@ -31,8 +35,10 @@ function scratch() {
   const file = path.join(data, 'opencode', 'opencode.db');
   const db = new DatabaseSync(file);
   db.exec(`CREATE TABLE session_v2 (${SESSION_COLUMNS}); CREATE TABLE session_message (${MESSAGE_COLUMNS});`);
+  if (parts) db.exec(`CREATE TABLE session_part (${PART_COLUMNS});`);
   const insertSession = db.prepare('INSERT INTO session_v2 (id, parent_id, agent, title, directory, time_created) VALUES (?, ?, ?, ?, ?, ?)');
   const insertMessage = db.prepare('INSERT INTO session_message (id, session_id, type, seq, time_created, data) VALUES (?, ?, ?, ?, ?, ?)');
+  const insertPart = parts ? db.prepare('INSERT INTO session_part (message_id, session_id, ordinal, type, data) VALUES (?, ?, ?, ?, ?)') : null;
   let seq = 0;
   const api = {
     base, project, env, file, db,
@@ -41,12 +47,18 @@ function scratch() {
     invoke: (session, seconds, name, args) => { api.user(session, seconds, envelope(name, args)); return `msg_${seq}`; },
     // `data` overrides any field; `null` removes it. The request spans `length` seconds.
     request: (session, seconds, { tokens, cost, model, variant, content = [], length = 2, done = true, drop = [] } = {}) => {
-      const data = { time: { created: at(seconds), ...(done ? { completed: at(seconds + length) } : {}) }, agent: 'x', content };
+      const data = { time: { created: at(seconds), ...(done ? { completed: at(seconds + length) } : {}) }, agent: 'x', content: parts ? [] : content };
       if (tokens !== null) data.tokens = tokens ?? { input: 10, output: 5, reasoning: 1, cache: { read: 100, write: 20 } };
       if (cost !== null) data.cost = cost ?? 0.5;
       if (model !== null) data.model = { id: model ?? 'model-a', providerID: 'p', ...(variant === null ? {} : { variant: variant ?? 'high' }) };
       for (const field of drop) delete data[field];
       insertMessage.run(`msg_${++seq}`, session, 'assistant', seq, at(seconds), JSON.stringify(data));
+      if (parts) content.forEach((item, ordinal) => insertPart.run(`msg_${seq}`, session, ordinal, item.type, JSON.stringify(item)));
+    },
+    // An assistant message that keeps its content in `data.content` (legacy layout); returns its sequence number.
+    legacyRequest: (session, seconds, content) => {
+      insertMessage.run(`msg_${++seq}`, session, 'assistant', seq, at(seconds), JSON.stringify({ time: { created: at(seconds), completed: at(seconds + 2) }, agent: 'x', tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } }, content }));
+      return seq;
     },
     // Any other record of the session, such as a shell completion or an idle marker.
     raw: (session, type, seconds, data) => insertMessage.run(`msg_${++seq}`, session, type, seq, at(seconds), JSON.stringify(data)),
@@ -74,6 +86,23 @@ function planFixture() {
   f.request('ses_spec', 8, { tokens: { input: 31, output: 4, reasoning: 0, cache: { read: 0, write: 0 } }, cost: 2 });
   f.session('ses_helper', 'ses_spec', 'budget-explorer', 7);
   f.request('ses_helper', 7, { tokens: { input: 5, output: 1, reasoning: 0, cache: { read: 50, write: 0 } }, cost: 0 });
+  return f;
+}
+
+// The plan run of `planFixture` with a readable content item on every request, in either layout.
+function readablePlanFixture({ parts }) {
+  const f = scratch({ parts });
+  const text = { type: 'text', text: 'x' };
+  f.session('ses_root', null, 'build', 0);
+  f.invoke('ses_root', 1, 'plan', 'demo');
+  f.request('ses_root', 2, { cost: 0.25, content: [tool('read'), tool('read'), tool('grep'), dispatch('ses_spec')] });
+  f.request('ses_root', 3, { cost: 0.5, content: [tool('bash', 'error')] });
+  f.request('ses_root', 4, { done: false, content: [tool('read')] });
+  f.session('ses_spec', 'ses_root', 'sai-1-spec-proposal-worker', 5);
+  f.request('ses_spec', 6, { cost: 1, content: [tool('write'), tool('websearch'), dispatch('ses_helper', 'subagent')] });
+  f.request('ses_spec', 8, { cost: 2, content: [text] });
+  f.session('ses_helper', 'ses_spec', 'budget-explorer', 7);
+  f.request('ses_helper', 7, { cost: 0, content: [text] });
   return f;
 }
 
@@ -471,6 +500,64 @@ sqliteTest('collect: a missing database, a missing sqlite, and an unsupported sc
     other.exec('CREATE TABLE session_v2 (id text); CREATE TABLE session_message (id text);');
     other.close();
     assert.match(collect(options(f), { env: f.env }).reason, /lacks the column/);
+    assert.ok(!fs.existsSync(path.join(f.project, 'openspec', 'changes', 'demo', 'telemetry.md')));
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('collect: the part layout gives the same figures, subagent links, and tool breakdown as the legacy layout (E9)', () => {
+  const [legacy, parts] = [readablePlanFixture({ parts: false }), readablePlanFixture({ parts: true })];
+  try {
+    for (const f of [legacy, parts]) f.db.close();
+    for (const f of [legacy, parts]) assert.equal(collect(options(f), { env: f.env }).outcome, 'written');
+    const [legacyText, partsText] = [legacy, parts].map(f => telemetryOf(f));
+    for (const heading of ['Coordinator', 'Spec']) assert.equal(section(partsText, heading), section(legacyText, heading));
+    // The subagent links come from the dispatch tool items of the parts: the helper nests under the spec worker.
+    assert.match(rowOf(section(partsText, 'Spec'), '↳ budget-explorer'), /^\| ↳ budget-explorer /);
+    assert.equal(rowOf(section(partsText, 'Spec'), 'sai-1-spec-proposal-worker').split(' | ').at(-1), 'websearch×1, write×1 |');
+  } finally { for (const f of [legacy, parts]) fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('collect: a message wholly in parts and a message in data.content count once each when a run mixes both layouts (E1, E2)', () => {
+  const f = scratch({ parts: true });
+  try {
+    f.session('ses_root', null, 'build', 0);
+    f.invoke('ses_root', 1, 'plan', 'demo');
+    f.request('ses_root', 2, { content: [tool('read'), tool('grep')] });
+    // A legacy message: its own content wins, so the part rows below are never read.
+    const legacy = `msg_${f.legacyRequest('ses_root', 4, [tool('bash')])}`;
+    f.db.prepare('INSERT INTO session_part (message_id, session_id, ordinal, type, data) VALUES (?, ?, 0, ?, ?)').run(legacy, 'ses_root', 'tool', JSON.stringify(tool('ignored')));
+    f.request('ses_root', 6, { done: false });
+    f.db.close();
+    assert.equal(collect(options(f), { env: f.env }).outcome, 'written');
+    const cells = metricCells(telemetryOf(f), 'Coordinator', 'sai-plan');
+    assert.equal(cells.toolCalls, '3');
+    assert.match(rowOf(section(telemetryOf(f), 'Coordinator'), 'sai-plan'), /bash×1, grep×1, read×1 \|$/);
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('collect: tool data of a session with a message that has usage and no readable content is unavailable, not zero (E9)', () => {
+  const f = scratch({ parts: true });
+  try {
+    f.session('ses_root', null, 'build', 0);
+    f.invoke('ses_root', 1, 'plan', 'demo');
+    f.request('ses_root', 2, {});
+    f.request('ses_root', 4, {});
+    f.request('ses_root', 6, { done: false });
+    f.db.close();
+    assert.equal(collect(options(f), { env: f.env }).outcome, 'written');
+    const text = telemetryOf(f);
+    const cells = metricCells(text, 'Coordinator', 'sai-plan');
+    assert.deepEqual([cells.toolCalls, cells.toolErrors, cells.subagents], ['unavailable', 'unavailable', 'unavailable']);
+    assert.match(rowOf(section(text, 'Coordinator'), 'sai-plan'), /\| unavailable \|$/);
+  } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
+});
+
+sqliteTest('collect: a session_part table that lacks a required column skips with the schema reason (E4)', () => {
+  const f = scratch();
+  try {
+    f.db.exec('CREATE TABLE session_part (message_id text, session_id text, type text, data text)');
+    f.db.close();
+    assert.match(collect(options(f), { env: f.env }).reason, /session_part table lacks the column\(s\) ordinal/);
     assert.ok(!fs.existsSync(path.join(f.project, 'openspec', 'changes', 'demo', 'telemetry.md')));
   } finally { fs.rmSync(f.base, { recursive: true, force: true }); }
 });

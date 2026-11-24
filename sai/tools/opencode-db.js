@@ -9,6 +9,9 @@
  * a run belongs to, and finds the wakes of cache warming. It writes nothing.
  * opencode's database is an internal format: opencode v2.2.0 keeps current and
  * migrated sessions in `session_v2` and their messages in `session_message`.
+ * A message's content items (text, tool calls, reasoning) live in
+ * `session_message.data.content` up to opencode v2.2 and in the `session_part`
+ * table from v2.4.1; `opencodeContent` reads both.
  */
 
 const fs = require('node:fs');
@@ -19,6 +22,12 @@ const OPENCODE_SCHEMA = {
   session_v2: ['id', 'parent_id', 'agent', 'title', 'directory', 'time_created'],
   session_message: ['id', 'session_id', 'type', 'seq', 'time_created', 'data'],
 };
+// Tables that databases created before opencode v2.4 lack: their columns are checked only when the table exists.
+const OPENCODE_OPTIONAL_SCHEMA = {
+  session_part: ['message_id', 'ordinal', 'type', 'data'],
+};
+// The item types of a message's content that the readers use; any other type is ignored.
+const CONTENT_TYPES = new Set(['text', 'tool', 'reasoning']);
 const OPENCODE_MAX_DEPTH = 16;
 const CHANGE_NAME = /^[a-z0-9][a-z0-9-]*$/;
 const CHANGE_NAME_IN_BLOCK = /\*\*Change name\*\*:[ \t]*([a-z0-9][a-z0-9-]*)/;
@@ -43,9 +52,13 @@ function opencodeDatabasePath(env) {
 // opencode's database is an internal format: every table and column the reader
 // uses must exist before the first query, otherwise nothing is read.
 function guardOpencodeSchema(db) {
-  for (const [table, columns] of Object.entries(OPENCODE_SCHEMA)) {
+  const tables = [...Object.entries(OPENCODE_SCHEMA).map(([table, columns]) => [table, columns, true]), ...Object.entries(OPENCODE_OPTIONAL_SCHEMA).map(([table, columns]) => [table, columns, false])];
+  for (const [table, columns, required] of tables) {
     const present = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map(column => column.name));
-    if (present.size === 0) throw new OpencodeUnavailable(`The opencode database has no ${table} table`);
+    if (present.size === 0) {
+      if (required) throw new OpencodeUnavailable(`The opencode database has no ${table} table`);
+      continue;
+    }
     const missing = columns.filter(column => !present.has(column));
     if (missing.length) throw new OpencodeUnavailable(`The opencode ${table} table lacks the column(s) ${missing.join(', ')}`);
   }
@@ -101,11 +114,66 @@ function opencodeChildren(db, rootId) {
     SELECT id, parent_id, agent, title, time_created, depth FROM tree ORDER BY depth, time_created, id`).all(rootId);
 }
 
-// The assistant messages of one session in order (`id`, `type`, `time_created`, `data`), or null when the session is
-// not recorded. A session that holds no assistant message is an empty list: the caller tells the two apart.
+// Whether the database has the optional `session_part` table (the guard has checked its columns), asked once per database.
+const partTables = new WeakMap();
+function hasSessionParts(db) {
+  if (!partTables.has(db)) partTables.set(db, db.prepare('PRAGMA table_info(session_part)').all().length > 0);
+  return partTables.get(db);
+}
+
+// The part rows of a session, as `message_id` to their `data` texts in `ordinal` order: one query for the whole session.
+function sessionParts(db, sessionId) {
+  const byMessage = new Map();
+  if (!hasSessionParts(db)) return byMessage;
+  const rows = db.prepare('SELECT p.message_id, p.data FROM session_part p JOIN session_message m ON m.id = p.message_id WHERE m.session_id = ? ORDER BY p.message_id, p.ordinal').all(sessionId);
+  for (const row of rows) {
+    if (!byMessage.has(row.message_id)) byMessage.set(row.message_id, []);
+    byMessage.get(row.message_id).push(row.data);
+  }
+  return byMessage;
+}
+
+const hasUsage = data => [data.tokens?.input, data.tokens?.output, data.tokens?.reasoning, data.tokens?.cache?.read, data.tokens?.cache?.write].some(count => typeof count === 'number' && count > 0);
+
+// The content items of each message of `rows` (`id`, `type`, `data`), aligned with them: `{ items, unparsed, unread }`.
+// A non-empty `data.content` is the message's content and its parts are not read (so nothing counts twice); otherwise
+// the content is the `data` of its `session_part` rows by `ordinal`. `items` holds the `text`, `tool`, and `reasoning`
+// objects only. `unparsed` counts the part rows whose `data` is not valid JSON, which are skipped. `unread` tells an
+// assistant message with a token counter above 0 and no item in either layout. A database without `session_part` is
+// read as before: there an empty `data.content` is the whole message, so nothing can have moved out of it.
+function opencodeContent(db, sessionId, rows) {
+  const partLayout = hasSessionParts(db);
+  let parts = null;
+  return rows.map(row => {
+    let data;
+    try { data = JSON.parse(row.data); } catch { data = null; }
+    if (row.type !== 'assistant' || !data || typeof data !== 'object') return { items: [], unparsed: 0, unread: false };
+    let candidates = Array.isArray(data.content) ? data.content : [];
+    let unparsed = 0;
+    if (candidates.length === 0) {
+      parts ??= sessionParts(db, sessionId);
+      candidates = [];
+      for (const text of parts.get(row.id) ?? []) {
+        try { candidates.push(JSON.parse(text)); } catch { unparsed++; }
+      }
+    }
+    const items = candidates.filter(item => CONTENT_TYPES.has(item?.type));
+    return { items, unparsed, unread: partLayout && items.length === 0 && hasUsage(data) };
+  });
+}
+
+// The assistant messages of one session in order (`id`, `type`, `time_created`, `data`, `content`), or null when the
+// session is not recorded; `content` is the `opencodeContent` reading of the message. A session that holds no
+// assistant message is an empty list: the caller tells the two apart.
 function opencodeSessionMessages(db, sessionId) {
   if (!db.prepare('SELECT 1 FROM session_v2 WHERE id = ?').get(sessionId)) return null;
-  return db.prepare("SELECT id, type, time_created, data FROM session_message WHERE session_id = ? AND type = 'assistant' ORDER BY seq").all(sessionId);
+  return withOpencodeContent(db, sessionId, db.prepare("SELECT id, type, time_created, data FROM session_message WHERE session_id = ? AND type = 'assistant' ORDER BY seq").all(sessionId));
+}
+
+// The rows with their `content` attached.
+function withOpencodeContent(db, sessionId, rows) {
+  const contents = opencodeContent(db, sessionId, rows);
+  return rows.map((row, index) => ({ ...row, content: contents[index] }));
 }
 
 // The wakes of a session: each opens at a `synthetic` message whose
@@ -166,6 +234,8 @@ module.exports = {
   parseInvocation,
   opencodeRoot,
   opencodeChildren,
+  opencodeContent,
+  withOpencodeContent,
   opencodeSessionMessages,
   opencodeWakes,
   changeNameFromArgs,
