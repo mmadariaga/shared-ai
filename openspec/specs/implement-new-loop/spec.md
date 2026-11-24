@@ -31,29 +31,34 @@ The `/sai-3-implement` and `/sai-build` coordinators SHALL load only cross-cutti
 
 ### Requirement: Baselines before the first step
 
-Before the first step, the coordinator SHALL record the dirty baseline with `git status --porcelain` and SHALL run the unit and integration suites once through the executor, recording the failing tests as the failure baseline, or `unavailable` when no suite can be found or run. When every task in `tasks.md` is already checked and no audit report holds an open fixable finding, it SHALL do no new work, run the suites exactly once, report their result, and close.
+Before the first step, the coordinator SHALL record the dirty baseline with `git status --porcelain` and SHALL run no test suite: which failures the base already had is found at Close, only for the tests that fail there. When every task in `tasks.md` is already checked and no audit report holds an open fixable finding, it SHALL do no new work, run the suites exactly once, report their result, and close, any failing test going through the base check of Close.
 
-To find the test commands, the coordinator SHALL take the `**Test Command**` field of `tasks.md`'s `## Implementation Context` as the first source, using only its command line, with its scoping idiom for the step tests, and SHALL NOT research it again. When that field is missing or holds the sentinel `None — no test runner in this project`, the coordinator SHALL fall back to `SAI_LEARNINGS.md`, `design.md`, `package.json`, and the build files.
+To find the test commands, the coordinator SHALL take the `**Test Command**` field of `tasks.md`'s `## Implementation Context` as the first source, using only its command line and its scoping idiom, the way that command takes a list of test files, and SHALL NOT research it again. When that field is missing or holds the sentinel `None — no test runner in this project`, the coordinator SHALL fall back to `SAI_LEARNINGS.md`, `design.md`, `package.json`, and the build files for the full-suite command. When the field is missing, holds the sentinel, or its scoping idiom does not accept a list of files, every step SHALL run the full suite with the warning `no scoping idiom`.
 
 #### Scenario: Every task is already checked
 
 - **WHEN** the run starts, every task in `tasks.md` is checked, and no audit report holds an open fixable finding
-- **THEN** the coordinator runs the suites once, reports the result, and closes without dispatching a worker.
+- **THEN** the coordinator runs the suites once, reports the result with any failing test classified by the base check, and closes without dispatching a worker.
 
 #### Scenario: Every task is checked but a finding is open
 
 - **WHEN** the run starts, every task in `tasks.md` is checked, and an audit report holds an open fixable finding
-- **THEN** the coordinator records the baselines and applies the audit findings instead of closing
+- **THEN** the coordinator records the dirty baseline, runs no suite, and applies the audit findings instead of closing
 
 #### Scenario: The design test command comes first
 
-- **WHEN** `tasks.md` carries a `**Test Command**` with a runnable command line
-- **THEN** the coordinator uses that command line, with its scoping idiom for the step tests, before consulting `SAI_LEARNINGS.md`, `design.md`, `package.json`, or the build files
+- **WHEN** `tasks.md` carries a `**Test Command**` with a runnable command line whose scoping idiom takes a list of test files
+- **THEN** the coordinator uses that command line, and its scoping idiom for the selected tests, before consulting `SAI_LEARNINGS.md`, `design.md`, `package.json`, or the build files
 
 #### Scenario: The design test command is missing or the sentinel
 
 - **WHEN** `**Test Command**` is missing from `tasks.md` or holds `None — no test runner in this project`
-- **THEN** the coordinator falls back to `SAI_LEARNINGS.md`, `design.md`, `package.json`, and the build files, and records the baseline as `unavailable` when none of them yields a suite that can be run
+- **THEN** the coordinator falls back to `SAI_LEARNINGS.md`, `design.md`, `package.json`, and the build files for the full-suite command, every step runs the full suite with the warning `no scoping idiom`, and the suite is reported as `unavailable` when none of them yields a suite that can be run
+
+#### Scenario: Start runs no baseline suite
+
+- **WHEN** a run starts with unchecked tasks
+- **THEN** the coordinator records the dirty baseline and runs no unit or integration suite before the plan-test check
 
 ### Requirement: Step commits
 
@@ -104,17 +109,37 @@ An obstacle SHALL be anything that prevents closing a step or the run, including
 
 ### Requirement: Final suite against the baseline
 
-After the last step, the coordinator SHALL run every unit and integration suite through the executor and SHALL never run end-to-end suites. A new or worsened failure compared with the failure baseline SHALL be the `final-suite` obstacle with its own budget of 3 attempts, each attempt being a new step that corrects the failure, and an `unavailable` baseline SHALL be reported as is. The closing report SHALL list the committed steps, the deviations, the suite result against the baseline, the pending findings, the audit findings fixed, and what remains open, open Questions included, and the run SHALL end with exactly `Implement done.` when every task is checked, every open fixable finding is fixed or carries a deviation, and the suites show no new failure. A run that stopped or escalated SHALL end with its report and no closing line.
+After the last step, the coordinator SHALL run every unit and integration suite through the executor and SHALL never run end-to-end suites. Every plan test of the change SHALL be green, a `[regression guard]` still passing. Every other failing test SHALL go through the base check: it SHALL run once more at `HEAD`, and a test that passes there is flaky, reported, and no obstacle; the tests that fail again SHALL run against the change base, by `test-select.js swap` (recorded with `record` kind `swap`), the installed dependencies, and `test-select.js restore`, which the coordinator SHALL run whatever the outcome of the tests and read before anything else. A test that also fails at the base is pre-existing and SHALL be reported; a test that passes there is new and SHALL be the `final-suite` obstacle with its own budget of 3 attempts, each attempt being a new step that corrects the failure. A `swap` that answers `refused` or a tool error, or a run at the base that cannot complete, SHALL count the failures as new. A `restore` that answers `failed` SHALL be the `final-suite` obstacle as well, and the coordinator SHALL never edit, stage, commit, continue, or close while the working tree holds base files. An `unavailable` suite SHALL be reported as is. The closing report SHALL list the committed steps, the deviations, the suite result with the flaky tests and the pre-existing failures, one line per step with `selected` and its number of tests or `full` and its reason, the pending findings, the audit findings fixed, and what remains open, open Questions included, and the run SHALL end with exactly `Implement done.` when every task is checked, every open fixable finding is fixed or carries a deviation, and the suites show no new failure. A run that stopped or escalated SHALL end with its report and no closing line.
 
 #### Scenario: Clean close
 
-- **WHEN** every task is checked, every open fixable finding is fixed or carries a deviation, and the final suites show no failure absent from the baseline
+- **WHEN** every task is checked, every open fixable finding is fixed or carries a deviation, and every test that fails in the final suites is flaky or pre-existing
 - **THEN** the coordinator prints the closing report and ends with `Implement done.`.
 
 #### Scenario: Open Questions at close
 
 - **WHEN** the run completes while an audit report holds an open Question
 - **THEN** the closing report lists that Question as open
+
+#### Scenario: A failure the base already had
+
+- **WHEN** a test fails at Close, fails again at `HEAD`, and also fails with the change's files swapped to the change base
+- **THEN** the coordinator restores the files to `HEAD`, reports the test as pre-existing, and opens no obstacle
+
+#### Scenario: A new failure
+
+- **WHEN** a test fails at Close, fails again at `HEAD`, and passes with the change's files swapped to the change base
+- **THEN** the coordinator restores the files to `HEAD` and opens the `final-suite` obstacle
+
+#### Scenario: A flaky test
+
+- **WHEN** a test fails at Close and passes when run once more at `HEAD`
+- **THEN** the coordinator reports it as flaky and does not run it against the change base
+
+#### Scenario: The base run cannot complete
+
+- **WHEN** `swap` answers `refused` or the run of the failing tests at the base cannot complete
+- **THEN** the coordinator counts those failures as new and opens the `final-suite` obstacle
 
 ### Requirement: Audit findings applied after the tasks with Questions left open
 
@@ -154,3 +179,80 @@ The `/sai-3-implement` coordinator SHALL read the audit reports that exist in th
 
 - **WHEN** `/sai-deep-review` hands over a report that holds a Question
 - **THEN** the coordinator runs no step for it, writes no mark on it, and lists it as open in the closing report
+
+### Requirement: Per-step test selection through codegraph
+
+For a step with tests, the coordinator SHALL run the step's own `**Test Command**` plus the selection: the test files that `codegraph affected` reports for the files the step has changed so far, computed by `sai/tools/test-select.js select`, which the coordinator runs itself over a JSON list of those files written to the run directory. On `verdict: selected` the coordinator SHALL build one command from the scoping idiom of the `## Implementation Context` `**Test Command**` over the selected files and hand it to the executor with the step's own command; an empty selection SHALL run the step's own command alone. On `verdict: full` it SHALL run the step's own command and the project's full unit and integration suites and keep the `reason` for the closing report. A selected test that `tasks.md` lists under a later step's `**Tests**` and stays red SHALL NOT fail the step. The selection SHALL be computed again after each fix round of the step review. A step with a closure criterion and no tests SHALL run no tests. Each run of a step's tests SHALL append one line to `selection.md` in the run directory naming the step and either `selected` with the number of tests or `full` with its reason.
+
+#### Scenario: The selection runs with the step's own tests
+
+- **WHEN** GREEN finishes a step and `test-select.js select` answers `selected` with a list of test files
+- **THEN** the coordinator runs the step's `**Test Command**` plus one command built from the scoping idiom over those files, and records `selected` with their number in `selection.md`
+
+#### Scenario: A later step's plan test enters the selection
+
+- **WHEN** a selected test is a plan test that `tasks.md` lists under a later step and it stays red
+- **THEN** the step still closes when its own tests pass
+
+#### Scenario: The selection cannot be trusted
+
+- **WHEN** `test-select.js select` answers `full` with a reason
+- **THEN** the coordinator runs the step's `**Test Command**` and the full unit and integration suites, and keeps the reason for the closing report
+
+#### Scenario: A fix round recomputes the selection
+
+- **WHEN** a step review fix round changes another file
+- **THEN** the coordinator computes the selection again over every file the step has changed so far before running the step's tests
+
+#### Scenario: A closure-criterion step runs no tests
+
+- **WHEN** a step carries a closure criterion and no tests
+- **THEN** the coordinator runs no tests for it and its regressions surface in the Close suites
+
+### Requirement: Test selection tool
+
+`sai/tools/test-select.js select --input-file <path> [--timeout-ms <n>] --cwd <project-root>` SHALL read a JSON list of changed files, leave out paths under `openspec/`, and print one JSON object with `verdict` (`selected` or `full`), `tests`, and `reason` (null on `selected`). It SHALL use only the public codegraph CLI, each call with a timeout of 60000 ms unless `--timeout-ms` says otherwise: `codegraph sync`, then `codegraph status --json`, then `codegraph files --json`, then `codegraph affected --json --stdin`, and SHALL never open `.codegraph/codegraph.db`. It SHALL answer `full` with the reason `no-binary` when `codegraph` is not on the path, `no-index` when `.codegraph/` is missing or uninitialized, `sync-failed` when the sync fails, `stale-index` when the status still reports pending changes, `unindexed-file` with the files in `files` when a changed file is not in the index, `codegraph-error` when a call fails, `timeout` when a call exceeds its timeout, and `invalid-output` when a call prints JSON the tool cannot read. The tool SHALL compute the change base through `sai/tools/change-base.js`, the one computation it shares with `sai/tools/scenario-coverage.js`. Exit 0 SHALL be any verdict except `refused` and `failed`, which exit 1; exit 2 SHALL be a usage or I/O error.
+
+#### Scenario: Affected tests are selected
+
+- **WHEN** codegraph is installed, its index is in sync, and every changed file is indexed
+- **THEN** `select` prints `verdict: selected` with the deduplicated, sorted test files that `codegraph affected` reports
+
+#### Scenario: A changed file is not indexed
+
+- **WHEN** a changed file such as a Markdown or JSON file is absent from `codegraph files --json`
+- **THEN** `select` prints `verdict: full` with the reason `unindexed-file` and lists that file in `files`
+
+#### Scenario: The index stays stale after the sync
+
+- **WHEN** `codegraph status --json` reports pending changes after `codegraph sync`
+- **THEN** `select` prints `verdict: full` with the reason `stale-index`
+
+#### Scenario: Codegraph is missing
+
+- **WHEN** no `codegraph` binary is on the path or the project has no `.codegraph/` directory
+- **THEN** `select` prints `verdict: full` with the reason `no-binary` or `no-index`
+
+#### Scenario: Plan artifacts are left out
+
+- **WHEN** the changed-file list holds paths under `openspec/`
+- **THEN** `select` ignores them, and a list made only of such paths is `selected` with no tests
+
+### Requirement: Base check swap and restore
+
+`sai/tools/test-select.js swap --record <path> --dirty-baseline <path> [--parent-branch <branch>] --cwd <project-root>` SHALL write a record of the paths the change touched between the change base and `HEAD` before it changes anything, then SHALL restore the modified and deleted paths to their change-base version in the working tree and remove the added ones, never touching the git index or a dirty-baseline path. It SHALL refuse with `verdict: refused` when a changed path is in the dirty baseline (`dirty-baseline-overlap`), when a changed path holds uncommitted work (`uncommitted-changes`), or when an earlier record has not been restored (`record-exists`). `restore --record <path> --cwd <project-root>` SHALL bring every recorded path back to `HEAD`, SHALL be idempotent, and SHALL print `restored`, `clean` when nothing differed, or `failed` with the paths that still differ.
+
+#### Scenario: The change's files go back to the base and return
+
+- **WHEN** `swap` runs on a branch whose committed change modified, added, and deleted files
+- **THEN** the working tree holds the change-base version of the modified and deleted files, the added files are gone, the index is unchanged, and a later `restore` brings every path back to `HEAD`
+
+#### Scenario: A dirty-baseline path blocks the swap
+
+- **WHEN** a path the change touched is listed in the dirty baseline
+- **THEN** `swap` prints `verdict: refused` with the reason `dirty-baseline-overlap` and changes no file
+
+#### Scenario: Restore after nothing changed
+
+- **WHEN** `restore` runs on a record whose paths already match `HEAD`
+- **THEN** it prints `verdict: clean`

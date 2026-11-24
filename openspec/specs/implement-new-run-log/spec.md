@@ -31,7 +31,7 @@ At every run close, before printing the closing report, the `/sai-3-implement` c
 
 ### Requirement: Closing report at run close
 
-The `/sai-3-implement` run SHALL close when every task is checked, every open fixable audit finding is fixed or carries a deviation, and the suites show no new failure, when the user answers an escalation with stop, or when the escalation question is dismissed without an answer. In each case the coordinator SHALL first promote learnings per the learnings promotion at run close, then read the run directory files the report needs (including the `Pre-existing` findings of the step review round files) and print a closing report holding the steps committed (the subject of each), the deviations each with its reason, the suite result against the baseline, the findings still pending after the third fix round, the `Pre-existing` findings (reported once, never fixed by the run), the audit findings fixed, and whatever remains open, open Questions included; when the run did not complete, the report SHALL add the blocker with the options offered and the answer. The report SHALL always list the deviations and the pending findings and SHALL say so explicitly when there are none. The report SHALL list the `Pre-existing` findings only when there are some. The coordinator SHALL then emit `close` with the outcome `completed`, `stopped`, or `escalated` for a dismissed question.
+The `/sai-3-implement` run SHALL close when every task is checked, every open fixable audit finding is fixed or carries a deviation, and the suites show no new failure, when the user answers an escalation with stop, or when the escalation question is dismissed without an answer. In each case the coordinator SHALL first promote learnings per the learnings promotion at run close, then read the run directory files the report needs (including the `Pre-existing` findings of the step review round files and `selection.md`) and print a closing report holding the steps committed (the subject of each), the deviations each with its reason, the suite result with the flaky tests and the pre-existing failures that the base check of Close found, one line per step on its tests (`selected` with the number of tests, or `full` with the reason), the findings still pending after the third fix round, the `Pre-existing` findings (reported once, never fixed by the run), the audit findings fixed, and whatever remains open, open Questions included; when the run did not complete, the report SHALL add the blocker with the options offered and the answer. The report SHALL always list the deviations and the pending findings and SHALL say so explicitly when there are none. The report SHALL list the `Pre-existing` findings only when there are some. The coordinator SHALL then emit `close` with the outcome `completed`, `stopped`, or `escalated` for a dismissed question.
 
 #### Scenario: The user stops at an escalation
 
@@ -47,6 +47,11 @@ The `/sai-3-implement` run SHALL close when every task is checked, every open fi
 
 - **WHEN** a step review marked at least one finding `Pre-existing`
 - **THEN** the closing report lists each such finding once, apart from the pending findings
+
+#### Scenario: Per-step test lines
+
+- **WHEN** one step ran its selected tests and another ran the full suite because a changed file was not indexed
+- **THEN** the closing report shows the first step as `selected` with its number of tests and the second as `full` with the reason `unindexed-file`
 
 ### Requirement: No run record is persisted
 

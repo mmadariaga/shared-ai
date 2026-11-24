@@ -16,7 +16,7 @@
  *   into one space and whitespace runs collapsed to one space, appears on word
  *   boundaries in the normalized content of a file: `valid input` matches
  *   `valid-input` and never `invalid input`.
- * - change base: the merge-base of HEAD with the parent branch, the
+ * - change base: (`change-base.js`, shared with `test-select.js`) the merge-base of HEAD with the parent branch, the
  *   `--parent-branch` value when given, else the first of the default branch
  *   of origin/HEAD (without its `origin/` prefix), `master`, and `main` that
  *   `git rev-parse --verify` accepts, the order `/sai-4-review` follows.
@@ -49,11 +49,9 @@
 
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
 const { InputFileError, extractInputFile, readInputFile } = require('./input-reader.js');
 const { collectScenarios, readSpec } = require('./spec-scenarios.js');
-
-class UsageError extends Error {}
+const { UsageError, git, resolveChangeBase } = require('./change-base.js');
 
 const SKIP_SPECS_RE = /^skip_specs:[ \t]*true[ \t]*$/m;
 const DELTA_SECTIONS = new Set(['ADDED', 'MODIFIED', 'RENAMED']);
@@ -72,33 +70,6 @@ function usage() {
 
 function normalizeTitle(text) {
   return text.toLowerCase().replace(/[^\p{L}\p{N}\s]+/gu, ' ').replace(/\s+/g, ' ').trim();
-}
-
-function git(args, cwd) {
-  const result = spawnSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-  if (result.error) throw new UsageError(`cannot run git: ${result.error.message}`);
-  return result;
-}
-
-function verifies(branch, cwd) {
-  return git(['rev-parse', '--verify', '--quiet', `${branch}^{commit}`], cwd).status === 0;
-}
-
-function resolveChangeBase(cwd, parentBranch) {
-  let parent;
-  if (parentBranch) {
-    if (!verifies(parentBranch, cwd)) throw new UsageError(`--parent-branch ${parentBranch} does not resolve to a commit`);
-    parent = parentBranch;
-  } else {
-    const origin = git(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'], cwd);
-    const defaultBranch = origin.status === 0 ? origin.stdout.trim().replace(/^origin\//, '') : '';
-    const candidates = [defaultBranch, 'master', 'main'].filter(Boolean);
-    parent = candidates.find((candidate) => verifies(candidate, cwd));
-    if (!parent) throw new UsageError(`no parent branch verifies; tried ${candidates.join(', ')}`);
-  }
-  const base = git(['merge-base', 'HEAD', parent], cwd);
-  if (base.status !== 0) throw new UsageError(`git merge-base HEAD ${parent} failed: ${base.stderr.trim()}`);
-  return { parent_branch: parent, change_base: base.stdout.trim() };
 }
 
 function nameList(args, cwd) {

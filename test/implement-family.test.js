@@ -142,17 +142,40 @@ test('step commits default to no AI attribution and the all-checked case runs th
   assert.match(source, /written rule, not a new validation step/);
   const start = source.indexOf('## Start');
   const section = source.slice(start, source.indexOf('## The step cycle'));
-  const allChecked = section.indexOf('every task is already checked');
-  const baseline = section.indexOf('failure baseline');
-  assert.ok(allChecked !== -1 && baseline !== -1 && allChecked < baseline,
-    'the all-checked close must come before the baseline run');
   assert.equal(section.split('every task is already checked').length - 1, 1);
+  assert.match(section, /run the suites once through the executor, report their result, and close/);
+  assert.match(section, /8\. Run no suite at Start/);
+  assert.doesNotMatch(section, /failure baseline|baseline-failures/);
+});
+
+test('the implement coordinator selects each step\'s tests with test-select.js and checks failures lazily at Close', () => {
+  const source = read(COORDINATORS[0]);
+  const cycle = source.slice(source.indexOf('## The step cycle'), source.indexOf('## Audit findings'));
+  assert.match(cycle, /\*\*Test selection\.\*\*/);
+  assert.match(cycle, /`test-select\.js` \(resolved per `tool-resolution\.md`\)/);
+  assert.match(cycle, /select --input-file <file> --cwd <project root>/);
+  for (const reason of ['no-binary', 'no-index', 'sync-failed', 'stale-index', 'unindexed-file', 'codegraph-error', 'timeout', 'invalid-output']) {
+    assert.match(cycle, new RegExp(`\`${reason}\``), reason);
+  }
+  assert.match(cycle, /no scoping idiom/);
+  assert.match(cycle, /selection\.md/);
+  assert.match(cycle, /Compute the selection again after each fix round/);
+  assert.doesNotMatch(cycle, /tests of every earlier step|earlier steps' tests stay green/);
+  const close = source.slice(source.indexOf('## Close'));
+  assert.match(close, /swap --record <run directory>\/swap\.json --dirty-baseline <run directory>\/baseline-dirty\.txt/);
+  assert.match(close, /restore --record <run directory>\/swap\.json/);
+  assert.match(close, /flaky/);
+  assert.match(close, /pre-existing/);
+  assert.match(close, /the failures count as new/);
+  assert.match(close, /end-to-end suites are never run here/);
+  assert.match(source, /When the state holds a `swap` record, run `restore` with it before anything else/);
+  assert.doesNotMatch(source, /baseline-failures\.txt/);
 });
 
 test('the implement coordinator reuses the design context and promotes learnings at run close', () => {
   const source = read(COORDINATORS[0]);
   const start = source.slice(source.indexOf('## Start'), source.indexOf('## The step cycle'));
-  const step7 = start.slice(start.indexOf('7. Find the project'), start.indexOf('8. Run the suites'));
+  const step7 = start.slice(start.indexOf('7. Find the project'), start.indexOf('8. Run no suite at Start'));
   assert.ok(step7.indexOf('`**Test Command**` in `tasks.md`') !== -1);
   assert.ok(step7.indexOf('`**Test Command**` in `tasks.md`') < step7.indexOf('`SAI_LEARNINGS.md`'), 'the design test command comes first');
   assert.match(step7, /None — no test runner in this project/);
