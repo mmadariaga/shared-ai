@@ -7,19 +7,19 @@ Keep generated file and consulted-source listings readable as separate Markdown 
 
 ### Requirement: Generated file and source listings use Markdown bullets
 
-Shared generation instructions and templates used by `/sai-2-design` and `/sai-1-spec` SHALL require each non-empty entry in the covered listings to start with `- ` on its own line. Covered listings are task Files Affected, Existing Tests Broken, Required Documentation Spec files, Local files and External URLs, the design File Manifest, and proposal research Local files and External URLs. These shared sources SHALL apply the same presentation to Claude Code and opencode.
+Shared generation instructions and templates used by `/sai-2-design` and `/sai-1-spec` SHALL require each non-empty entry in the covered listings to start with `- ` on its own line. Covered listings are the Files Affected of a task step without tests, the Scenarios of a task step with tests, the Tests that the plan write-back adds to a step with tests, the design `path :: signature` entries of Target State, the design File Manifest, and proposal research Local files and External URLs. `tasks.md` SHALL carry no Existing Tests Broken listing and no Required Documentation section. These shared sources SHALL apply the same presentation to Claude Code and opencode.
 
 #### Scenario: Task file declarations retain change semantics
-- **WHEN** a design worker writes non-empty Files Affected entries
+- **WHEN** a design worker writes non-empty Files Affected entries for a step without tests
 - **THEN** each entry occupies one bullet line with its A, M, D, or R token and path, retaining both source and destination for a rename and any adjacent note
 
 #### Scenario: Existing broken tests remain separate entries
-- **WHEN** a design worker lists existing tests broken by a Step
-- **THEN** each test occupies one bullet line retaining its path and compile or runtime failure-mode token
+- **WHEN** the plan RED modifies existing tests inside its bound
+- **THEN** each one is a separate `{path, reason}` entry of the report's `modified_tests`, and `tasks.md` carries no Existing Tests Broken listing
 
 #### Scenario: Required documentation retains inline notes
-- **WHEN** a design worker writes non-empty Required Documentation subsections
-- **THEN** every spec path, local file, or external URL occupies one bullet line, with any required note on the same line and the existing ` — ` separator preserved
+- **WHEN** a design worker writes `tasks.md`
+- **THEN** it writes no Required Documentation section, and each scenario, test, and Files Affected entry it lists occupies one bullet line
 
 #### Scenario: Proposal consulted sources are readable lists
 - **WHEN** a spec worker uses the proposal template to list consulted local files or external URLs
@@ -27,12 +27,16 @@ Shared generation instructions and templates used by `/sai-2-design` and `/sai-1
 
 ### Requirement: Empty listings retain their existing markers
 
-The covered generation instructions and templates SHALL preserve existing absence markers rather than convert them into file or source entries. Required Documentation empty subsections SHALL retain unbulleted `None`. An empty design File Manifest SHALL retain `None — no files affected` and its reason.
+The covered generation instructions and templates SHALL preserve existing absence markers rather than convert them into file or source entries. A Files Affected listing with no entry SHALL retain `None`. An empty design File Manifest SHALL retain `None — no files affected` and its reason, and a File Manifest of a change whose steps all have tests SHALL carry `None — every file passes through the plan RED`.
 
 #### Scenario: No required external sources
-- **WHEN** a task's Required Documentation External URLs subsection has no entries
-- **THEN** the subsection contains unbulleted `None` rather than a fabricated path or empty bullet
+- **WHEN** a design worker finds no external documentation relevant to the change
+- **THEN** `tasks.md` carries no Required Documentation subsection for it and no fabricated path or empty bullet
 
 #### Scenario: No surviving manifest paths
 - **WHEN** the net fold leaves no affected files
 - **THEN** the File Manifest retains its existing absence sentinel and reason rather than emitting a bullet entry
+
+#### Scenario: Every step has tests
+- **WHEN** no step of `tasks.md` carries Files Affected because every step has tests
+- **THEN** the File Manifest carries `None — every file passes through the plan RED` rather than a bullet entry

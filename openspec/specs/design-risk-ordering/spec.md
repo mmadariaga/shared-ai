@@ -40,7 +40,7 @@ The marker is optional. A risk with no ordering dependency SHALL carry no marker
 
 When `sai-2-design` derives the step sequence for `openspec/changes/{name}/tasks.md`, it SHALL treat every verify-first marker in `design.md` as an ordering constraint on that sequence: the work that resolves the risk SHALL be sequenced before the step the marker names.
 
-The resolving work SHALL be placed either inside an earlier step or as its own earlier step. A verify-first marker SHALL NOT be satisfied by prose alone in the gated step.
+The resolving work SHALL be placed either inside an earlier step or as its own earlier step. A verify-first marker SHALL NOT be satisfied by prose alone in the gated step, whatever field of that step carries the prose.
 
 Verify-first ordering constraints SHALL compose with the existing dependency ordering rule; where the two conflict, the design agent SHALL surface the conflict rather than silently dropping either constraint.
 
@@ -52,14 +52,12 @@ Verify-first ordering constraints SHALL compose with the existing dependency ord
 #### Scenario: marker not satisfied by prose
 
 - **WHEN** a step is named by a verify-first marker
-- **THEN** the resolving work is an actual sequenced step or part of an earlier step
-- **AND** it is NOT merely mentioned in the gated step's `**What Will Be Done**` prose
+- **THEN** the resolving work is an actual sequenced step or part of an earlier step, not prose in the gated step's `**Scenarios**` or `**What Changes**`
 
 #### Scenario: verify-first conflicts with dependency order
 
 - **WHEN** a verify-first marker requires an ordering that contradicts the steps' dependency ordering
-- **THEN** the design agent surfaces the conflict to the user
-- **AND** it does NOT silently drop either the verify-first marker or the dependency constraint
+- **THEN** the design agent surfaces the conflict to the user and does not silently drop either the verify-first marker or the dependency constraint
 
 ### Requirement: Verify-first markers are distinct from Open Questions
 

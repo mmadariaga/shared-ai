@@ -33,7 +33,7 @@ The validator closes each terminal report to its command's role fields (`COMMAND
 
 | `--command` | Workers | Role fields | Shape |
 |---|---|---|---|
-| `implement` | RED, GREEN | `test_command`, `notes` | strings; both required on completed |
+| `implement` | RED, GREEN | `test_command`, `notes`, `plan_tests`, `modified_tests` | strings, both required on completed; the plan RED alone adds, on completed, `plan_tests` (a list of {step, test_command, tests: a list of {path, name, regression_guard}}) and `modified_tests` (a list of {path, reason} strings) |
 | `spec` | spec | `step_ids`, `warnings`, `notes`, `research_files` | string list, list of {spec_assertion, other_side, disagreement} strings, string, list of {path, sha256} strings; all required on completed |
 | `design` | design | `step_ids`, `warnings`, `notes` | the first three of spec |
 | `review` | review | `review_path`, `counts`, `recommended_audits` | string, counts {critical, high, medium, low, questions}, string; all required on completed without outcome |

@@ -7,17 +7,22 @@ Defines how `/sai-3-implement` and `/sai-build` turn the plan tests that `/sai-2
 
 ### Requirement: Implement starts only from a plan with plan tests
 
-The implement coordinator SHALL run the OpenSpec prerequisite check first, SHALL drop an explicit `--fast-track` token, and SHALL take the only active change with a `tasks.md` when no name is given (printing `Cannot start /sai-3-implement: name the change ({candidates, or none}).` otherwise). It SHALL start a change only when `openspec/changes/{name}/` has `proposal.md`, `tasks.md`, and at least one file under `specs/` or a `.openspec.yaml` that sets `skip_specs: true`, and otherwise SHALL print `Cannot start /sai-3-implement for {name}: missing {list of the absent items}.`. A `tasks.md` whose steps carry neither `**Tests**` nor `**Closure criterion**` was planned with the earlier format: the coordinator SHALL print `Cannot start /sai-3-implement for {name}: its plan has no plan tests. Run /sai-2-design {name} again.` and end the run without escalating and without writing. A missing `design.md` SHALL be a deviation, not a stop.
+The implement coordinator SHALL run the OpenSpec prerequisite check first, SHALL drop an explicit `--fast-track` token, and SHALL take the only active change with a `tasks.md` when no name is given (printing `Cannot start /sai-3-implement: name the change ({candidates, or none}).` otherwise). It SHALL start a change only when `openspec/changes/{name}/` has `proposal.md`, `tasks.md`, and at least one file under `specs/` or a `.openspec.yaml` that sets `skip_specs: true`, and otherwise SHALL print `Cannot start /sai-3-implement for {name}: missing {list of the absent items}.`. It SHALL then check the format of `tasks.md` with `file-manifest.js format {name} --json --cwd <project-root>`; when the tool answers `earlier` (the plan has `## Required Documentation`, `**What Will Be Done**`, `**Existing Tests Broken**`, or `**Files Affected**` on a step with tests), the coordinator SHALL print `Cannot start /sai-3-implement for {name}: its plan is in the earlier format. Run /sai-2-design {name} again.` and end the run before any worker or run directory exists, without escalating and without writing. A `tasks.md` whose steps carry neither `**Tests**` nor `**Closure criterion**` was planned with the interfaces format: the coordinator SHALL print `Cannot start /sai-3-implement for {name}: its plan has no plan tests. Run /sai-2-design {name} again.` and end the run without escalating and without writing. A missing `design.md` SHALL be a deviation, not a stop.
 
 #### Scenario: A change planned with interfaces.md
 
 - **WHEN** `/sai-3-implement` starts on a change whose `tasks.md` steps carry neither `**Tests**` nor `**Closure criterion**`
-- **THEN** it prints the earlier-format message asking for `/sai-2-design` again and ends without writing
+- **THEN** it prints the no-plan-tests message asking for `/sai-2-design` again and ends without writing
 
 #### Scenario: Change lacks its task list
 
 - **WHEN** the named change has no `tasks.md`
 - **THEN** the coordinator prints the fixed precondition message naming `tasks.md` and ends the run without escalation and without writing
+
+#### Scenario: A change planned in the earlier format
+
+- **WHEN** `/sai-3-implement` starts on a change whose `tasks.md` still has `## Required Documentation`
+- **THEN** it prints `Cannot start /sai-3-implement for {name}: its plan is in the earlier format. Run /sai-2-design {name} again.` and ends before creating any worker, without writing
 
 ### Requirement: Implement checks that the plan tests are still red
 
@@ -30,7 +35,7 @@ Before the first step, after the failure baseline, the coordinator SHALL run eac
 
 ### Requirement: Each step is a GREEN, review, and commit cycle over its plan tests
 
-Each step SHALL be one GREEN, review, and commit cycle, normally one `## Step N` of `tasks.md`. Its brief SHALL carry the goal, the task ids, the spec scenarios, the step's tests or closure criterion and its `**Test Command**`, the finished signatures of `design.md` `## Target State`, and the relevant `## Required Documentation` entries. GREEN SHALL be closed when the step's tests pass, the tests of earlier steps stay green, and no test file and no stub signature the tests depend on changed since the step began; tests of later steps MAY stay red or turn green early. A step with a closure criterion SHALL be closed when the review confirms the criterion holds. The run SHALL end with every test of the change green.
+Each step SHALL be one GREEN, review, and commit cycle, normally one `## Step N` of `tasks.md`. Its brief SHALL carry the goal, the task ids, the step's scenarios, the step's tests and `**Test Command**` or its closure criterion, `**Files Affected**`, and `**What Changes**`, the `path :: signature` entries of `design.md` `## Target State` that the step's tests exercise or that its files touch, the spec files the step's scenarios belong to, and the production paths GREEN may write: for a step with tests, the paths of those `path :: signature` entries and any other production file the step's behavior needs; for a step without tests, its `**Files Affected**`. The brief SHALL never name a test path among the writable paths and SHALL carry no `## Required Documentation` entries. GREEN SHALL be closed when the step's tests pass, the tests of earlier steps stay green, and no test file and no stub signature the tests depend on changed since the step began; tests of later steps MAY stay red or turn green early. A step with a closure criterion SHALL be closed when the review confirms the criterion holds. The run SHALL end with every test of the change green.
 
 #### Scenario: Earlier tests stay green
 
@@ -46,6 +51,11 @@ Each step SHALL be one GREEN, review, and commit cycle, normally one `## Step N`
 
 - **WHEN** the step's tests pass after GREEN but a test file or a stub signature the tests depend on changed since the step began
 - **THEN** the coordinator restores it and counts the change as an attempt of the step
+
+#### Scenario: The writable paths of a step with tests
+
+- **WHEN** the coordinator writes the brief of a step with tests whose tests exercise a symbol of a `path :: signature` entry
+- **THEN** the brief names that entry's path among the writable paths and names no test path
 
 ### Requirement: GREEN escalates a wrong test instead of changing it
 

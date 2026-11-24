@@ -11,21 +11,32 @@
  * design step previously applied in prose; it is a move from prose to code,
  * not a semantic change.
  *
+ * Only steps that carry `**Files Affected**` (the steps without tests) enter the
+ * fold: the files of a step with tests pass through the plan RED, which shows
+ * them as tests and `path :: signature` stubs (ADR 0227a decision 4).
+ *
  * Sub-commands:
- *   fold    Compute the manifest and write it into design.md's
- *           `### File Manifest` subsection (created when absent). Idempotent.
- *   verify  Compute the manifest and compare it with the persisted one;
- *           read-only. Exit 1 on divergence or a missing subsection.
+ *   fold       Compute the manifest and write it into design.md's
+ *              `### File Manifest` subsection (created when absent). Idempotent.
+ *   verify     Compute the manifest and compare it with the persisted one;
+ *              read-only. Exit 1 on divergence or a missing subsection.
+ *   format     Answer whether tasks.md is in the current or the earlier format;
+ *              read-only. Exit 1 on the earlier format.
+ *   writeback  Write `**Tests**`, `**Test Command**`, and the `[regression guard]`
+ *              marks of every step with tests into tasks.md from the accepted
+ *              plan RED report (`--input-file`). Idempotent.
  *
  * Failure policy: any malformed entry or illegal transition is reported with
  * its tasks.md line number and nothing is written (no partial write).
  *
  * Usage:
- *   node sai/tools/file-manifest.js <fold|verify> <change-name> [--json]
+ *   node sai/tools/file-manifest.js <fold|verify|format|writeback> <change-name>
+ *     [--input-file <report>] [--guard "<test path> :: <test name>"]... [--json]
  *     [--cwd <dir>]
  *
- * Exit codes: 0 = folded / unchanged / verified; 1 = diagnostics, divergence,
- * or missing subsection; 2 = usage or I/O error.
+ * Exit codes: 0 = folded / unchanged / verified / current format / written;
+ * 1 = diagnostics, divergence, missing subsection, or earlier format;
+ * 2 = usage or I/O error.
  */
 
 const fs = require('fs');
@@ -36,6 +47,12 @@ const EMPTY_SENTINEL = 'None — no files affected';
 const EMPTY_LINE =
   EMPTY_SENTINEL +
   ' (every touched path is created and deleted within the same change, so nothing remains at target state)';
+// Written when no step carries `**Files Affected**`: every step has tests.
+const RED_SENTINEL = 'None — every file passes through the plan RED';
+const RED_LINE =
+  RED_SENTINEL +
+  ' (the tests and the `path :: signature` stubs of the plan show every file of the change)';
+const GUARD_MARK = ' [regression guard]';
 
 class ToolError extends Error {
   constructor(message, code = 2) {
@@ -46,19 +63,23 @@ class ToolError extends Error {
 
 function usage() {
   return [
-    'Usage: node sai/tools/file-manifest.js <fold|verify> <change-name> [--json] [--cwd <dir>]',
+    'Usage: node sai/tools/file-manifest.js <fold|verify|format|writeback> <change-name> [--input-file <report>] [--guard "<path> :: <name>"]... [--json] [--cwd <dir>]',
     '',
-    '  fold      Write the net-folded `### File Manifest` into design.md.',
-    '  verify    Compare design.md\'s manifest with the fold (read-only).',
-    '  --json    Emit a JSON verdict on stdout.',
-    '  --cwd     Project root (default: current directory).',
+    '  fold        Write the net-folded `### File Manifest` into design.md (steps without tests only).',
+    '  verify      Compare design.md\'s manifest with the fold (read-only).',
+    '  format      Answer current or earlier format for tasks.md (read-only).',
+    '  writeback   Write **Tests**, **Test Command**, and [regression guard] marks into tasks.md',
+    '              from the accepted plan RED report given with --input-file.',
+    '  --guard     writeback only: mark one more test as a regression guard (repeatable).',
+    '  --json      Emit a JSON verdict on stdout.',
+    '  --cwd       Project root (default: current directory).',
     '',
-    'Exit codes: 0 ok, 1 diagnostics/divergence, 2 usage or I/O error.',
+    'Exit codes: 0 ok, 1 diagnostics/divergence/earlier format, 2 usage or I/O error.',
   ].join('\n');
 }
 
 function parseArgs(argv) {
-  const opts = { json: false, cwd: process.cwd(), positional: [] };
+  const opts = { json: false, cwd: process.cwd(), positional: [], guards: [], inputFile: null };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--help' || arg === '-h') opts.help = true;
@@ -66,6 +87,12 @@ function parseArgs(argv) {
     else if (arg === '--cwd') {
       if (argv[i + 1] === undefined) throw new ToolError('--cwd requires a value');
       opts.cwd = argv[++i];
+    } else if (arg === '--input-file') {
+      if (argv[i + 1] === undefined) throw new ToolError('--input-file requires a value');
+      opts.inputFile = argv[++i];
+    } else if (arg === '--guard') {
+      if (argv[i + 1] === undefined) throw new ToolError('--guard requires a value');
+      opts.guards.push(argv[++i]);
     } else if (arg.startsWith('--')) throw new ToolError(`unknown option: ${arg}`);
     else opts.positional.push(arg);
   }
@@ -174,6 +201,167 @@ function extractEntries(text) {
     entries.push({ ...parsed, step, line: i + 1 });
   }
   return { entries, errors, sentinels };
+}
+
+// ---------------------------------------------------------------------------
+// Step structure of tasks.md
+// ---------------------------------------------------------------------------
+
+const FIELD_LABEL = /^\*\*([A-Z][A-Za-z ]*)\*\*/;
+
+/**
+ * Parse the `## Step N` sections of tasks.md into line ranges and the field
+ * blocks each one carries. A field block starts at a `**Label**` line and runs
+ * to the next label line or heading; trailing blank lines are not part of it.
+ */
+function parseSteps(text) {
+  const lines = text.split(/\r?\n/);
+  const heads = [];
+  lines.forEach((raw, i) => {
+    const m = raw.trim().match(/^##\s+Step\s+(\d+)\b/);
+    if (m) heads.push({ index: i, n: Number(m[1]) });
+    else if (/^##\s+/.test(raw.trim()) && heads.length > 0 && !('end' in heads[heads.length - 1])) heads[heads.length - 1].end = i;
+  });
+  return heads.map((h, k) => {
+    const end = h.end !== undefined ? h.end : (k + 1 < heads.length ? heads[k + 1].index : lines.length);
+    const labels = [];
+    for (let i = h.index + 1; i < end; i++) {
+      const m = lines[i].trim().match(FIELD_LABEL);
+      if (m) labels.push({ label: m[1], start: i });
+    }
+    const fields = labels.map((l, j) => {
+      let stop = j + 1 < labels.length ? labels[j + 1].start : end;
+      while (stop > l.start + 1 && lines[stop - 1].trim() === '') stop -= 1;
+      return { label: l.label, start: l.start, stop };
+    });
+    const has = (label) => fields.some((f) => f.label === label);
+    return {
+      n: h.n,
+      head: h.index,
+      end,
+      fields,
+      hasScenarios: has('Scenarios'),
+      hasTests: has('Tests'),
+      hasClosure: has('Closure criterion'),
+      hasFiles: has('Files Affected'),
+      hasWhatWillBeDone: has('What Will Be Done'),
+      hasExistingBroken: has('Existing Tests Broken'),
+    };
+  });
+}
+
+/** A step with tests: the plan RED writes its tests, so it closes on no criterion. */
+function withTests(step) {
+  return (step.hasScenarios || step.hasTests) && !step.hasClosure;
+}
+
+/** Answer whether tasks.md is in the current or the earlier format. */
+function formatCheck(tasksText) {
+  const signals = [];
+  if (/^##\s+Required Documentation\s*$/m.test(tasksText)) signals.push('## Required Documentation');
+  for (const step of parseSteps(tasksText)) {
+    if (step.hasWhatWillBeDone) signals.push(`**What Will Be Done** (Step ${step.n})`);
+    if (step.hasExistingBroken) signals.push(`**Existing Tests Broken** (Step ${step.n})`);
+    if (step.hasFiles && withTests(step)) signals.push(`**Files Affected** on a step with tests (Step ${step.n})`);
+  }
+  return { format: signals.length === 0 ? 'current' : 'earlier', signals };
+}
+
+// ---------------------------------------------------------------------------
+// Write-back of the plan RED report into tasks.md
+// ---------------------------------------------------------------------------
+
+function entryText(test, guards) {
+  const guard = test.regression_guard === true || guards.has(`${test.path} :: ${test.name}`);
+  return `- ${test.path} :: ${test.name}${guard ? GUARD_MARK : ''}`;
+}
+
+/**
+ * Plan the write-back: the new tasks.md text, or the errors that stop it.
+ * `report` is the parsed payload of an accepted plan RED report.
+ */
+function planWriteback(tasksText, report, guardList) {
+  const errors = [];
+  const earlier = formatCheck(tasksText);
+  if (earlier.format === 'earlier') {
+    return { errors: [{ line: 0, step: null, message: `tasks.md is in the earlier format (${earlier.signals.join('; ')}); run /sai-2-design again` }] };
+  }
+  const steps = parseSteps(tasksText);
+  const planned = new Map();
+  for (const entry of report.plan_tests) {
+    if (planned.has(entry.step)) errors.push({ line: 0, step: entry.step, message: `the report lists step ${entry.step} twice` });
+    planned.set(entry.step, entry);
+  }
+  const guards = new Set(guardList);
+  const known = new Set();
+  for (const entry of report.plan_tests) for (const t of entry.tests) known.add(`${t.path} :: ${t.name}`);
+  for (const g of guardList) if (!known.has(g)) errors.push({ line: 0, step: null, message: `--guard names a test the report does not list: ${g}` });
+  const byNumber = new Map(steps.map((st) => [st.n, st]));
+  for (const n of planned.keys()) {
+    const st = byNumber.get(n);
+    if (!st) errors.push({ line: 0, step: n, message: `the report names step ${n}, which tasks.md does not have` });
+    else if (!withTests(st)) errors.push({ line: st.head + 1, step: n, message: `step ${n} carries no scenarios or carries a closure criterion, so it has no plan tests` });
+  }
+  for (const st of steps) {
+    if (withTests(st) && !planned.has(st.n)) errors.push({ line: st.head + 1, step: st.n, message: `step ${st.n} has tests to write, and the report lists none for it` });
+  }
+  if (errors.length > 0) return { errors };
+
+  const lines = tasksText.split(/\r?\n/);
+  const out = [];
+  let cursor = 0;
+  for (const st of steps) {
+    if (!planned.has(st.n)) continue;
+    const entry = planned.get(st.n);
+    const drop = new Set();
+    for (const f of st.fields) {
+      if (f.label !== 'Tests' && f.label !== 'Test Command') continue;
+      for (let i = f.start; i < f.stop; i++) drop.add(i);
+      if (f.stop < st.end && lines[f.stop].trim() === '') drop.add(f.stop);
+    }
+    // The block goes after the Scenarios block, else after Routing, else after the task checkbox line.
+    const anchor = st.fields.find((f) => f.label === 'Scenarios') || st.fields.find((f) => f.label === 'Routing');
+    let after = anchor ? anchor.stop - 1 : st.head;
+    if (!anchor) for (let i = st.head + 1; i < st.end; i++) if (/^- \[[ x]\]/.test(lines[i])) { after = i; break; }
+    const block = ['', '**Tests**:', ...entry.tests.map((t) => entryText(t, guards)), '', `**Test Command**: ${entry.test_command}`];
+    for (let i = cursor; i < st.end; i++) {
+      if (drop.has(i)) continue;
+      out.push(lines[i]);
+      if (i === after) out.push(...block);
+    }
+    cursor = st.end;
+  }
+  for (let i = cursor; i < lines.length; i++) out.push(lines[i]);
+  return { errors: [], text: out.join(tasksText.includes('\r\n') ? '\r\n' : '\n'), steps: [...planned.keys()] };
+}
+
+function runWriteback(changeName, cwd, inputFile, guardList) {
+  if (!inputFile) throw new ToolError('writeback requires --input-file <accepted plan RED report>');
+  const dir = path.join(path.resolve(cwd), 'openspec', 'changes', changeName);
+  const tasksFile = path.join(dir, 'tasks.md');
+  const tasks = readFile(tasksFile, 'tasks.md');
+  const reportText = readFile(inputFile, 'the plan RED report');
+  const validator = require('./worker-report-validator.js');
+  const parsed = validator.parsePayloadText(reportText);
+  const result = { mode: 'writeback', change: changeName, tasks: tasksFile };
+  const fail = (message) => ({ ...result, ok: false, status: 'error', errors: [{ line: 0, step: null, message }] });
+  if (parsed.error) return fail(`the report cannot be read: ${parsed.error}`);
+  const problems = validator.validatePayload(parsed.payload, 'terminal', { command: 'implement' });
+  if (problems.length > 0) return fail(`the report is not a valid implement report: ${problems.join('; ')}`);
+  if (parsed.payload.status !== 'completed') return fail(`the report status is ${parsed.payload.status}, not completed`);
+  if (!Array.isArray(parsed.payload.plan_tests) || parsed.payload.plan_tests.length === 0) return fail('the report carries no plan_tests');
+  const plan = planWriteback(tasks, parsed.payload, guardList);
+  if (plan.errors.length > 0) return { ...result, ok: false, status: 'error', errors: plan.errors };
+  const modified = parsed.payload.modified_tests || [];
+  if (plan.text === tasks) return { ...result, ok: true, status: 'unchanged', steps: plan.steps, modified_tests: modified };
+  fs.writeFileSync(tasksFile, plan.text);
+  return { ...result, ok: true, status: 'written', steps: plan.steps, modified_tests: modified };
+}
+
+function runFormat(changeName, cwd) {
+  const tasksFile = path.join(path.resolve(cwd), 'openspec', 'changes', changeName, 'tasks.md');
+  const check = formatCheck(readFile(tasksFile, 'tasks.md'));
+  return { mode: 'format', change: changeName, tasks: tasksFile, ok: check.format === 'current', status: check.format, signals: check.signals };
 }
 
 // ---------------------------------------------------------------------------
@@ -383,17 +571,19 @@ function run(mode, changeName, cwd) {
   const { entries, errors: parseErrors, sentinels } = extractEntries(tasks);
   const result = { mode, change: changeName, tasks: tasksFile, design: designFile };
   if (parseErrors.length > 0) return { ...result, ok: false, status: 'error', errors: parseErrors };
-  if (entries.length === 0 && sentinels === 0) {
+  // No step carries **Files Affected**: every step has tests, so every file passes through the plan RED.
+  const allTested = entries.length === 0 && sentinels === 0 && parseSteps(tasks).length > 0;
+  if (entries.length === 0 && sentinels === 0 && !allTested) {
     return {
       ...result,
       ok: false,
       status: 'error',
-      errors: [{ line: 0, step: null, message: 'tasks.md has no **Files Affected** entries to fold' }],
+      errors: [{ line: 0, step: null, message: 'tasks.md has no `## Step N` section to fold' }],
     };
   }
   const folded = fold(entries);
   if (folded.errors.length > 0) return { ...result, ok: false, status: 'error', errors: folded.errors };
-  const body = renderBody(folded.lines);
+  const body = allTested ? [RED_LINE] : renderBody(folded.lines);
   result.lines = body;
 
   const nl = design.includes('\r\n') ? '\r\n' : '\n';
@@ -443,6 +633,10 @@ function render(result) {
     for (const e of result.errors) {
       out.push(`  tasks.md${e.line ? `:${e.line}` : ''}${e.step ? ` (Step ${e.step})` : ''}: ${e.message}`);
     }
+  } else if (result.mode === 'format') {
+    out.push(`file-manifest format: ${result.status}${result.signals.length ? ` (${result.signals.join('; ')})` : ''}`);
+  } else if (result.mode === 'writeback') {
+    out.push(`file-manifest writeback: ${result.status} (${result.steps.length} step${result.steps.length === 1 ? '' : 's'})`);
   } else if (result.status === 'missing') {
     out.push(`file-manifest verify: ${result.divergence}`);
   } else if (result.status === 'diverged') {
@@ -466,10 +660,15 @@ function main(argv) {
       return 0;
     }
     const [mode, changeName, ...extra] = opts.positional;
-    if (!mode || !['fold', 'verify'].includes(mode)) throw new ToolError('sub-command required: fold or verify');
+    if (!mode || !['fold', 'verify', 'format', 'writeback'].includes(mode)) throw new ToolError('sub-command required: fold, verify, format, or writeback');
     if (!changeName) throw new ToolError('change name required');
     if (extra.length > 0) throw new ToolError(`unexpected argument: ${extra[0]}`);
-    const result = run(mode, changeName, opts.cwd);
+    if (mode !== 'writeback' && (opts.inputFile || opts.guards.length > 0)) throw new ToolError('--input-file and --guard belong to writeback');
+    const result = mode === 'format'
+      ? runFormat(changeName, opts.cwd)
+      : mode === 'writeback'
+        ? runWriteback(changeName, opts.cwd, opts.inputFile, opts.guards)
+        : run(mode, changeName, opts.cwd);
     process.stdout.write((opts.json ? JSON.stringify(result, null, 2) : render(result)) + '\n');
     return result.ok ? 0 : 1;
   } catch (err) {
@@ -483,4 +682,4 @@ function main(argv) {
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { extractEntries, fold, run, main, EMPTY_LINE, parseDeclaration, declarationsOverlap };
+module.exports = { extractEntries, fold, run, main, EMPTY_LINE, RED_LINE, parseDeclaration, declarationsOverlap, parseSteps, formatCheck, planWriteback };

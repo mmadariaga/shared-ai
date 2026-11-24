@@ -102,6 +102,7 @@ const BOOLEAN = { kind: 'boolean' };
 const counts = (...keys) => ({ kind: 'counts', keys });
 const records = (...keys) => ({ kind: 'records', keys });
 const oneOf = (...values) => ({ kind: 'enum', values });
+const PLAN_TESTS = { kind: 'plan-tests' };
 
 /**
  * The role fields of each command's terminal reports: the single source of the
@@ -136,6 +137,9 @@ const COMMAND_FIELDS = Object.freeze({
   implement: {
     test_command: { type: STRING, required: ['completed'] },
     notes: { type: STRING, required: ['completed'] },
+    // The plan RED's per-step test facts and the existing tests it modified (ADR 0227a write-back).
+    plan_tests: { type: PLAN_TESTS, only: ['completed'] },
+    modified_tests: { type: records('path', 'reason'), only: ['completed'] },
   },
   review: {
     review_path: { type: STRING, required: ['completed'] },
@@ -261,6 +265,28 @@ function checkType(name, value, type) {
           return `${name}[${index}] must have exactly the keys [${type.keys.join(', ')}]`;
         }
         if (!type.keys.every((k) => typeof item[k] === 'string')) return `${name}[${index}] must have string values`;
+      }
+      return null;
+    }
+    case 'plan-tests': {
+      if (!Array.isArray(value)) return `${name} must be an array, got ${describe(value)}`;
+      for (const [index, item] of value.entries()) {
+        const at = `${name}[${index}]`;
+        if (!isRecord(item)) return `${at} must be an object`;
+        const extra = Object.keys(item).find((k) => !['step', 'test_command', 'tests'].includes(k));
+        if (extra) return `${at} has the unknown key ${extra}`;
+        if (!Number.isInteger(item.step) || item.step < 1) return `${at}.step must be a positive integer`;
+        if (typeof item.test_command !== 'string' || item.test_command === '') return `${at}.test_command must be a non-empty string`;
+        if (!Array.isArray(item.tests) || item.tests.length === 0) return `${at}.tests must be a non-empty array`;
+        for (const [n, test] of item.tests.entries()) {
+          const where = `${at}.tests[${n}]`;
+          if (!isRecord(test)) return `${where} must be an object`;
+          const bad = Object.keys(test).find((k) => !['path', 'name', 'regression_guard'].includes(k));
+          if (bad) return `${where} has the unknown key ${bad}`;
+          if (typeof test.path !== 'string' || test.path === '') return `${where}.path must be a non-empty string`;
+          if (typeof test.name !== 'string' || test.name === '') return `${where}.name must be a non-empty string`;
+          if ('regression_guard' in test && typeof test.regression_guard !== 'boolean') return `${where}.regression_guard must be a boolean`;
+        }
       }
       return null;
     }

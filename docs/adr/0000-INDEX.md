@@ -579,6 +579,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0115 — Three-part dispatch-routing condition (RED block, Step Contract, AND production surface)](./0115-three-part-dispatch-routing-condition.md) — Supersedes 0071
 - [0149b — Structural tests co-land with the instruction sources they pin](./0149b-structural-tests-co-land-with-instruction-sources.md) — Refs 0070
 - [0227a — Design leaves the test oracle in code](./0227a-design-leaves-the-test-oracle-in-code.md)
+- [0229 — Design artifacts record only what the plan tests do not express](./0229-design-artifacts-record-only-what-plan-tests-do-not-express.md) — Amends 0227a
 
 ### The `interfaces.md` contract
 

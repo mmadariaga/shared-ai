@@ -194,6 +194,40 @@ test('the design coordinator carries its startup literals, flags, plan RED phase
   assert.match(design, /escalate it with the options to continue designing/);
 });
 
+test('the design family records only what the plan RED code does not express (write-back, bound, coverage)', () => {
+  const coordinator = read('sai/commands/design/coordinator.md');
+  assert.match(coordinator, /run `node <tool-path> writeback \{name\} --input-file <accepted report file> --json --cwd <project-root>` for `file-manifest\.js`/);
+  assert.match(coordinator, /`--guard "<test path> :: <test name>"`/);
+  assert.match(coordinator, /only the write-back writes the mark/);
+  assert.match(coordinator, /`scenario-coverage\.js change \{name\} --cwd <project-root>`/);
+  assert.match(coordinator, /`n\/a` \(a change with `skip_specs: true`/);
+  assert.match(coordinator, /\*\*Modified tests \(E5\)\.\*\*[\s\S]*?outside that bound goes back to the plan RED/);
+  assert.match(coordinator, /`node <tool-path> format \{name\} --json --cwd <project-root>` for `file-manifest\.js`, which must answer `current`/);
+  assert.match(coordinator, /it adds `\*\*Files Affected\*\*` with `A`\/`M`\/`D`\/`R` tokens and `\*\*What Changes\*\*`/);
+  assert.match(coordinator, /Run this phase when at least one step of `tasks\.md` lists `\*\*Scenarios\*\*`/);
+  assert.doesNotMatch(coordinator, /Existing Tests Broken/);
+
+  const red = read('sai/commands/design/red-worker.md');
+  assert.match(red, /only at the paths of the `path :: signature` entries of `design\.md` `## Target State`/);
+  assert.match(red, /uses a symbol whose signature `design\.md` changes or removes, or when it asserts a scenario that the change's specs MODIFY or REMOVE/);
+  assert.match(red, /literal title as words separated by spaces/);
+  assert.match(red, /plan_tests:[\s\S]*modified_tests:/);
+  assert.doesNotMatch(red, /Existing Tests Broken/);
+  assert.match(read('sai/commands/implement/steps/red-step.md'), /one test per scenario/);
+
+  const designStep = read('sai/commands/design/steps/design.md');
+  assert.match(designStep, /`- <repository-relative path> :: <signature>`/);
+  assert.match(designStep, /carries no function body/);
+  assert.match(designStep, /`None — every file passes through the plan RED`/);
+
+  const tasksStep = read('sai/commands/design/steps/tasks.md');
+  assert.match(tasksStep, /A step with tests[\s\S]*?\*\*Scenarios\*\*/);
+  assert.match(tasksStep, /`## Required Documentation` section: the plan RED bounds its edits to existing tests itself/);
+  assert.match(tasksStep, /splits?|is split/);
+  assert.match(read('sai/commands/design/worker.md'), /replace its `\*\*Scenarios\*\*`, `\*\*Tests\*\*`, and `\*\*Test Command\*\*` with `\*\*Files Affected\*\*`/);
+  assert.match(read('sai/commands/design/worker.md'), /leaves no earlier section or field behind/);
+});
+
 test('the shared cycle owns the goal-driven rules for questions, checks, review, commits, obstacles, and resuming', () => {
   const cycle = read('sai/commands/plan/cycle.md');
   assert.match(cycle, /plan-run@1/);

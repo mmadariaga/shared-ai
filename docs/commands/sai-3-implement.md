@@ -13,6 +13,8 @@ Implements a change's plan (`proposal.md`, `specs/`, `design.md`, `tasks.md`, an
 
 Without a change name, the command takes the only active change that has a `tasks.md`; with none or several, it prints the candidates and stops so you can name one. The change must have `proposal.md`, `tasks.md`, and either at least one file under `specs/` or `.openspec.yaml` with `skip_specs: true`. When one is missing, the command prints which items are absent and stops before it starts. This is not an escalation. When every task in `tasks.md` is already checked and no audit report holds an open fixable finding, it does no new work, runs the suites, and closes.
 
+A change whose `tasks.md` is in an earlier format (see [`/sai-2-design`](sai-2-design.md)) stops before any worker exists and asks you to run `/sai-2-design` again.
+
 Before the first step, the command records which unit and integration tests already fail, using the `Test Command` field of `tasks.md` (or, when it is missing, `SAI_LEARNINGS.md`, `design.md`, or the project's build files). Those failures are not obstacles. At the end it runs every unit and integration suite and compares the result with that record. End-to-end suites never run inside the command; leave them to your CI.
 
 The command works in steps. A step is one cycle of GREEN, review, and commit over the plan tests of one `tasks.md` step, and the command chooses its size. Before the first step it checks that the plan tests are still red by assertion; when the branch changed after the plan and a test now fails to compile or already passes (and is no regression guard), it has the fix RED realign it and records a deviation.

@@ -11,7 +11,7 @@
  *
  * Extraction covers designated sections only, to avoid false positives from
  * inline examples:
- *   - `### Local files` sections (proposal, design, tasks Required Documentation)
+ *   - `### Local files` sections (proposal and design)
  *   - `**Local files**:` bold fields (proposal research documentation), with
  *     inline paths or bullets below; `None` or empty is not a path
  *   - `**Files Affected**` entries (tasks.md steps, with A/M/D/R prefix)

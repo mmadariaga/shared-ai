@@ -905,15 +905,10 @@ const DESIGN_TOP_LEVEL_SKELETON = [
 
 const TASKS_SKELETON_MARKERS = [
   '**Routing**',
+  '**Scenarios**',
   '**Files Affected**',
-  '**What Will Be Done**',
-  '**Tests**',
-  '**Existing Tests Broken**',
-  '**Test Command**',
-  '## Required Documentation',
-  '### Spec files',
-  '### Local files',
-  '### External URLs',
+  '**What Changes**',
+  '**Closure criterion**',
   '## Implementation Context',
 ];
 
@@ -958,18 +953,20 @@ test('RED skeleton oracle pins the single-source design artifact contracts', () 
 
   assertSkeletonOrder(tasks, TASKS_SKELETON_MARKERS, 'tasks.md');
 
-  // Required Documentation section contracts (read from actual instruction file, not template)
+  // The tasks instruction records only what the plan RED's code does not express (ADR 0227a).
   const designTasksInstruction = artifact('sai/commands/design/steps/tasks.md');
-  assert.match(designTasksInstruction, /### Spec files[\s\S]*?### Local files[\s\S]*?### External URLs/,
-    'tasks.md instruction must list Spec files before Local files before External URLs');
-  assert.match(designTasksInstruction, /<path>\s*—\s*<note>/,
-    'tasks.md instruction must describe <path> — <note> format for Local files');
-  assert.match(designTasksInstruction, /<URL>\s*—\s*<note>/,
-    'tasks.md instruction must describe <URL> — <note> format for External URLs');
-  assert.match(designTasksInstruction, /no path or URL is listed twice[\s\S]*?every spec[\s\S]*?lives only under Spec files/,
-    'tasks.md instruction must state the no-duplicate rule for specs under Spec files');
-  assert.doesNotMatch(designTasksInstruction, /### Local files[\s\S]*?use line ranges/,
-    'tasks.md instruction Local files section must not contain "use line ranges" instruction');
+  for (const retired of ['**What Will Be Done**', '**Existing Tests Broken**']) {
+    assert.equal(tasks.includes(retired), false, `the tasks template must not carry ${retired}`);
+  }
+  assert.equal(/^## Required Documentation\s*$/m.test(tasks), false, 'the tasks template has no Required Documentation section');
+  assert.match(designTasksInstruction, /A step with tests[\s\S]*?\*\*Scenarios\*\*/,
+    'tasks.md instruction must define the step with tests by its scenarios');
+  assert.match(designTasksInstruction, /A step without tests[\s\S]*?`\*\*Files Affected\*\*`, `\*\*What Changes\*\*`, and `\*\*Closure criterion\*\*`/,
+    'tasks.md instruction must define the step without tests by its files, what changes, and closure criterion');
+  assert.match(designTasksInstruction, /`file-manifest\.js writeback`/,
+    'tasks.md instruction must name the write-back that adds Tests and Test Command');
+  assert.match(designTasksInstruction, /do not write `\*\*What Will Be Done\*\*`, `\*\*Existing Tests Broken\*\*`, or a `## Required Documentation` section/,
+    'tasks.md instruction must retire the earlier-format fields');
 
   for (const { id, anchor } of DESIGN_SKELETON_TEMPLATES) {
     const template = templates[id];

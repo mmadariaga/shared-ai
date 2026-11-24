@@ -7,7 +7,7 @@ Define the deterministic fold and verification of the design File Manifest by `s
 
 ### Requirement: File Manifest is written by a deterministic tool
 
-The `fold` sub-command of `sai/tools/file-manifest.js` SHALL fold every `## Step N` section's `**Files Affected**` entries of a change's `tasks.md` into the `### File Manifest` subsection of the same change's `design.md` and write it there. When `design.md` has no `### File Manifest` subsection, the tool SHALL create it at the end of `## Target State`, before the next `##` section; when a `design.md` written before the Architecture Snapshot retired still carries `### Architecture Snapshot`, it SHALL create it after that subsection. Every non-empty manifest entry SHALL be emitted as a Markdown bullet prefixed with `- `, with one logical entry per line. The empty sentinel and its reason SHALL remain unbulleted. The write SHALL be idempotent: a run whose fold equals the persisted manifest SHALL report `unchanged` and SHALL NOT rewrite `design.md`.
+The `fold` sub-command of `sai/tools/file-manifest.js` SHALL fold the `**Files Affected**` entries of every `## Step N` section of a change's `tasks.md` that carries them (the steps without tests) into the `### File Manifest` subsection of the same change's `design.md` and write it there. When no step carries `**Files Affected**` and `tasks.md` has at least one step, the tool SHALL write the sentinel `None — every file passes through the plan RED` as the manifest body. When `design.md` has no `### File Manifest` subsection, the tool SHALL create it at the end of `## Target State`, before the next `##` section; when a `design.md` written before the Architecture Snapshot retired still carries `### Architecture Snapshot`, it SHALL create it after that subsection. Every non-empty manifest entry SHALL be emitted as a Markdown bullet prefixed with `- `, with one logical entry per line. The empty sentinels and their reason SHALL remain unbulleted. The write SHALL be idempotent: a run whose fold equals the persisted manifest SHALL report `unchanged` and SHALL NOT rewrite `design.md`.
 
 #### Scenario: fold writes the net-folded manifest
 
@@ -38,6 +38,11 @@ The `fold` sub-command of `sai/tools/file-manifest.js` SHALL fold every `## Step
 
 - **WHEN** a `design.md` written before the Architecture Snapshot retired has `### Architecture Snapshot` under `## Target State` but no `### File Manifest`, and `fold` runs
 - **THEN** the tool writes `### File Manifest` directly after the snapshot, before the next `##` section
+
+#### Scenario: fold of a change whose steps all have tests
+
+- **WHEN** every step of `tasks.md` lists `**Scenarios**`, none carries `**Files Affected**`, and `fold` runs
+- **THEN** the manifest body is the `None — every file passes through the plan RED` sentinel and the run exits 0
 
 ### Requirement: The tool reproduces the normative net fold
 
@@ -93,7 +98,7 @@ Verification SHALL ignore only this optional presentation prefix. Paths, change 
 
 The tool SHALL report each malformed `**Files Affected**` entry (an unknown token or a missing path) and each illegal transition (for example `M` after `D`) with the `tasks.md` line and Step, SHALL fail with exit 1, and SHALL NOT write `design.md`. Unsafe paths, invalid bounded generated declarations, overlapping generated families, and generated collisions recognized by the fold SHALL fail with the same located diagnostics and no write.
 
-It SHALL fail the same way when `tasks.md` has neither affected entries nor recognized `None` declarations, or when a missing manifest has no `## Target State` section in `design.md` to hold it. Recognized `None` declarations SHALL count as intentional empty input rather than absent input. A usage or I/O error SHALL exit 2.
+It SHALL fail the same way when `tasks.md` has no `## Step N` section and neither affected entries nor recognized `None` declarations, or when a missing manifest has no `## Target State` section in `design.md` to hold it. A `tasks.md` whose steps all lack `**Files Affected**` SHALL NOT fail: it takes the plan RED sentinel. Recognized `None` declarations SHALL count as intentional empty input rather than absent input. A usage or I/O error SHALL exit 2.
 
 #### Scenario: malformed entries fail with line numbers
 - **WHEN** `tasks.md` contains the entries `X foo.md` and `M` with no path, and `fold` runs
@@ -164,3 +169,51 @@ Generated declarations SHALL retain their expected count in the derivative manif
 #### Scenario: Generated manifest is verified
 - **WHEN** the persisted manifest contains the same generated family, expected count, and Step attribution as the fold
 - **THEN** verify reports a match without writing design.md
+
+### Requirement: The format sub-command answers the tasks.md format
+
+The `format` sub-command of `sai/tools/file-manifest.js`, invoked as `node <tool-path> format <change-name> --json --cwd <project-root>`, SHALL read only the change's `tasks.md`, write nothing, and answer `current` with exit 0 or `earlier` with exit 1. It SHALL answer `earlier`, listing each signal it found, when `tasks.md` has a `## Required Documentation` section, a step that carries `**What Will Be Done**`, a step that carries `**Existing Tests Broken**`, or a step with tests (one that lists `**Scenarios**` or `**Tests**` and carries no `**Closure criterion**`) that carries `**Files Affected**`.
+
+#### Scenario: a plan with Required Documentation is in the earlier format
+
+- **WHEN** `tasks.md` ends with a `## Required Documentation` section and `format` runs
+- **THEN** it answers `earlier`, names `## Required Documentation` among its signals, exits 1, and writes nothing
+
+#### Scenario: a step with tests that lists Files Affected is in the earlier format
+
+- **WHEN** a step of `tasks.md` lists `**Scenarios**` and also `**Files Affected**`, and `format` runs
+- **THEN** it answers `earlier` and names that step in its signals
+
+#### Scenario: a plan in the current format
+
+- **WHEN** every step with tests carries only its checkbox, `**Routing**`, `**Scenarios**`, `**Tests**`, and `**Test Command**`, every step without tests carries `**Files Affected**`, `**What Changes**`, and `**Closure criterion**`, and no `## Required Documentation` section exists
+- **THEN** `format` answers `current` and exits 0
+
+### Requirement: The writeback sub-command records the plan RED's test facts in tasks.md
+
+The `writeback` sub-command of `sai/tools/file-manifest.js`, invoked as `node <tool-path> writeback <change-name> --input-file <accepted plan RED report> [--guard "<test path> :: <test name>"]... --json --cwd <project-root>`, SHALL read the report, require it to be a valid `implement` terminal report with status `completed` and a non-empty `plan_tests`, and write into each step with tests a `**Tests**` field (one `- <test path> :: <test name>` bullet per reported test, with ` [regression guard]` appended when the report flags `regression_guard: true` or a `--guard` value names that test) followed by `**Test Command**: <the step's test_command>`, placed after the step's `**Scenarios**` field. It SHALL replace any `**Tests**` and `**Test Command**` the step already carries, so a second run with the same report and the same `--guard` list reports `unchanged` and leaves `tasks.md` byte-identical. It SHALL write nothing and fail with exit 1 when `tasks.md` is in the earlier format, when the report lists a step twice, names a step that `tasks.md` lacks or that has no tests, or omits a step with tests, or when a `--guard` value names a test the report does not list. `--input-file` and `--guard` SHALL belong to `writeback` alone.
+
+#### Scenario: the write-back adds tests and the test command
+
+- **WHEN** Step 1 lists `**Scenarios**` and the accepted report lists two tests and a `test_command` for step 1, and `writeback` runs
+- **THEN** Step 1 carries `**Tests**` with the two `- <path> :: <name>` bullets after its `**Scenarios**`, followed by `**Test Command**` with the reported command
+
+#### Scenario: a coordinator-decided guard is marked
+
+- **WHEN** `writeback` runs with `--guard "test/a.test.js :: keeps the old order"` and the report lists that test without a guard flag
+- **THEN** its `**Tests**` bullet ends with ` [regression guard]`
+
+#### Scenario: the write-back is idempotent
+
+- **WHEN** `writeback` runs a second time with the same report and the same `--guard` list
+- **THEN** it reports `unchanged` and leaves `tasks.md` byte-identical
+
+#### Scenario: the report omits a step with tests
+
+- **WHEN** Step 2 lists `**Scenarios**` and the report carries no `plan_tests` entry for step 2
+- **THEN** `writeback` reports an error naming step 2, exits 1, and writes nothing
+
+#### Scenario: an earlier-format plan is refused
+
+- **WHEN** `tasks.md` carries `## Required Documentation` and `writeback` runs
+- **THEN** it reports that `tasks.md` is in the earlier format, exits 1, and writes nothing

@@ -204,7 +204,7 @@ artifacts:
 
   - id: tasks
     generates: tasks.md
-    description: Implementation task list — one step per testable behavior, each naming the plan tests it turns green or its closure criterion, for human review and sai-3-implement to work through
+    description: Implementation task list — one step per testable behavior, each listing the spec scenarios whose plan tests it turns green, or carrying its closure criterion, for human review and sai-3-implement to work through
     template: tasks.md
     instruction: |
       Fetch and follow sai/commands/design/steps/tasks.md section ## Generate tasks.md exactly. This instruction is an informative reference only; it does not restate the task generation contract.

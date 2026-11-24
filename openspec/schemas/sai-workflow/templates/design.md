@@ -1,10 +1,10 @@
 ## Target State
 
-<!-- Finished shape the change converges on (one concrete artifact), naming every new or changed public symbol with its exact signature. -->
+<!-- Finished shape the change converges on, with no function bodies: one Markdown bullet per new or changed public symbol as - <path> :: <signature> (the plan RED writes its stubs from these entries), or the resulting section structure of each document a prose change touches. -->
 
 ### File Manifest
 
-<!-- Net fold of tasks.md Files Affected as Markdown bullets (- <token> <path> (Step N)), one entry per line, or exactly: None — no files affected -->
+<!-- Net fold of the Files Affected of the steps without tests as Markdown bullets (- <token> <path> (Step N)), one entry per line, or exactly: None — no files affected, or None — every file passes through the plan RED -->
 
 ## Decisions
 

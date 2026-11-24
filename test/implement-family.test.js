@@ -156,14 +156,28 @@ test('the implement coordinator reuses the design context and promotes learnings
   assert.ok(step7.indexOf('`**Test Command**` in `tasks.md`') !== -1);
   assert.ok(step7.indexOf('`**Test Command**` in `tasks.md`') < step7.indexOf('`SAI_LEARNINGS.md`'), 'the design test command comes first');
   assert.match(step7, /None — no test runner in this project/);
-  assert.match(source, /`## Required Documentation` entries relevant to the step/);
-  assert.match(source, /every subsection is `None`/);
+  assert.match(source, /`path :: signature` entries of `design\.md` `## Target State` that the step's tests exercise/);
+  assert.match(source, /never a test path, which GREEN never receives/);
   const close = source.slice(source.indexOf('## Close'));
   assert.match(close, /Promote learnings, before the report/);
   assert.match(close, /leave `SAI_LEARNINGS.md` untouched and create no file/);
   assert.match(close, /Fetch `@sai\/policies\/sai-learnings-format\.md`/);
   assert.match(read('sai/policies/sai-learnings-format.md'), /`\/sai-3-implement` coordinator is the only writer/);
   assert.match(read('sai/commands/design/steps/research.md'), /`\/sai-3-implement` coordinator's learnings promotion at run close/);
+});
+
+test('the implement coordinator stops on an earlier-format plan before any worker and briefs GREEN without Required Documentation', () => {
+  const source = read(COORDINATORS[0]);
+  const start = source.slice(source.indexOf('## Start'), source.indexOf('## The step cycle'));
+  assert.match(start, /node <tool-path> format \{name\} --json --cwd <project-root>` \(`file-manifest\.js`/);
+  assert.match(start, /Cannot start \/sai-3-implement for \{name\}: its plan is in the earlier format\. Run \/sai-2-design \{name\} again\./);
+  assert.ok(start.indexOf('its plan is in the earlier format') < start.indexOf('5. Open the run state'), 'the stop precedes the run state and every worker');
+  assert.match(start, /before any worker or run directory exists/);
+  const cycle = source.slice(source.indexOf('## The step cycle'), source.indexOf('## Audit findings'));
+  assert.doesNotMatch(cycle, /Required Documentation/);
+  assert.match(cycle, /for a step with tests, the paths of those `path :: signature` entries/);
+  assert.doesNotMatch(read('sai/commands/implement/steps/green-step.md'), /Required Documentation|Existing Tests Broken/);
+  assert.match(read('sai/commands/implement/steps/green-step.md'), /A step with tests carries no `\*\*Files Affected\*\*`/);
 });
 
 test('the learnings loop reaches design, RED, GREEN, and review from the file itself', () => {

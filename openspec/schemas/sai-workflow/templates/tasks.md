@@ -4,32 +4,21 @@
 
 **Routing**: category=<!-- frontend-ui|frontend-code|backend|data|infra|docs|other --> · context=<!-- small|medium|large --> · difficulty=<!-- low|medium|high -->
 
+**Scenarios**:
+<!-- Step with tests. Markdown bullets: - <spec scenario title>, one entry per line, plus one short title per edge behavior the step must prove. After the plan RED, a deterministic write-back adds **Tests** (- <test path> :: <test name>, with " [regression guard]" for a test that passes before and after) and **Test Command** right below; never write them by hand. -->
+
+## Step 2: <!-- Title -->
+
+- [ ] Step 2: <!-- Title -->
+
+**Routing**: category=<!-- frontend-ui|frontend-code|backend|data|infra|docs|other --> · context=<!-- small|medium|large --> · difficulty=<!-- low|medium|high -->
+
 **Files Affected**:
-<!-- Markdown bullets: - <A|M|D|R> <path>, one entry per line; R uses <source> -> <destination>. Preserve None when empty. -->
+<!-- Step without tests (documentation, prompts, configuration, glue code). Markdown bullets: - <A|M|D|R> <path>, one entry per line; R uses <source> -> <destination>. Preserve None when empty. -->
 
-**What Will Be Done**: <!-- prose description -->
+**What Changes**: <!-- what changes in each file -->
 
-**Tests**:
-<!-- Markdown bullets: - <test path> :: <test name carrying the spec scenario title>, one entry per line; append " [regression guard]" for a test that passes before and after. A step with no meaningful test carries **Closure criterion**: <one checkable sentence> instead of this field. -->
-
-**Existing Tests Broken**:
-<!-- Markdown bullets: - <path> — <compile|runtime>, one entry per line, or None -->
-
-**Test Command**: <!-- command that runs only this step's tests, or None — closure criterion -->
-
-## Required Documentation
-
-### Spec files
-
-<!-- Markdown bullets: - <path>, one entry per line, or None -->
-
-### Local files
-
-<!-- Markdown bullets: - <path> — <note>, one entry per line, or None -->
-
-### External URLs
-
-<!-- Markdown bullets: - <URL> — <note>, one entry per line, or None -->
+**Closure criterion**: <!-- one checkable sentence that states when the step is done -->
 
 ## Implementation Context
 
