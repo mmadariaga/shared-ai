@@ -99,14 +99,14 @@ takes one — never substitute one for the other.
   object (`verdict` `clean`, `missing`, or `n/a`, plus `missing`, `ambiguous`,
   `parent_branch`, and `change_base`) and exits 0 for `clean` or `n/a`, 1 for
   `missing`, and 2 for a usage or I/O error.
-- `test-select.js`: `node <tool-path> select --input-file <path> [--timeout-ms
-  <n>] --cwd <project-root>` (the input file holds a JSON list of the files a
+- `test-select.js`: `node <tool-path> select --input-file <path> [--base <sha>]
+  [--timeout-ms <n>] --cwd <project-root>` (the input file holds a JSON list of the files a
   step changed), `node <tool-path> swap --record <path> --dirty-baseline <path>
   [--parent-branch <branch>] --cwd <project-root>`, or `node <tool-path> restore
   --record <path> --cwd <project-root>`. `select` prints `verdict` (`selected`
   or `full`), `tests`, and `reason` (null, or `no-binary`, `no-index`,
   `sync-failed`, `stale-index`, `unindexed-file`, `no-dependents`,
-  `codegraph-error`, `timeout`, `invalid-output`); `swap` and `restore` print `verdict` `swapped`, `refused`,
+  `deleted-file`, `base-index-failed`, `codegraph-error`, `timeout`, `invalid-output`); `swap` and `restore` print `verdict` `swapped`, `refused`,
   `restored`, `clean`, or `failed`. Exit 0 is any verdict but `refused` and
   `failed` (1); 2 is a usage or I/O error.
 - `validate-backfill-drafts.js`: `node <tool-path> validate --harness

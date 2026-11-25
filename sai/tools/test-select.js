@@ -30,7 +30,7 @@
  *   `git status --porcelain` printed them. The run never owns them.
  *
  * Usage:
- *   node sai/tools/test-select.js select --input-file <path> [--timeout-ms <n>] [--cwd <project-root>]
+ *   node sai/tools/test-select.js select --input-file <path> [--base <sha>] [--timeout-ms <n>] [--cwd <project-root>]
  *   node sai/tools/test-select.js swap --record <path> --dirty-baseline <path> [--parent-branch <branch> | --base <sha>] [--paths-file <path>] [--cwd <project-root>]
  *   node sai/tools/test-select.js restore --record <path> [--cwd <project-root>]
  *   node sai/tools/test-select.js command [--change <name>] [--cwd <project-root>]
@@ -46,12 +46,20 @@
  * `files` lists them), `codegraph-error` (a call failed), `timeout` (the calls
  * exceeded `--timeout-ms`, 60000 by default), `invalid-output` (a call printed
  * JSON the tool cannot read), or `no-dependents` (a changed non-test file has no
- * dependents in the graph; `files` lists them). The per-file calls run in
+ * dependents in the graph, here or at the base; `files` lists them), `deleted-file`
+ * (a deletion without `--base`; `files` lists them), or `base-index-failed`. The per-file calls run in
  * parallel, at most 4 at a time, under one shared `--timeout-ms` deadline. It
  * uses only the public codegraph CLI and never opens
  * `.codegraph/codegraph.db`. Paths under `openspec/` are plan artifacts, not
- * code, and are left out of the list, and so is a file the run deleted (absent
- * from the working tree and from the index): the files that used it changed with it.
+ * code, and are left out of the list. A file the run deleted (absent from the
+ * working tree and from the index) lost its place in the graph at the sync, so
+ * its tests come from the graph of `--base <sha>`, the revision before the
+ * deletion: the tool writes that revision to a private directory under the SAI
+ * temp root through a temporary git index, runs `codegraph init` there, asks
+ * `affected` per deleted file, keeps the tests that still exist, and removes the
+ * directory. Without `--base` a deletion is `deleted-file`; a failed export or
+ * index is `base-index-failed`; a deleted file the base does not hold is left
+ * out, since it was created inside the run.
  *
  * `swap` restores to the change base, in the working tree only, the files the
  * change modified or deleted, and removes the files it added, so the coordinator
@@ -99,6 +107,7 @@ const crypto = require('crypto');
 const { spawn, spawnSync } = require('child_process');
 const { InputFileError, extractInputFile, readInputFile } = require('./input-reader.js');
 const { UsageError, git, resolveChangeBase } = require('./change-base.js');
+const { makeTempDir, removeInside, TempRootError, harnessFromInstalledPath } = require('./temp-root.js');
 
 const DEFAULT_TIMEOUT_MS = 60000;
 const AFFECTED_DEPTH = 2;
@@ -115,7 +124,7 @@ class Fallback extends Error {
 
 function usage() {
   return [
-    'Usage: node sai/tools/test-select.js select --input-file <path> [--timeout-ms <n>] [--cwd <project-root>]',
+    'Usage: node sai/tools/test-select.js select --input-file <path> [--base <sha>] [--timeout-ms <n>] [--cwd <project-root>]',
     '       node sai/tools/test-select.js swap --record <path> --dirty-baseline <path> [--parent-branch <branch> | --base <sha>] [--paths-file <path>] [--cwd <project-root>]',
     '       node sai/tools/test-select.js restore --record <path> [--cwd <project-root>]',
     '       node sai/tools/test-select.js command [--change <name>] [--cwd <project-root>]',
@@ -124,7 +133,8 @@ function usage() {
     '  swap             restores the change\'s files to the classification base in the working tree and saves them in --record.',
     '  restore          brings the files saved in --record back to where the run left them (HEAD, or the saved copies of a --paths-file swap).',
     '  command          resolves the test command and its scoping idiom.',
-    '  --base           A commit to take as the classification base, in place of the change base.',
+    '  --base           swap: a commit to take as the classification base, in place of the change base;',
+    '                   select: the revision before the run\'s deletions, whose graph names the tests of a deleted file.',
     '  --paths-file     JSON list of the uncommitted repository paths the run changed; swap copies them aside and restore writes the copies back.',
     '  --change         The change name whose tasks.md is the first source of the test command.',
     '  --dirty-baseline File with the `git status --porcelain` output recorded before the run.',
@@ -333,7 +343,58 @@ const extensionOf = (file) => path.extname(file).toLowerCase();
 /** Whether the working tree holds `file` (a symbolic link counts, even a dangling one). */
 const present = (cwd, file) => fs.lstatSync(path.join(cwd, file), { throwIfNoEntry: false }) !== undefined;
 
-async function selectTests(allFiles, cwd, timeoutMs) {
+/** Run git for the base index; any failure is the fallback `base-index-failed`. */
+function baseGit(args, cwd, env) {
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, ...env }, maxBuffer: 64 * 1024 * 1024 });
+  if (result.error || result.status !== 0) throw new Fallback('base-index-failed');
+  return result.stdout;
+}
+
+/**
+ * The tests that depended on the files the run deleted, read from the graph of `base` (the revision before the
+ * deletion), because the current graph lost those files at the sync. The base is written to a private directory under
+ * the SAI temp root through a temporary git index (`read-tree`, then `checkout-index`), so the project's working tree,
+ * index, and refs stay untouched, and indexed there with `codegraph init`; the directory is removed whatever happens.
+ * A deleted file the base does not hold was created and deleted inside the run: whatever used it changed with it. A
+ * deleted file whose base call finds no dependents, and is no test itself, cannot be vouched for, as a present one.
+ * Only tests that still exist are returned.
+ */
+async function deletedFileTests(deleted, { cwd, base, timeoutMs }) {
+  if (!base) throw new Fallback('deleted-file', { files: deleted });
+  const atBase = deleted.filter((file) => inBase(cwd, base, file));
+  if (atBase.length === 0) return [];
+  const harness = harnessFromInstalledPath(__filename);
+  let dir;
+  try {
+    dir = makeTempDir(harness, 'test-select-base-');
+  } catch (error) {
+    if (error instanceof TempRootError) throw new Fallback('base-index-failed');
+    throw error;
+  }
+  try {
+    const tree = path.join(dir, 'tree');
+    const env = { GIT_INDEX_FILE: path.join(dir, 'index') };
+    baseGit(['read-tree', base], cwd, env);
+    // checkout-index writes the whole repository; the project root sits at its own prefix inside it.
+    baseGit(['checkout-index', '-a', '-f', `--prefix=${tree.split(path.sep).join('/')}/`], cwd, env);
+    const project = path.join(tree, baseGit(['rev-parse', '--show-prefix'], cwd, {}).trim());
+    codegraph(['init', '-y'], { cwd: project, timeoutMs, failure: 'base-index-failed' });
+    const results = await affectedPerFile(atBase, { cwd: project, timeoutMs });
+    const failed = results.find((result) => result.error);
+    if (failed) throw failed.error;
+    const bare = results.filter((result) => result.noDependents && !result.tests.includes(result.file)).map((result) => result.file);
+    if (bare.length) throw new Fallback('no-dependents', { files: bare });
+    return results.flatMap((result) => result.tests).filter((test) => present(cwd, test));
+  } finally {
+    try {
+      removeInside(harness, dir);
+    } catch (error) {
+      if (!(error instanceof TempRootError)) throw error;
+    }
+  }
+}
+
+async function selectTests(allFiles, cwd, timeoutMs, base = null) {
   if (allFiles.length === 0) return { verdict: 'selected', tests: [], reason: null };
   const options = { cwd, timeoutMs };
   let files = allFiles;
@@ -360,10 +421,13 @@ async function selectTests(allFiles, cwd, timeoutMs) {
     // A file the run deleted is gone from the working tree and, after `sync`, from the graph: there is nothing left to
     // ask about it, and the files that used it changed with it, so it is left out instead of making the selection
     // untrustworthy. Only a file that exists and that the listing lacks is unindexed.
+    // Its former dependents come from the graph of the base (`deletedFileTests`).
+    const deleted = allFiles.filter((file) => indexedTypes.has(extensionOf(file)) && !indexed.has(file) && !present(cwd, file));
     files = allFiles.filter((file) => indexedTypes.has(extensionOf(file)) && (indexed.has(file) || present(cwd, file)));
     const unindexed = files.filter((file) => /[\r\n]/.test(file) || !indexed.has(file));
     if (unindexed.length) throw new Fallback('unindexed-file', { files: unindexed });
-    if (files.length === 0) return { verdict: 'selected', tests: [], reason: null };
+    const fromBase = deleted.length ? await deletedFileTests(deleted, { cwd, base, timeoutMs }) : [];
+    if (files.length === 0) return { verdict: 'selected', tests: [...new Set(fromBase)].sort(), reason: null };
 
     const results = await affectedPerFile(files, options);
     const failed = results.find((result) => result.error);
@@ -371,7 +435,7 @@ async function selectTests(allFiles, cwd, timeoutMs) {
     // A test file is one whose own call lists it; every other file, fixtures and mocks included, is code.
     const bare = results.filter((result) => result.noDependents && !result.tests.includes(result.file)).map((result) => result.file);
     if (bare.length) throw new Fallback('no-dependents', { files: bare });
-    const tests = [...new Set(results.flatMap((result) => result.tests))].sort();
+    const tests = [...new Set([...results.flatMap((result) => result.tests), ...fromBase])].sort();
     return { verdict: 'selected', tests, reason: null };
   } catch (error) {
     if (!(error instanceof Fallback)) throw error;
@@ -498,7 +562,8 @@ function readPathsFile(pathsFile) {
 
 /** Whether the base commit holds `file`. */
 function inBase(cwd, base, file) {
-  return spawnSync('git', ['cat-file', '-e', `${base}:${file}`], { cwd, stdio: 'ignore' }).status === 0;
+  // `<rev>:./<path>` reads the path relative to `cwd`, which may sit below the repository root.
+  return spawnSync('git', ['cat-file', '-e', `${base}:./${file}`], { cwd, stdio: 'ignore' }).status === 0;
 }
 
 /**
@@ -891,7 +956,8 @@ async function main(argv) {
     if (extra.length) throw new UsageError(`unexpected positional argument: ${extra[0]}`);
     let result;
     if (name === 'select') {
-      result = await selectTests(readFileList(inputFile), options.cwd, options.timeoutMs);
+      if (options.parentBranch || options.pathsFile || options.record || options.dirtyBaseline) throw new UsageError('select takes --base, not --parent-branch, --paths-file, --record, or --dirty-baseline');
+      result = await selectTests(readFileList(inputFile), options.cwd, options.timeoutMs, options.base ? resolveBase(options.cwd, options.base) : null);
     } else if (name === 'command') {
       if (inputFile) throw new UsageError('command takes no --input-file');
       result = resolveCommand(options.cwd, options.change);

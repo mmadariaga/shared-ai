@@ -154,9 +154,10 @@ test('the implement coordinator selects each step\'s tests with test-select.js a
   const cycle = source.slice(source.indexOf('## The step cycle'), source.indexOf('## Audit findings'));
   assert.match(cycle, /\*\*Test selection\.\*\*/);
   assert.match(cycle, /`test-select\.js` \(resolved per `tool-resolution\.md`\)/);
-  assert.match(cycle, /select --input-file <file> --cwd <project root>/);
+  assert.match(cycle, /select --input-file <file> --base HEAD --cwd <project root>/);
+  assert.match(source.slice(source.indexOf('## Close')), /with `--base` set to the change base/);
   const policy = read('sai/policies/test-execution.md');
-  for (const reason of ['no-binary', 'no-index', 'sync-failed', 'stale-index', 'unindexed-file', 'no-dependents', 'codegraph-error', 'timeout', 'invalid-output']) {
+  for (const reason of ['no-binary', 'no-index', 'sync-failed', 'stale-index', 'unindexed-file', 'no-dependents', 'deleted-file', 'base-index-failed', 'codegraph-error', 'timeout', 'invalid-output']) {
     assert.match(policy, new RegExp(`\`${reason}\``), reason);
   }
   assert.match(cycle, /no scoping idiom/);

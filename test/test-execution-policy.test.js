@@ -82,3 +82,13 @@ test('E15: no two ADRs carry the same number', () => {
 test('I8: design drafts the Test Command from the shared resolver before tasks.md exists', () => {
   assert.match(read('sai/commands/design/steps/tasks.md'), /Take the draft from the shared resolver[\s\S]{0,400}`test-select\.js`[\s\S]{0,200}pass no `--change`/);
 });
+
+test('every select names the revision before its run\'s changes, so the graph of that revision gives the tests of a deleted file', () => {
+  const policy = read('sai/policies/test-execution.md');
+  assert.match(policy, /select --input-file <file> --base <sha> --cwd <project root>/);
+  assert.match(policy, /never a worktree/);
+  assert.match(policy, /`deleted-file` \(a deletion and no `--base`\)/);
+  assert.match(read('sai/commands/implement/coordinator.md'), /select --input-file <file> --base HEAD/);
+  assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /run `select` as the policy says, with `--base <base_sha>`/);
+  assert.match(read('sai/commands/merge/coordinator.md'), /Run `select` with `--base <pre-launch HEAD>`/);
+});
