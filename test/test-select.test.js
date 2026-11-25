@@ -36,9 +36,16 @@ const args = process.argv.slice(2);
 const name = args[0];
 let stdin = '';
 if (!process.stdin.isTTY) { try { stdin = fs.readFileSync(0, 'utf8'); } catch (error) { stdin = ''; } }
-if (process.env.FAKE_CODEGRAPH_LOG) fs.appendFileSync(process.env.FAKE_CODEGRAPH_LOG, JSON.stringify({ args, stdin, cwd: process.cwd() }) + '\\n');
+// An init call records the files it would index, so a test can check what the base export wrote.
+const walk = (dir, prefix = '') => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => (entry.isDirectory()
+  ? walk(dir + '/' + entry.name, prefix + entry.name + '/') : [prefix + entry.name]));
+const seen = name === 'init' ? walk(process.cwd()).sort() : undefined;
+if (process.env.FAKE_CODEGRAPH_LOG) fs.appendFileSync(process.env.FAKE_CODEGRAPH_LOG, JSON.stringify({ args, stdin, cwd: process.cwd(), seen }) + '\\n');
+// Outside the project (the base export), files answers config.baseFiles when there is one.
+const atBase = process.env.FAKE_PROJECT && require('path').resolve(process.cwd()) !== require('path').resolve(process.env.FAKE_PROJECT);
 // An affected call answers per file (config.perFile, keyed by the file on stdin) before it falls back to config.affected.
-const answer = (name === 'affected' && config.perFile && config.perFile[stdin.trim()]) || config[name] || {};
+const answer = (name === 'affected' && config.perFile && config.perFile[stdin.trim()])
+  || (name === 'files' && atBase && config.baseFiles) || config[name] || {};
 const started = Date.now();
 if (answer.sleep) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, answer.sleep);
 if (name === 'affected' && process.env.FAKE_CODEGRAPH_TIMES) fs.appendFileSync(process.env.FAKE_CODEGRAPH_TIMES, JSON.stringify({ started, ended: Date.now() }) + '\\n');
@@ -94,7 +101,7 @@ function selectFixture(t, { indexed = true, installed = true } = {}) {
     const input = write(root, 'files.json', JSON.stringify(files));
     const result = spawnSync(process.execPath, [tool, 'select', '--input-file', input, '--cwd', project, ...extra], {
       encoding: 'utf8',
-      env: { ...process.env, PATH: searchPath, FAKE_CODEGRAPH: JSON.stringify(config), FAKE_CODEGRAPH_LOG: log, FAKE_CODEGRAPH_TIMES: times },
+      env: { ...process.env, PATH: searchPath, FAKE_PROJECT: project, FAKE_CODEGRAPH: JSON.stringify(config), FAKE_CODEGRAPH_LOG: log, FAKE_CODEGRAPH_TIMES: times },
     });
     return { ...result, report: result.stdout ? JSON.parse(result.stdout) : null };
   };
@@ -103,10 +110,12 @@ function selectFixture(t, { indexed = true, installed = true } = {}) {
   return { select, calls, spans, project };
 }
 
-// The fixture's project as a git repository whose one commit holds `files`; returns that commit.
-function commitBase(f, files) {
+// The fixture's project as a git repository whose one commit holds `files` (paths of the project); returns that
+// commit. With `above`, the repository root is the project's parent, so the project sits in a subdirectory.
+function commitBase(f, files, { above = false } = {}) {
+  const repository = above ? path.dirname(f.project) : f.project;
   const git = (...args) => {
-    const result = spawnSync('git', args, { cwd: f.project, encoding: 'utf8' });
+    const result = spawnSync('git', args, { cwd: repository, encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr);
     return result.stdout.trim();
   };
@@ -114,7 +123,8 @@ function commitBase(f, files) {
   git('config', 'user.email', 't@example.com');
   git('config', 'user.name', 't');
   for (const [file, content] of Object.entries(files)) write(f.project, file, content);
-  git('add', '-A');
+  if (above) write(repository, 'outside.js', 'outside the project');
+  git('add', '-A', '--', ...(above ? ['outside.js', path.basename(f.project)] : ['.']));
   git('commit', '-q', '-m', 'base');
   return git('rev-parse', 'HEAD');
 }
@@ -200,6 +210,7 @@ test('E3: with --base, the tests of a deleted file come from the graph of the ba
   const config = {
     ...HAPPY,
     files: { json: [{ path: 'src/a.js' }, { path: 'test/a.test.js' }] },
+    baseFiles: { json: [{ path: 'src/a.js' }, { path: 'src/gone.js' }, { path: 'test/a.test.js' }, { path: 'test/gone.test.js' }] },
     perFile: {
       'src/a.js': answerFor(['test/b.test.js'], 1),
       'src/gone.js': answerFor(['test/a.test.js', 'test/gone.test.js'], 2),
@@ -212,6 +223,7 @@ test('E3: with --base, the tests of a deleted file come from the graph of the ba
   const calls = f.calls();
   const init = calls.find((call) => call.args[0] === 'init');
   assert.ok(init, 'the base is indexed');
+  assert.deepEqual(init.seen, ['src/a.js', 'src/gone.js', 'test/a.test.js', 'test/gone.test.js'], 'the export holds the base content, not the working tree');
   assert.notEqual(init.cwd, f.project);
   assert.equal(fs.existsSync(init.cwd), false, 'the base directory is removed');
   const atBase = calls.filter((call) => call.args[0] === 'affected' && call.cwd === init.cwd).map((call) => call.stdin.trim()).sort();
@@ -234,8 +246,42 @@ test('E3: a base that cannot be indexed is base-index-failed, and a deleted file
   fs.rmSync(path.join(f.project, 'src/gone.js'));
   const failing = f.select(['src/gone.js'], { ...HAPPY, init: { exit: 1 } }, ['--base', base]).report;
   assert.deepEqual([failing.verdict, failing.reason], ['full', 'base-index-failed']);
-  const bare = f.select(['src/gone.js'], { ...HAPPY, perFile: { 'src/gone.js': answerFor([], 0) } }, ['--base', base]).report;
+  const baseFiles = { json: [{ path: 'src/a.js' }, { path: 'src/gone.js' }] };
+  const bare = f.select(['src/gone.js'], { ...HAPPY, baseFiles, perFile: { 'src/gone.js': answerFor([], 0) } }, ['--base', base]).report;
   assert.deepEqual([bare.verdict, bare.reason, bare.files], ['full', 'no-dependents', ['src/gone.js']]);
+});
+
+test('E3: a project below the repository root exports only its own files and finds its deleted file there', (t) => {
+  const f = selectFixture(t);
+  const base = commitBase(f, { 'src/a.js': 'a', 'src/gone.js': 'gone', 'test/a.test.js': 'test' }, { above: true });
+  fs.rmSync(path.join(f.project, 'src/gone.js'));
+  const config = {
+    ...HAPPY,
+    baseFiles: { json: [{ path: 'src/a.js' }, { path: 'src/gone.js' }, { path: 'test/a.test.js' }] },
+    perFile: { 'src/gone.js': answerFor(['test/a.test.js'], 1) },
+  };
+  const { report } = f.select(['src/gone.js'], config, ['--base', base]);
+  assert.deepEqual(report, { verdict: 'selected', tests: ['test/a.test.js'], reason: null });
+  const init = f.calls().find((call) => call.args[0] === 'init');
+  assert.equal(path.basename(init.cwd), path.basename(f.project), 'codegraph indexes the project at its own prefix');
+  assert.deepEqual(init.seen, ['src/a.js', 'src/gone.js', 'test/a.test.js'], 'a file outside the project is not exported');
+});
+
+test('E3: a deleted file of a type gone from the current listing is asked about at the base, and one that is never code is not', (t) => {
+  const f = selectFixture(t);
+  const base = commitBase(f, { 'src/a.js': 'a', 'src/helper.ts': 'ts', 'docs/notes.md': 'notes' });
+  fs.rmSync(path.join(f.project, 'src/helper.ts'));
+  fs.rmSync(path.join(f.project, 'docs/notes.md'));
+  const config = {
+    ...HAPPY,
+    baseFiles: { json: [{ path: 'src/a.js' }, { path: 'src/helper.ts' }] },
+    perFile: { 'src/helper.ts': answerFor(['test/a.test.js'], 1) },
+  };
+  write(f.project, 'test/a.test.js', 'test');
+  assert.deepEqual(f.select(['src/helper.ts'], config, ['--base', base]).report, { verdict: 'selected', tests: ['test/a.test.js'], reason: null });
+  const before = f.calls().length;
+  assert.deepEqual(f.select(['docs/notes.md'], config, ['--base', base]).report, { verdict: 'selected', tests: [], reason: null });
+  assert.equal(f.calls().slice(before).some((call) => call.args[0] === 'init'), false, 'a deleted document indexes nothing');
 });
 
 test('select takes a --base that resolves to a commit, and none of the swap options', (t) => {
@@ -874,6 +920,34 @@ test('E5: the command is always runnable: a placeholder never reaches it, and a 
   fs.rmSync(path.join(f.root, 'openspec'), { recursive: true });
   write(f.root, 'README.md', 'Run `pytest` or one file with `pytest <path>`.\n');
   assert.deepEqual(f.run().report, { verdict: 'found', command: 'pytest', scoping_idiom: 'pytest <path>', source: 'README.md' });
+});
+
+test('E5: dropping a placeholder keeps the flags that shape the run, drops quoted text whole, and never leaves a non-test command', (t) => {
+  const f = commandFixture(t);
+  const learn = (command) => {
+    write(f.root, 'SAI_LEARNINGS.md', `## Test Command\n\n\`${command}\`\n`);
+    const report = f.run().report;
+    return report.verdict === 'found' ? report.command : report.verdict;
+  };
+  assert.equal(learn('node --test <test files>'), 'node --test', 'a runner flag before the placeholder stays');
+  assert.equal(learn('node --import ./setup.js --test <test files>'), 'node --import ./setup.js --test');
+  assert.equal(learn('pytest -x <test files>'), 'pytest -x');
+  assert.equal(learn('pytest -x -k "<test name> and not slow"'), 'pytest -x', 'quoted text with a placeholder goes whole, with its value flag');
+  assert.equal(learn('cargo test --release <TestName>'), 'cargo test --release');
+  assert.equal(learn('npm test -- --coverage <test files>'), 'npm test -- --coverage');
+  assert.equal(learn('mvn test -Dtest=<TestClass>'), 'mvn test');
+  assert.equal(learn('<runner> <files>'), 'ambiguous');
+  assert.equal(learn('python run_tests.py <suite>'), 'ambiguous', 'what remains must still be a test invocation');
+});
+
+test('E5: a shell redirection and an environment variable are part of a runnable command, never placeholders', (t) => {
+  const f = commandFixture(t);
+  write(f.root, 'SAI_LEARNINGS.md', '## Test Command\n\n`make test <in.txt >out.txt`\n');
+  assert.deepEqual([f.run().report.command, f.run().report.scoping_idiom], ['make test <in.txt >out.txt', null]);
+  write(f.root, 'SAI_LEARNINGS.md', '## Test Command\n\n`NODE_OPTIONS=$NODE_OPTIONS npm test`\n');
+  assert.equal(f.run().report.command, 'NODE_OPTIONS=$NODE_OPTIONS npm test');
+  write(f.root, 'SAI_LEARNINGS.md', '## Test Command\n\n`npm test` `npm test -- <test files>`\n*Observed:* demo\n');
+  assert.deepEqual([f.run().report.command, f.run().report.scoping_idiom], ['npm test', 'npm test -- <test files>'], 'the two-span form of the learnings format');
 });
 
 test('E5: a bun project runs its test script, and a test script under an unknown manager is ambiguous, never none', (t) => {
