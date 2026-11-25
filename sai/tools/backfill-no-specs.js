@@ -15,6 +15,7 @@ const path = require('node:path');
 const { verifyDocumentFile, checkDocument, parseIssueSections, sectionMap } = require('./change-document');
 const { exploreOriginHarness } = require('./openspec-yaml');
 const transfer = require('./transfer');
+const usageKit = require('./usage');
 
 const NAME = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -173,6 +174,23 @@ function compose(options) {
   return { ok: true, eligible: true, change_name: name, draft_references, warnings };
 }
 
+const BN = 'node sai/tools/backfill-no-specs.js';
+
+const USAGE = {
+  subcommands: {
+    compose: {
+      usage: [`${BN} compose --document-file <path> --document-hash <sha256> --change-name <name> --transfer-dir <dir> [--backlog-origin <url>] [--explore-origin <value>] [--created <YYYY-MM-DD>] [--cwd <root>]`],
+      notes: [
+        'Derives .openspec.yaml and proposal.md from a verified change document that declares `Specs: none` and prints one JSON object. Exit codes: 0 = composed;',
+        '1 = not eligible or failed; 2 = usage error. --backlog-origin and --explore-origin only carry an existing origin.',
+      ],
+      examples: [`${BN} compose --document-file document.md --document-hash 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef --change-name my-change --transfer-dir /path/to/transfer-dir --cwd /path/to/project`],
+      flags: { '--document-file': true, '--document-hash': true, '--change-name': true, '--transfer-dir': true, '--backlog-origin': true, '--explore-origin': true, '--created': true, '--cwd': true },
+      required: ['--document-file', '--document-hash', '--change-name', '--transfer-dir'],
+    },
+  },
+};
+
 function main(argv) {
   const [command, ...args] = argv;
   const options = {};
@@ -185,10 +203,17 @@ function main(argv) {
   return compose(options);
 }
 
-if (require.main === module) {
+// A usage error exits 2; a document that is not eligible or a failed composition (a domain failure) exits 1.
+function cli(argv) {
+  const guarded = usageKit.handle(USAGE, argv, {
+    json: info => (info.help ? { usage: info.usage, examples: info.examples } : { ok: false, error: info.cause, usage: info.usage, examples: info.examples }),
+  });
+  if (guarded !== null) return guarded;
   let result;
-  try { result = main(process.argv.slice(2)); } catch (error) { result = { ok: false, error: error.message }; }
+  try { result = main(argv); } catch (error) { result = { ok: false, error: error.message }; }
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-  process.exitCode = result.ok ? 0 : 1;
+  return result.ok ? 0 : 1;
 }
-module.exports = { compose, main, parseSections, BANNER, OUT_OF_SCOPE };
+
+if (require.main === module) process.exitCode = cli(process.argv.slice(2));
+module.exports = { compose, main, parseSections, BANNER, OUT_OF_SCOPE, USAGE };

@@ -40,6 +40,7 @@
 const fs = require('fs');
 const path = require('path');
 const { checkDocument } = require('./change-document.js');
+const usageKit = require('./usage');
 
 /** Usage error / tooling failure. Carries the exit code the caller sees. */
 class ToolError extends Error {
@@ -773,25 +774,47 @@ function checkWorkerEmissionOwnership(content) {
   return violations;
 }
 
+const LINT = 'node sai/tools/lint.js';
+const FILE_CHECK = (name, what, extra = {}) => ({
+  usage: [`${LINT} ${name} <file> [--json] [--cwd <dir>]`],
+  notes: [what],
+  examples: [`${LINT} ${name} ${extra.example || 'document.md'} --json`],
+  flags: { '--json': false, '--cwd': true, ...(extra.flags || {}) },
+  positionals: { min: 1, max: 1, names: ['file'] },
+  messages: { positional: 'file or text argument required' },
+});
+
+const USAGE = {
+  messages: { missingSubcommand: 'check name required', unknownSubcommand: name => `unknown check: ${name}` },
+  subcommands: {
+    'commit-rules': {
+      ...FILE_CHECK('commit-rules', 'Validates the format of a commit message file. --allow-attribution allows user-requested AI credit.', { example: 'message.txt', flags: { '--allow-attribution': false } }),
+      usage: [`${LINT} commit-rules <file> [--allow-attribution] [--json] [--cwd <dir>]`],
+    },
+    'pr-title-rules': {
+      usage: [`${LINT} pr-title-rules <title> [--json] [--cwd <dir>]`],
+      notes: ['Validates the format of a pull request title; the title text is the argument, not a file.'],
+      examples: [`${LINT} pr-title-rules "feat(scope): add the thing" --json`],
+      flags: { '--json': false, '--cwd': true },
+      positionals: { min: 1, max: 1, names: ['title'] },
+      messages: { positional: 'file or text argument required' },
+    },
+    'glossary-format': FILE_CHECK('glossary-format', 'Validates the format of GLOSSARY.md.', { example: 'GLOSSARY.md' }),
+    'change-document': FILE_CHECK('change-document', 'Validates the format of a change document.'),
+    'artifact-review': FILE_CHECK('artifact-review', 'Validates the format of an artifact review finding list.', { example: 'review-findings.md' }),
+    'audit-report': {
+      ...FILE_CHECK('audit-report', 'Validates a security, performance, or accessibility report against the template of that audit.', { example: 'openspec/changes/my-change/security.md', flags: { '--audit': Object.keys(AUDIT_LEVELS) } }),
+      usage: [`${LINT} audit-report <file> --audit <${Object.keys(AUDIT_LEVELS).join('|')}> [--json] [--cwd <dir>]`],
+      examples: [`${LINT} audit-report openspec/changes/my-change/security.md --audit security --json`],
+      required: ['--audit'],
+      messages: { required: { '--audit': `audit-report needs --audit <${Object.keys(AUDIT_LEVELS).join('|')}>.` } },
+    },
+    'sai-learnings-format': FILE_CHECK('sai-learnings-format', 'Validates the format of SAI_LEARNINGS.md.', { example: 'SAI_LEARNINGS.md' }),
+    'worker-emission-ownership': FILE_CHECK('worker-emission-ownership', 'Validates the emission ownership of a worker card.', { example: 'sai/commands/spec/worker.md' }),
+  },
+};
 function usage() {
-  return [
-    'Usage: node sai/tools/lint.js <check> <file|text> [--json] [--cwd <dir>]',
-    '',
-    '  <check>             Format check to run:',
-    '                      - commit-rules: Validate commit message format',
-    '                      - pr-title-rules: Validate pull request title format',
-    '                      - glossary-format: Validate GLOSSARY.md format',
-    '                      - change-document: Validate change document format',
-    '                      - artifact-review: Validate artifact review finding format',
-    '                      - audit-report: Validate a security, performance, or accessibility report (needs --audit)',
-    '                      - sai-learnings-format: Validate SAI_LEARNINGS.md format',
-    '                      - worker-emission-ownership: Validate worker card emission ownership',
-    '  <file|text>         File to check (for file-based checks) or text to validate (for pr-title-rules)',
-    '  --json              Emit the report as JSON on stdout',
-    '  --audit <name>      Audit of an audit-report check: security, performance, or accessibility',
-    '  --allow-attribution Allow user-requested AI credit in commit-rules only',
-    '  --cwd <dir>         Working directory for file resolution (default: current directory)',
-  ].join('\n');
+  return usageKit.render(USAGE);
 }
 
 function parseArgs(argv) {
@@ -830,6 +853,8 @@ function parseArgs(argv) {
 }
 
 function main(argv) {
+  const guarded = usageKit.handle(USAGE, argv);
+  if (guarded !== null) return guarded;
   const parsed = parseArgs(argv);
   if (parsed.error) {
     process.stderr.write(`${parsed.error}\n${usage()}\n`);
@@ -943,6 +968,7 @@ module.exports = {
   checkSaiLearningsFormat,
   checkWorkerEmissionOwnership,
   ToolError,
+  USAGE,
 };
 
 // Run CLI only when executed directly, not when required as a module

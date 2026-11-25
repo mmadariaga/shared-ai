@@ -27,6 +27,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync, execFile } = require('child_process');
 const { readOpenspecYaml } = require('./openspec-yaml');
+const usageKit = require('./usage');
 
 // The eight sai-workflow artifacts in canonical order
 const ARTIFACTS = ['proposal', 'specs', 'design', 'tasks', 'review', 'security', 'performance', 'accessibility'];
@@ -582,18 +583,28 @@ async function renderBulk(cwd, gatherFn, listFn) {
   };
 }
 
+const ST = 'node sai/tools/status.js';
+const BASE = { '--json': false, '--cwd': true };
+
+const USAGE = {
+  subcommands: {
+    panel: {
+      usage: [`${ST} panel <name> [--json] [--cwd <dir>]`],
+      notes: ['Renders the status panel for one change. Exit codes: 0 = done; 1 = refused; 2 = usage or error.'],
+      examples: [`${ST} panel my-change --json --cwd /path/to/project`],
+      flags: BASE,
+      positionals: { min: 1, max: 1, names: ['change-name'] },
+    },
+    bulk: {
+      usage: [`${ST} bulk [--json] [--cwd <dir>]`],
+      notes: ['Renders the status table for all changes.'],
+      examples: [`${ST} bulk --json --cwd /path/to/project`],
+      flags: BASE,
+    },
+  },
+};
 function usage() {
-  return [
-    'Usage: node sai/tools/status.js <sub-command> [args] [--json] [--cwd <dir>]',
-    '',
-    '  panel <name>             Render the status panel for one change.',
-    '  bulk                     Render the status table for all changes.',
-    '',
-    '  --json                   Emit the report as JSON on stdout.',
-    '  --cwd <dir>              Directory to resolve from (default: cwd).',
-    '',
-    'Exit codes: 0 = done; 1 = refused; 2 = usage or error.',
-  ].join('\n');
+  return usageKit.render(USAGE);
 }
 
 function parseArgs(argv) {
@@ -630,6 +641,8 @@ function render(payload, json) {
 }
 
 async function main(argv) {
+  const guarded = usageKit.handle(USAGE, argv);
+  if (guarded !== null) return guarded;
   const parsed = parseArgs(argv);
   if (parsed.error) {
     process.stderr.write(`${parsed.error}\n${usage()}\n`);
@@ -694,4 +707,4 @@ if (require.main === module) {
   })();
 }
 
-module.exports = { renderPanel, renderBulk, parseArgs, detectArchived, hasNotApplicableHeading, countTaskProgress, derivePanelCells };
+module.exports = { USAGE, renderPanel, renderBulk, parseArgs, detectArchived, hasNotApplicableHeading, countTaskProgress, derivePanelCells };

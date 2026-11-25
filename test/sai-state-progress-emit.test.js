@@ -214,6 +214,9 @@ test('progress emit (E6): a missing received_at clock exits 2 on every verb and 
     fs.mkdirSync(path.join(root, 'bin'));
     fs.copyFileSync(SAI_STATE_TOOL, path.join(root, 'bin', 'sai-state.js'));
     copyTree(path.join(REPO_ROOT, 'sai-state'), path.join(root, 'sai-state'));
+    // The usage renderer answers every invocation first, so the layout holds it while the clock and the validator are missing.
+    fs.mkdirSync(path.join(root, 'sai', 'tools'), { recursive: true });
+    fs.copyFileSync(path.join(REPO_ROOT, 'sai', 'tools', 'usage.js'), path.join(root, 'sai', 'tools', 'usage.js'));
     const tool = path.join(root, 'bin', 'sai-state.js');
     const id = spawnSession('progress-novalidator');
     try {
@@ -251,7 +254,7 @@ test('progress emit: the installed layout sai/{bin,sai-state,tools} resolves the
     fs.mkdirSync(path.join(sai, 'tools'), { recursive: true });
     fs.copyFileSync(SAI_STATE_TOOL, path.join(sai, 'bin', 'sai-state.js'));
     copyTree(path.join(REPO_ROOT, 'sai-state'), path.join(sai, 'sai-state'));
-    for (const file of ['worker-report-validator.js', 'yaml-subset.js', 'received-at.js', 'input-reader.js', 'temp-root.js', 'transfer.js']) {
+    for (const file of ['worker-report-validator.js', 'yaml-subset.js', 'received-at.js', 'input-reader.js', 'temp-root.js', 'transfer.js', 'usage.js']) {
       fs.copyFileSync(path.join(REPO_ROOT, 'sai', 'tools', file), path.join(sai, 'tools', file));
     }
     const tool = path.join(sai, 'bin', 'sai-state.js');

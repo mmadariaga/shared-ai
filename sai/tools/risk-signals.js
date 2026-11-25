@@ -9,6 +9,7 @@ const { execFileSync } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
+const usageKit = require('./usage');
 
 const LEVELS = ['low', 'medium', 'high'];
 // Pathspecs outside the measured code: the change artifacts and the learnings file a run promotes at close.
@@ -213,23 +214,40 @@ function validate(request, cwd) {
   return { status: 'ok', state: 'fresh', block };
 }
 
-const USAGE = 'Usage: node risk-signals.js compute --parent <branch> [--cwd <project-root>] | validate --parent <branch> --file <review.md> [--cwd <project-root>]';
+const USAGE = {
+  subcommands: {
+    compute: {
+      usage: ['node sai/tools/risk-signals.js compute --parent <branch> [--cwd <project-root>]'],
+      examples: ['node sai/tools/risk-signals.js compute --parent main --cwd /path/to/project'],
+      flags: { '--parent': true, '--cwd': true },
+      required: ['--parent'],
+    },
+    validate: {
+      usage: ['node sai/tools/risk-signals.js validate --parent <branch> --file <review.md> [--cwd <project-root>]'],
+      examples: ['node sai/tools/risk-signals.js validate --parent main --file openspec/changes/my-change/review.md'],
+      flags: { '--parent': true, '--file': true, '--cwd': true },
+      required: ['--parent', '--file'],
+    },
+  },
+};
+
+// A usage error keeps the `status` and `message` of every blocked answer and adds the usage block.
+function usageObject(info) {
+  return info.help ? { status: 'ok', usage: info.usage, examples: info.examples }
+    : { status: 'blocked', message: info.cause, usage: info.usage, examples: info.examples };
+}
 
 function main(argv) {
+  const guarded = usageKit.handle(USAGE, argv, { json: usageObject });
+  if (guarded !== null) return guarded;
   const options = {};
   try {
     const [operation, ...rest] = argv;
-    const allowed = { compute: ['--parent', '--cwd'], validate: ['--parent', '--file', '--cwd'] }[operation];
-    if (!allowed) throw new Error(USAGE);
-    for (let index = 0; index < rest.length; index += 2) {
-      if (!allowed.includes(rest[index]) || rest[index + 1] === undefined) throw new Error(USAGE);
-      options[rest[index].slice(2)] = rest[index + 1];
-    }
+    for (let index = 0; index < rest.length; index += 2) options[rest[index].slice(2)] = rest[index + 1];
     const cwd = options.cwd || process.cwd();
     let result;
     if (operation === 'compute') result = compute({ parent: options.parent }, cwd);
     else {
-      if (!options.file) throw new Error(USAGE);
       let text = null;
       try { text = fs.readFileSync(path.resolve(cwd, options.file), 'utf8'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
       result = validate({ parent: options.parent, text }, cwd);
@@ -243,4 +261,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
-module.exports = { compute, validate, extractBlock, main, LEVELS, THRESHOLDS };
+module.exports = { compute, validate, extractBlock, main, LEVELS, THRESHOLDS, USAGE };

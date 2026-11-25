@@ -4,6 +4,7 @@
 // Mechanical evidence only. Git mutations and semantic decisions stay with the caller.
 const fs = require('node:fs');
 const path = require('node:path');
+const usageKit = require('./usage');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 const { performance } = require('node:perf_hooks');
@@ -1238,27 +1239,133 @@ function collect(action, cwd, opts, stdin) {
   return result;
 }
 
+const MG = 'node sai/tools/merge.js';
+const COMMON = { '--cwd': true, '--json': false };
+const RECORD_IN = { '--record': true, '--record-hash': true };
+const STDIN_NOTE = 'The structured input is the UTF-8 JSON file of --input-file (stdin is also accepted).';
+
+const USAGE = {
+  subcommands: {
+    preflight: {
+      usage: [`${MG} preflight --cwd <root> [--json]`],
+      notes: ['Collects the preflight facts of the repository before an integration.'],
+      examples: [`${MG} preflight --cwd /path/to/project --json`],
+      flags: { ...COMMON, '--record': true },
+    },
+    provenance: {
+      usage: [`${MG} provenance --source-ref <full-ref> --method <merge|rebase> --squash <yes|no|not-applicable> --cwd <root> [--record <external-new-file>]`],
+      notes: ['Validates the ref, then captures the provenance; records the upstream facts of the current branch.'],
+      examples: [`${MG} provenance --source-ref refs/heads/feature --method merge --squash no --cwd /path/to/project --json`],
+      flags: { ...COMMON, '--source-ref': true, '--method': ['merge', 'rebase'], '--squash': ['yes', 'no', 'not-applicable'], '--record': true },
+      required: ['--source-ref', '--method'],
+    },
+    simulate: {
+      usage: [`${MG} simulate --source-ref <full-ref> --method <merge|rebase|squash> [--harness <claude|opencode>] --cwd <root>`],
+      notes: [
+        'Before the launch: predicts the stops with `git merge-tree --write-tree` (one step per replayed commit for rebase and squash, one for merge),',
+        'never touching the working tree, the index, or a ref. Writes the detail to a private file under the SAI temp root and prints the summary,',
+        'the repeated files, and the file path and hash; not-applicable with a reason when the prediction cannot run. It writes its own file: --record does not apply.',
+      ],
+      examples: [`${MG} simulate --source-ref refs/heads/feature --method rebase --harness claude --cwd /path/to/project`],
+      flags: { ...COMMON, '--source-ref': true, '--method': ['merge', 'rebase', 'squash'], '--harness': ['claude', 'opencode'] },
+      required: ['--source-ref', '--method'],
+    },
+    conflicts: {
+      usage: [`${MG} conflicts --record <external-new-file> --cwd <root>`],
+      notes: ['The record holds the complete containment indicators of each file; stdout carries their bounded summary and the conflict signature of each file.'],
+      examples: [`${MG} conflicts --record /path/to/run-dir/stop-1-snapshot.json --cwd /path/to/project`],
+      flags: { ...COMMON, '--record': true },
+      required: ['--record'],
+    },
+    correction: {
+      usage: [`${MG} correction --record <external-new-file> --input-file <path> --cwd <root>`],
+      notes: ['The authorized region inventory of the correction is the JSON in the input file (stdin is also accepted).'],
+      examples: [`${MG} correction --record /path/to/run-dir/correction-snapshot.json --input-file correction-regions.json --cwd /path/to/project`],
+      flags: { ...COMMON, '--record': true, '--input-file': true },
+      required: ['--record'],
+    },
+    bundle: {
+      usage: [`${MG} bundle --record <snapshot-file> --record-hash <sha256> [--context <0-20>] [--out <external-new-file>] --cwd <root>`],
+      notes: [
+        'Each conflict region with its three versions, bounded context (default 3 lines), the conflict category, and each side\'s commit messages;',
+        'with --out the bundle goes to the file and stdout prints its summary and hash.',
+      ],
+      examples: [`${MG} bundle --record /path/to/run-dir/stop-1-snapshot.json --record-hash 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef --out /path/to/run-dir/stop-1-bundle.json --cwd /path/to/project`],
+      flags: { ...COMMON, ...RECORD_IN, '--context': true, '--out': true },
+      required: ['--record', '--record-hash'],
+    },
+    write: {
+      usage: [`${MG} write --record <snapshot-file> --record-hash <sha256> [--input <payload-file>] --cwd <root>`],
+      notes: [
+        'The payload is {"conflict_id", "text"} or {"conflict_id", "segments"} (each segment {"side": "ours"|"theirs"|"base"} or {"text"}), or an array of them,',
+        'from the UTF-8 JSON file of --input or from stdin, never both. It splices the resolved text keeping the encoding, BOM, and line endings of the file;',
+        'a rejection writes nothing.',
+      ],
+      examples: [`${MG} write --record /path/to/run-dir/stop-1-snapshot.json --record-hash 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef --input /path/to/run-dir/stop-1-resolution.json --cwd /path/to/project`],
+      flags: { ...COMMON, ...RECORD_IN, '--input': true, '--input-file': true },
+      required: ['--record', '--record-hash'],
+    },
+    valid: {
+      usage: [`${MG} valid --input-file <path> --cwd <root> [--record <external-new-file>]`],
+      notes: ['Checks the validity of a receipt (JSON in the input file; stdin is also accepted).'],
+      examples: [`${MG} valid --input-file receipt.json --cwd /path/to/project`],
+      flags: { ...COMMON, '--input-file': true, '--record': true },
+    },
+    resolution: {
+      usage: [`${MG} resolution --record <snapshot-file> --record-hash <sha256> --source <original-worker-result-file> --confirmed <decision-json-file> [--phase <authored|materialized>] [--partial] --cwd <root>`],
+      notes: ['--partial checks only the files the resolution names.'],
+      examples: [`${MG} resolution --record /path/to/run-dir/stop-1-snapshot.json --record-hash 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef --source worker-result.json --confirmed decisions.json --phase materialized --partial --cwd /path/to/project`],
+      flags: { ...COMMON, ...RECORD_IN, '--source': true, '--confirmed': true, '--phase': ['authored', 'materialized'], '--partial': false },
+      required: ['--record', '--record-hash', '--source', '--confirmed'],
+    },
+    verify: {
+      usage: [`${MG} verify --command <test-command-line> --cwd <root> [--record <external-new-file>]`],
+      notes: [
+        'Runs once the exact command line the coordinator built from `test-select.js command` and `select`; this tool never discovers a suite.',
+        'Failing tests are named in `failing` when the output allows it.',
+      ],
+      examples: [`${MG} verify --command "npm test" --cwd /path/to/project`],
+      flags: { ...COMMON, '--command': true, '--record': true },
+      required: ['--command'],
+      messages: { required: { '--command': 'verify requires --command' } },
+    },
+    collision: {
+      usage: [`${MG} collision --input-file <path> --cwd <root> [--record <external-new-file>]`],
+      notes: [STDIN_NOTE],
+      examples: [`${MG} collision --input-file collision-request.json --cwd /path/to/project`],
+      flags: { ...COMMON, '--input-file': true, '--record': true },
+    },
+    duplicates: {
+      usage: [`${MG} duplicates --input-file <path> --cwd <root> [--record <external-new-file>]`],
+      notes: [
+        'The input holds the captured provenance. Reports the blocks of 4 or more significant lines (blank and punctuation-only lines excluded) that the final tree',
+        '(the index) holds twice in one file while each side holds them at most once there, with the path:line and byte range of every occurrence.',
+      ],
+      examples: [`${MG} duplicates --input-file provenance.json --cwd /path/to/project --record /path/to/run-dir/duplicates-receipt.json`],
+      flags: { ...COMMON, '--input-file': true, '--record': true },
+    },
+    status: {
+      usage: [`${MG} status --cwd <root> [--record <external-new-file>]`],
+      notes: ['Reports the state of the integration in progress.'],
+      examples: [`${MG} status --cwd /path/to/project --json`],
+      flags: { ...COMMON, '--record': true },
+    },
+  },
+};
+
+// A usage error keeps the `outcome` and `error` keys of every failed answer and adds the usage block.
+const usageObject = info => (info.help ? { usage: info.usage, examples: info.examples }
+  : { outcome: 'failure', error: info.cause, usage: info.usage, examples: info.examples });
+
 function main(argv) {
+  const guarded = usageKit.handle(USAGE, argv, { json: usageObject });
+  if (guarded !== null) return guarded;
   const opts = { cwd: process.cwd() }; let action;
   const flags = ['cwd', 'source-ref', 'method', 'squash', 'record', 'record-hash', 'source', 'confirmed', 'phase', 'command', 'context', 'input', 'input-file', 'out', 'harness'];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--json') continue;
     if (arg === '--partial') { opts.partial = true; continue; }
-    if (arg === '--help') {
-      process.stdout.write('Usage: node merge.js <preflight|provenance|simulate|conflicts|correction|bundle|write|valid|resolution|verify|collision|duplicates|status> --cwd <root> [--json]\n'
-        + 'provenance: --source-ref <full-ref> --method merge|rebase --squash yes|no|not-applicable (validates the ref, then captures; records the upstream facts of the current branch)\n'
-        + 'simulate: --source-ref <full-ref> --method merge|rebase|squash [--harness claude|opencode] (before the launch: predicts the stops with git merge-tree --write-tree, one step per replayed commit for rebase and squash and one for merge, never touching the working tree, the index, or a ref; after a predicted stop the next step starts from the current tip\'s version of each conflicted file, as the whole-side shortcut resolves it; writes the detail to a private file under the SAI temp root and prints the summary, the repeated files, and the file\'s path and hash; not-applicable with a reason when the prediction cannot run)\n'
-        + 'valid/collision/duplicates: receipt JSON in --input-file <path> (stdin also accepted); duplicates takes the captured provenance and, with --record <external-new-file>, saves its receipt; conflicts/correction: --record <external-new-file>; correction: authorized region inventory in --input-file <path> (stdin also accepted)\n'
-        + 'verify: --command <test-command-line> (one run of the exact command line the coordinator built from `test-select.js command` and `select`; this tool never discovers a suite; failing tests are named in `failing` when the output allows it)\n'
-        + 'conflicts: the record holds the complete containment indicators of each file; stdout carries their bounded summary and the conflict signature of each file (path, category, region count, ours and theirs line counts per region, and the id a saved procedure is matched by)\n'
-        + 'bundle: --record <snapshot-file> --record-hash <sha256> [--context <0-20 lines, default 3>] [--out <external-new-file>] (each conflict region with its three versions, bounded context, the conflict category, and each side\'s commit messages; with --out the bundle goes to the file and stdout prints its summary and hash)\n'
-        + 'write: --record <snapshot-file> --record-hash <sha256> [--input <payload-file>]; {"conflict_id", "text"} or {"conflict_id", "segments"} (each segment {"side": "ours"|"theirs"|"base"} or {"text"}, concatenated from the snapshot), or an array of them, from the UTF-8 JSON file or from stdin, never both (splices resolved text keeping the file\'s encoding, BOM and line endings; a rejection writes nothing)\n'
-        + 'resolution: --record <snapshot-file> --record-hash <sha256> --source <original-worker-result-file> --confirmed <decision-json-file> [--phase authored|materialized] [--partial] (--partial checks only the files the resolution names)\n'
-        + 'duplicates: the blocks of 4 or more significant lines (blank and punctuation-only lines excluded) that the final tree (the index) holds twice in one file while each side holds them at most once there, with the path:line and byte range of every occurrence\n'
-        + 'Exit: 0 success/non-applicability; 1 failed assertion; 2 usage/collection error.\n');
-      return 0;
-    }
     if (arg.startsWith('--')) {
       const name = arg.slice(2);
       if (!flags.includes(name) || !argv[i + 1] || argv[i + 1].startsWith('--')) throw new Error(`invalid flag: ${arg}`);
@@ -1300,4 +1407,4 @@ if (require.main === module) {
   try { process.exitCode = main(process.argv.slice(2)); }
   catch (error) { process.stdout.write(JSON.stringify({ outcome: 'failure', error: error.message }) + '\n'); process.exitCode = 2; }
 }
-module.exports = { preflight, provenance, simulate, repeatedFiles, conflicts, correction, bundle, write, valid, regions, checkResolution, verify, failingTests, collision, duplicates, status, state, main };
+module.exports = { preflight, provenance, simulate, repeatedFiles, conflicts, correction, bundle, write, valid, regions, checkResolution, verify, failingTests, collision, duplicates, status, state, main, USAGE };

@@ -47,6 +47,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { structuralLines, extractRequirementName } = require('./spec-scenarios.js');
+const usageKit = require('./usage');
 
 class ToolError extends Error {}
 
@@ -659,21 +660,24 @@ function computePlan(root, change, options) {
 // command line
 // ---------------------------------------------------------------------------
 
-function usage() {
-  return [
-    'Usage: node sai/tools/archive-plan.js plan <change-name> [--json] [--cwd <root>]',
-    '         [--implementer-paths-file <path>] [--implementer-path <path>]... [--drafts-dir <dir>]',
-    '',
-    '  plan                       Print the read-only archive plan of the change as JSON.',
-    '  --cwd <root>               Project root (default: the working directory).',
-    '  --implementer-paths-file   One repository-relative path per line (Direct Build).',
-    '  --implementer-path         One such path as an argument; repeatable.',
-    '  --drafts-dir               Transfer directory with the draft .openspec.yaml and proposal.md.',
-    '',
-    'Exit codes: 0 plan; 1 plan refused (reason and summary on stdout); 2 usage or tooling error.',
-  ].join('\n');
-}
-
+const USAGE = {
+  subcommands: {
+    plan: {
+      usage: ['node sai/tools/archive-plan.js plan <change-name> [--json] [--cwd <root>] [--implementer-paths-file <path>] [--implementer-path <path> ...] [--drafts-dir <dir>]'],
+      notes: [
+        'Prints the read-only archive plan of the change as JSON. --implementer-paths-file holds one repository-relative path per line',
+        '(Direct Build); --implementer-path gives one such path and is repeatable; --drafts-dir is the transfer directory with the draft',
+        '.openspec.yaml and proposal.md. Exit codes: 0 = plan; 1 = plan refused (reason and summary on stdout); 2 = usage or tooling error.',
+      ],
+      examples: [
+        'node sai/tools/archive-plan.js plan my-change --json --cwd /path/to/project',
+        'node sai/tools/archive-plan.js plan my-change --json --implementer-paths-file implementer-paths.txt --drafts-dir /path/to/transfer-dir',
+      ],
+      flags: { '--json': false, '--cwd': true, '--implementer-paths-file': true, '--implementer-path': true, '--drafts-dir': true },
+      positionals: { min: 1, max: 1, names: ['change-name'] },
+    },
+  },
+};
 function parseArgs(argv) {
   const options = { command: null, change: null, cwd: process.cwd(), implementerPathsFile: null, implementerPaths: [], draftsDir: null, help: false };
   const valued = { '--cwd': 'cwd', '--implementer-paths-file': 'implementerPathsFile', '--drafts-dir': 'draftsDir' };
@@ -698,6 +702,11 @@ function parseArgs(argv) {
 }
 
 function main(argv, stdout = process.stdout) {
+  const guarded = usageKit.handle(USAGE, argv, {
+    stdout,
+    json: info => (info.help ? { usage: info.usage, examples: info.examples } : { ok: false, error: info.cause, usage: info.usage, examples: info.examples }),
+  });
+  if (guarded !== null) return guarded;
   const print = (payload) => stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
   try {
     const options = parseArgs(argv);
@@ -721,4 +730,4 @@ function main(argv, stdout = process.stdout) {
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
 
-module.exports = { computePlan, parseMetadata, parseDelta, emptiesCapability, closingLineOf, main };
+module.exports = { computePlan, parseMetadata, parseDelta, emptiesCapability, closingLineOf, main, USAGE };

@@ -40,15 +40,38 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { extractInputFile, readInputFile, InputFileError } = require('./input-reader');
 const { resolveOpencode, SHIM_UNRESOLVED } = require('./opencode-launcher');
+const usageKit = require('./usage');
 
 const AGENT = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const SESSION = /^[A-Za-z0-9_-]+$/;
 const HARNESS_KEY = /^harness:\s*(.*?)\s*$/;
-const USAGE = [
-  'Usage: node opencode-dispatch.js route --agent <name> [--cwd <project-root>]',
-  '       node opencode-dispatch.js start --agent <name> --input-file <path> [--cwd <project-root>]',
-  '       node opencode-dispatch.js continue --session <sessionID> --input-file <path> [--agent <name>] [--cwd <project-root>]',
-].join('\n');
+const OD = 'node sai/tools/opencode-dispatch.js';
+
+const USAGE = {
+  subcommands: {
+    route: {
+      usage: [`${OD} route --agent <name> [--cwd <project-root>]`],
+      notes: ['Reads `harness:` from the agent file Claude Code resolves and checks the opencode binary and an opencode agent of the same name; prints `claude` or `opencode` with the cause.'],
+      examples: [`${OD} route --agent budget-explorer --cwd /path/to/project`],
+      flags: { '--agent': { once: true }, '--cwd': { once: true } },
+      required: ['--agent'],
+    },
+    start: {
+      usage: [`${OD} start --agent <name> --input-file <path> [--cwd <project-root>]`],
+      notes: ['Runs one `opencode run --format json` turn that creates the session of the agent; the message is the input file.'],
+      examples: [`${OD} start --agent budget-explorer --input-file message.txt --cwd /path/to/project`],
+      flags: { '--agent': { once: true }, '--input-file': { once: true }, '--cwd': { once: true } },
+      required: ['--agent', '--input-file'],
+    },
+    continue: {
+      usage: [`${OD} continue --session <sessionID> --input-file <path> [--agent <name>] [--cwd <project-root>]`],
+      notes: ['Runs one turn that sends the message of the input file to an existing session.'],
+      examples: [`${OD} continue --session ses_0123456789abcdef --input-file message.txt --cwd /path/to/project`],
+      flags: { '--session': { once: true }, '--input-file': { once: true }, '--agent': { once: true }, '--cwd': { once: true } },
+      required: ['--session', '--input-file'],
+    },
+  },
+};
 const PROBE_TIMEOUT_MS = 20000;
 
 /** A misuse of the command line (exit 2). */
@@ -258,6 +281,8 @@ function parseArguments(argv) {
 }
 
 async function main(argv) {
+  const guarded = usageKit.handle(USAGE, argv);
+  if (guarded !== null) return guarded;
   let options;
   let message;
   try {
@@ -265,7 +290,7 @@ async function main(argv) {
     if (options.command !== 'route') message = readInputFile(options.inputFile);
   } catch (error) {
     if (!(error instanceof UsageError) && !(error instanceof InputFileError)) throw error;
-    process.stderr.write(`${error.message}\n${USAGE}\n`);
+    process.stderr.write(`${usageKit.error(USAGE, usageKit.recognized(USAGE, argv), error.message)}\n`);
     return 2;
   }
   if (options.command === 'route') {
@@ -281,4 +306,4 @@ if (require.main === module) {
   main(process.argv.slice(2)).then(code => { process.exitCode = code; });
 }
 
-module.exports = { route, checkAgents, FALLBACK_CAUSES, turn, readEvents, runArguments, harnessOf, parseArguments, UsageError };
+module.exports = { route, checkAgents, FALLBACK_CAUSES, turn, readEvents, runArguments, harnessOf, parseArguments, UsageError, USAGE };

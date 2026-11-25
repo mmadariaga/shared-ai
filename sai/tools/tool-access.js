@@ -29,16 +29,36 @@ function missingNotices(discards) {
     .map(item => `> Research tool unavailable: ${item.tool} — ${item.reason}. ${item.remediation}`);
 }
 
-module.exports = { verifyAccess, missingNotices };
+const usage = require('./usage');
+
+const INPUT_FLAGS = { '--input-file': true };
+const USAGE = {
+  subcommands: {
+    verify: {
+      usage: ['node sai/tools/tool-access.js verify --input-file <path>'],
+      examples: ['node sai/tools/tool-access.js verify --input-file verify-input.json'],
+      flags: INPUT_FLAGS,
+    },
+    notices: {
+      usage: ['node sai/tools/tool-access.js notices --input-file <path>'],
+      examples: ['node sai/tools/tool-access.js notices --input-file notices-input.json'],
+      flags: INPUT_FLAGS,
+    },
+  },
+};
+
+module.exports = { verifyAccess, missingNotices, USAGE };
 
 if (require.main === module) {
-  try {
+  const guarded = usage.handle(USAGE, process.argv.slice(2));
+  if (guarded !== null) process.exitCode = guarded;
+  else try {
     const { extractInputFile, readInput } = require('./input-reader');
     const { argv, inputFile } = extractInputFile(process.argv.slice(2));
     const input = JSON.parse(readInput(inputFile));
     const report = argv[0] === 'notices' ? { notices: missingNotices(input.ladder_discards) }
       : argv[0] === 'verify' ? verifyAccess(input.required, input.evidence)
-        : (() => { throw new Error('Usage: tool-access.js verify|notices --input-file <path> (JSON in the input file; stdin also accepted)'); })();
+        : (() => { throw new Error(usage.error(USAGE, null, 'subcommand required')); })();
     process.stdout.write(JSON.stringify(report) + '\n');
     if (report.verdict === 'incomplete') process.exitCode = 1;
   } catch (error) {

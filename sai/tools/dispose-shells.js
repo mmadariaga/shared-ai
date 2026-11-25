@@ -39,11 +39,23 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const { resolveOpencode } = require('./opencode-launcher');
+const usageKit = require('./usage');
 
 const CHAIN_ID = /^[0-9a-f]{16}$/;
 const SESSION = /^[A-Za-z0-9_-]+$/;
 const SHELL = /^sh_[A-Za-z0-9_-]+$/;
-const USAGE = 'Usage: node dispose-shells.js --session <sessionID> [--session <sessionID> ...] --cwd <project-root>';
+const USAGE = {
+  general: {
+    usage: ['node sai/tools/dispose-shells.js --session <sessionID> [--session <sessionID> ...] --cwd <project-root>'],
+    notes: ['Removes the running shells of each worker session (the opencode stop call). Several --session flags share one listing.'],
+    examples: [
+      'node sai/tools/dispose-shells.js --session ses_0123456789abcdef --cwd /path/to/project',
+      'node sai/tools/dispose-shells.js --session ses_0123456789abcdef --session ses_fedcba9876543210 --cwd /path/to/project',
+    ],
+    flags: { '--session': true, '--cwd': { once: true } },
+    required: ['--session', '--cwd'],
+  },
+};
 const WORST_FIRST = ['unavailable', 'failed', 'removed', 'none'];
 const CALL_TIMEOUT_MS = 20000;
 
@@ -217,7 +229,7 @@ function parseArguments(args) {
   const sessions = [];
   const values = {};
   for (let i = 0; i < args.length; i += 2) {
-    if (!['--session', '--cwd'].includes(args[i]) || i + 1 >= args.length) throw new UsageError(USAGE);
+    if (!['--session', '--cwd'].includes(args[i]) || i + 1 >= args.length) throw new UsageError(`Unexpected argument ${args[i]}`);
     if (args[i] === '--session') sessions.push(args[i + 1]);
     else if (values.cwd !== undefined) throw new UsageError('--cwd accepts one value');
     else values.cwd = args[i + 1];
@@ -226,6 +238,10 @@ function parseArguments(args) {
 }
 
 function main(argv) {
+  const guarded = usageKit.handle(USAGE, argv, {
+    json: info => (info.help ? { usage: info.usage, examples: info.examples } : { status: 'error', message: info.cause, usage: info.usage, examples: info.examples }),
+  });
+  if (guarded !== null) return guarded;
   try {
     const result = disposeShells(parseArguments(argv));
     process.stdout.write(`${JSON.stringify(result)}\n`);
@@ -239,4 +255,4 @@ function main(argv) {
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
 
-module.exports = { UsageError, disposeShells, parseArguments, splitCommand, warmChain, main };
+module.exports = { USAGE, UsageError, disposeShells, parseArguments, splitCommand, warmChain, main };

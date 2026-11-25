@@ -33,6 +33,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const usageKit = require('./usage');
 
 /** The value returned for the bulk-view option, so it can never collide with
  * a change name: `openspec` change names are directory names. */
@@ -178,30 +179,32 @@ function commandResolve(cwd, suppliedName, { bulkOption = false } = {}) {
   };
 }
 
+const USAGE = {
+  notes: [
+    'The caller presents the question and owns every user-facing literal; this tool never prints a question and never assumes an answer.',
+    'Exit codes: 0 = resolved or option set reported; 1 = refused, no active change to pick; 2 = usage or CLI error.',
+  ],
+  subcommands: {
+    resolve: {
+      usage: ['node sai/tools/change-picker.js resolve [supplied-name] [--bulk-option] [--json] [--cwd <dir>]'],
+      notes: [
+        'Resolves the OpenSpec change name. A non-empty supplied name wins outright (outcome supplied); otherwise the active',
+        'change list decides: one change reports outcome confirm, two or more report outcome select.',
+        '--bulk-option prepends the bulk-view option ("See all") to the two-or-more option set (sai-status only).',
+        'Exit codes: 0 = resolved or option set reported; 1 = refused, no active change to pick; 2 = usage or CLI error.',
+      ],
+      examples: [
+        'node sai/tools/change-picker.js resolve --json --cwd /path/to/project',
+        'node sai/tools/change-picker.js resolve my-change --json',
+        'node sai/tools/change-picker.js resolve --bulk-option --json',
+      ],
+      flags: { '--bulk-option': false, '--json': false, '--cwd': true },
+      positionals: 1,
+    },
+  },
+};
 function usage() {
-  return [
-    'Usage: node sai/tools/change-picker.js resolve [supplied-name] [--bulk-option] [--json] [--cwd <dir>]',
-    '',
-    '  resolve [supplied-name]  Resolve the OpenSpec change name. A non-empty',
-    '                           supplied name wins outright (outcome supplied);',
-    '                           otherwise the active change list decides: one change',
-    '                           reports outcome confirm with a yes/no option set and',
-    '                           the candidate name, two or more report outcome select',
-    '                           with one option per change in list order.',
-    '',
-    '  --bulk-option            Prepend the bulk-view option (label "See all", value',
-    '                           "see-all") to the two-or-more option set. Used by',
-    '                           sai-status only; it is never offered on the zero- or',
-    '                           one-change branches.',
-    '  --json                   Emit the report as JSON on stdout.',
-    '  --cwd <dir>              Project root to resolve from (default: cwd).',
-    '',
-    'The caller presents the question and owns every user-facing literal; this',
-    'tool never prints a question and never assumes an answer.',
-    '',
-    'Exit codes: 0 = resolved or option set reported; 1 = refused, no active',
-    'change to pick; 2 = usage or CLI error.',
-  ].join('\n');
+  return usageKit.render(USAGE);
 }
 
 function parseArgs(argv) {
@@ -235,6 +238,8 @@ function render(payload, json) {
 }
 
 function main(argv) {
+  const guarded = usageKit.handle(USAGE, argv);
+  if (guarded !== null) return guarded;
   const parsed = parseArgs(argv);
   if (parsed.error) {
     process.stderr.write(`${parsed.error}\n${usage()}\n`);
@@ -284,4 +289,4 @@ if (require.main === module) {
   process.exitCode = main(process.argv.slice(2));
 }
 
-module.exports = { main, commandResolve, listChangeNames, usage, BULK_VALUE };
+module.exports = { main, commandResolve, listChangeNames, usage, USAGE, BULK_VALUE };

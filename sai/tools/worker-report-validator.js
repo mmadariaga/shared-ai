@@ -54,6 +54,7 @@ const path = require('path');
 const { Readable } = require('stream');
 const inputReader = require('./input-reader');
 const { parseYaml } = require('./yaml-subset');
+const usageKit = require('./usage');
 
 /** Valid terminal statuses. */
 const VALID_STATUSES = ['completed', 'needs_input', 'failed', 'cancelled'];
@@ -534,35 +535,46 @@ function validateFile(dir, reference, kind, options = {}) {
     ...(verdict.ok ? { payload: parsePayloadText(text).payload } : {}) };
 }
 
+const USAGE = {
+  subcommands: {
+    validate: {
+      usage: [
+        'node sai/tools/worker-report-validator.js validate --kind <terminal|progress> [--command <name>] --input-file <path> [--json] [--cwd <dir>]',
+        'node sai/tools/worker-report-validator.js validate --kind <terminal|progress> [--command <name>] --report-dir <dir> --report-file <path> --report-hash <sha256> [--json]',
+      ],
+      notes: [
+        '--kind is mandatory. --command names the command whose role fields and `outcome` values a terminal report may',
+        'carry (mandatory for --kind terminal, none for a progress report).',
+        `--command is one of: ${Object.keys(COMMAND_OUTCOMES).join(', ')}.`,
+        'Without --input-file the payload is read from stdin. The three --report-* flags verify a private transfer file',
+        'and validate the same bytes; they are required together, and a relative --report-file resolves against --report-dir.',
+        'Exit codes: 0 = valid; 1 = delivery or validation failed; 2 = usage or I/O error.',
+      ],
+      examples: [
+        'node sai/tools/worker-report-validator.js validate --kind terminal --command implement --json --report-dir /path/to/report-dir --report-file red-step-1.json --report-hash 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+        'node sai/tools/worker-report-validator.js validate --kind progress --json --input-file progress.yaml',
+      ],
+      flags: {
+        '--kind': VALID_KINDS,
+        '--command': Object.keys(COMMAND_OUTCOMES),
+        '--input-file': true,
+        '--report-dir': true,
+        '--report-file': true,
+        '--report-hash': true,
+        '--json': false,
+        '--cwd': true,
+      },
+      required: ['--kind'],
+      messages: {
+        required: { '--kind': `validate requires --kind with one of: ${VALID_KINDS.join(', ')}` },
+        invalid: { '--kind': value => `invalid --kind value: ${value}`, '--command': value => `invalid --command value: ${value}` },
+      },
+    },
+  },
+};
+
 function usage() {
-  return [
-    'Usage: node sai/tools/worker-report-validator.js validate --kind <kind> [--command <name>] --input-file <path> [--json] [--cwd <dir>]',
-    '',
-    '  validate                 Read a closed payload from the input file (or stdin) and validate it.',
-    '  --input-file <path>      File holding the payload; without it the payload is read from stdin.',
-    '  --report-dir <dir> --report-file <path> --report-hash <sha256>',
-    '                           Instead verify a private transfer file and validate the same bytes.',
-    '                           A relative --report-file resolves against --report-dir; a path that escapes it is refused.',
-    '                           All three flags are required together; stdin is not read.',
-    '                           JSON includes outcome and, only on acceptance, the parsed payload.',
-    '',
-    '  --kind <kind>            Mandatory: the payload kind to validate.',
-    `                           One of: ${VALID_KINDS.join(', ')}.`,
-    '                           Omitting the flag or passing an invalid kind is a usage',
-    '                           error (exit 2).',
-    '  --command <name>         The command whose role fields and `outcome` values a terminal',
-    '                           report may carry; its shape is closed to them.',
-    `                           One of: ${Object.keys(COMMAND_OUTCOMES).join(', ')}.`,
-    '                           Mandatory for --kind terminal (usage error, exit 2, without it);',
-    '                           a progress report takes none.',
-    '',
-    '  --json                   Emit the report as JSON on stdout.',
-    '  --cwd <dir>              Working directory (for symmetry with other tools; not',
-    '                           currently used by the validator).',
-    '',
-    'Exit codes: 0 = ok; 1 = delivery or validation failed; 2 = usage or IO error.',
-    'The JSON response carries received_at (CLI reception time) as its first key.',
-  ].join('\n');
+  return usageKit.render(USAGE, 'validate');
 }
 
 function parseArgs(argv) {
@@ -605,6 +617,8 @@ function render(payload, json) {
 }
 
 async function main(argv) {
+  const guarded = usageKit.handle(USAGE, argv);
+  if (guarded !== null) return guarded;
   const parsed = parseArgs(argv);
   if (parsed.error) {
     process.stderr.write(`${parsed.error}\n${usage()}\n`);
@@ -683,6 +697,7 @@ module.exports = {
   validateProgress,
   generateReceivedAt,
   usage,
+  USAGE,
   VALID_STATUSES,
   VALID_FAILURE_CLASSES,
   VALID_KINDS,

@@ -69,7 +69,7 @@ test('the budget reports are not added to the validator, and transfer.js gains n
   const validator = read('sai/tools/worker-report-validator.js');
   assert.doesNotMatch(validator, /\bbudget\b\s*:/);
   const usage = spawnSync(process.execPath, [path.join(repoRoot, 'sai/tools/transfer.js'), '--help'], { encoding: 'utf8' });
-  const commands = [...usage.stdout.matchAll(/^\s+node transfer\.js (\S+)/gm)].map(match => match[1]);
+  const commands = [...JSON.parse(usage.stdout).usage.matchAll(/node sai\/tools\/transfer\.js (\S+)/g)].map(match => match[1]);
   assert.deepEqual(commands, ['open', 'put', 'verify', 'materialize', 'accept', 'watch', 'retire-handle', 'live', 'close']);
 });
 

@@ -35,6 +35,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const usageKit = require('./usage');
 
 const CASE_SENSITIVE = process.platform !== 'win32';
 
@@ -383,25 +384,49 @@ function finishBranchDeletion(cwd, branch, forced, details) {
   return { ok: true, action: 'delete-branch', branch, forced, ...details };
 }
 
+const WT = 'node sai/tools/worktree.js';
+const BASE = { '--json': false, '--cwd': true };
+
+const USAGE = {
+  subcommands: {
+    inventory: {
+      usage: [`${WT} inventory [--json] [--cwd <dir>]`],
+      notes: ['Prunes stale bookkeeping and reports every registered worktree plus the next free numbered slot.'],
+      examples: [`${WT} inventory --json --cwd /path/to/project`],
+      flags: BASE,
+    },
+    create: {
+      usage: [`${WT} create [name] [--json] [--cwd <dir>]`],
+      notes: ['Creates a sibling worktree on a derived branch; the name defaults to the reported free slot.'],
+      examples: [`${WT} create --json --cwd /path/to/project`, `${WT} create my-worktree --json --cwd /path/to/project`],
+      flags: BASE,
+      positionals: { max: 1, names: ['name'] },
+    },
+    index: {
+      usage: [`${WT} index <path> [--json] [--cwd <dir>]`],
+      notes: ['Best-effort codegraph init pass on a created worktree.'],
+      examples: [`${WT} index /path/to/worktree --json`],
+      flags: BASE,
+      positionals: { min: 1, max: 1, names: ['path'] },
+    },
+    remove: {
+      usage: [`${WT} remove <path> [--force] [--json] [--cwd <dir>]`],
+      notes: ['Removes a registered worktree. --force is required when it holds uncommitted changes.'],
+      examples: [`${WT} remove /path/to/worktree --json --cwd /path/to/project`],
+      flags: { ...BASE, '--force': false },
+      positionals: { min: 1, max: 1, names: ['path'] },
+    },
+    'delete-branch': {
+      usage: [`${WT} delete-branch <branch> [--force] [--json] [--cwd <dir>]`],
+      notes: ['Deletes a branch. --force is required when it holds unmerged commits or the merge check cannot run.'],
+      examples: [`${WT} delete-branch feat/old-branch --json --cwd /path/to/project`],
+      flags: { ...BASE, '--force': false },
+      positionals: { min: 1, max: 1, names: ['branch'] },
+    },
+  },
+};
 function usage() {
-  return [
-    'Usage: node sai/tools/worktree.js <sub-command> [args] [--json] [--cwd <dir>]',
-    '',
-    '  inventory                Prune stale bookkeeping and report every registered',
-    '                           worktree plus the next free numbered slot.',
-    '  create [name]            Create a sibling worktree on a derived branch.',
-    '                           Defaults to the reported free slot.',
-    '  index <path>             Best-effort codegraph init pass on a created worktree.',
-    '  remove <path>            Remove a registered worktree. --force is required when',
-    '                           it holds uncommitted changes.',
-    '  delete-branch <branch>   Delete a branch. --force is required when it holds',
-    '                           unmerged commits or the merge check cannot run.',
-    '',
-    '  --json                   Emit the report as JSON on stdout.',
-    '  --cwd <dir>              Directory to resolve the repository from (default: cwd).',
-    '',
-    'Exit codes: 0 = done; 1 = refused, nothing mutated; 2 = usage or git error.',
-  ].join('\n');
+  return usageKit.render(USAGE);
 }
 
 function parseArgs(argv) {
@@ -445,6 +470,8 @@ function render(payload, json) {
 }
 
 function main(argv) {
+  const guarded = usageKit.handle(USAGE, argv);
+  if (guarded !== null) return guarded;
   const parsed = parseArgs(argv);
   if (parsed.error) {
     process.stderr.write(`${parsed.error}\n${usage()}\n`);
@@ -506,4 +533,4 @@ if (require.main === module) {
   process.exitCode = main(process.argv.slice(2));
 }
 
-module.exports = { main, parsePorcelain, deriveBranch, findFreeSlot, usage };
+module.exports = { main, parsePorcelain, deriveBranch, findFreeSlot, usage, USAGE };

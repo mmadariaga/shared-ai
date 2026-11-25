@@ -41,6 +41,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const usageKit = require('./usage');
 
 const MANIFEST_HEADING = '### File Manifest';
 const EMPTY_SENTINEL = 'None — no files affected';
@@ -61,21 +62,47 @@ class ToolError extends Error {
   }
 }
 
+const FM = 'node sai/tools/file-manifest.js';
+const FM_BASE = { '--json': false, '--cwd': true };
+const FM_POSITIONALS = { min: 1, max: 1, names: ['change-name'] };
+
+const USAGE = {
+  subcommands: {
+    fold: {
+      usage: [`${FM} fold <change-name> [--json] [--cwd <dir>]`],
+      notes: ['Writes the net-folded `### File Manifest` into design.md (steps without tests only).'],
+      examples: [`${FM} fold my-change --json --cwd /path/to/project`],
+      flags: FM_BASE,
+      positionals: FM_POSITIONALS,
+    },
+    verify: {
+      usage: [`${FM} verify <change-name> [--json] [--cwd <dir>]`],
+      notes: ['Compares the manifest of design.md with the fold (read-only).'],
+      examples: [`${FM} verify my-change --json --cwd /path/to/project`],
+      flags: FM_BASE,
+      positionals: FM_POSITIONALS,
+    },
+    format: {
+      usage: [`${FM} format <change-name> [--json] [--cwd <dir>]`],
+      notes: ['Answers `current` or `earlier` for the format of tasks.md (read-only).'],
+      examples: [`${FM} format my-change --json --cwd /path/to/project`],
+      flags: FM_BASE,
+      positionals: FM_POSITIONALS,
+    },
+    writeback: {
+      usage: [`${FM} writeback <change-name> --input-file <report> [--guard "<path> :: <name>"]... [--json] [--cwd <dir>]`],
+      notes: [
+        'Writes **Tests**, **Test Command**, and the [regression guard] marks into tasks.md from the accepted plan RED report given with --input-file.',
+        '--guard marks one more test as a regression guard (repeatable).',
+      ],
+      examples: [`${FM} writeback my-change --input-file red-report.json --guard "test/a.test.js :: keeps the old behavior" --json --cwd /path/to/project`],
+      flags: { ...FM_BASE, '--input-file': true, '--guard': true },
+      positionals: FM_POSITIONALS,
+    },
+  },
+};
 function usage() {
-  return [
-    'Usage: node sai/tools/file-manifest.js <fold|verify|format|writeback> <change-name> [--input-file <report>] [--guard "<path> :: <name>"]... [--json] [--cwd <dir>]',
-    '',
-    '  fold        Write the net-folded `### File Manifest` into design.md (steps without tests only).',
-    '  verify      Compare design.md\'s manifest with the fold (read-only).',
-    '  format      Answer current or earlier format for tasks.md (read-only).',
-    '  writeback   Write **Tests**, **Test Command**, and [regression guard] marks into tasks.md',
-    '              from the accepted plan RED report given with --input-file.',
-    '  --guard     writeback only: mark one more test as a regression guard (repeatable).',
-    '  --json      Emit a JSON verdict on stdout.',
-    '  --cwd       Project root (default: current directory).',
-    '',
-    'Exit codes: 0 ok, 1 diagnostics/divergence/earlier format, 2 usage or I/O error.',
-  ].join('\n');
+  return usageKit.render(USAGE);
 }
 
 function parseArgs(argv) {
@@ -652,6 +679,8 @@ function render(result) {
 }
 
 function main(argv) {
+  const guarded = usageKit.handle(USAGE, argv);
+  if (guarded !== null) return guarded;
   let opts;
   try {
     opts = parseArgs(argv);
@@ -682,4 +711,4 @@ function main(argv) {
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { extractEntries, fold, run, main, EMPTY_LINE, RED_LINE, parseDeclaration, declarationsOverlap, parseSteps, formatCheck, planWriteback };
+module.exports = { USAGE, extractEntries, fold, run, main, EMPTY_LINE, RED_LINE, parseDeclaration, declarationsOverlap, parseSteps, formatCheck, planWriteback };

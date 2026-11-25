@@ -55,6 +55,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const inputReader = require('./input-reader');
+const usageKit = require('./usage');
 const { exploreOriginHarness } = require('./openspec-yaml');
 
 const VERDICT_VALUES = ['violation', 'context'];
@@ -1073,29 +1074,78 @@ function readIssue(text, { origin = null } = {}) {
   }, analyzeIssueSections(map));
 }
 
+const HARNESSES = ['claude', 'opencode'];
+const CD = 'node sai/tools/change-document.js';
+
+const USAGE = {
+  subcommands: {
+    check: {
+      usage: [`${CD} check --document-file <path> [--verdicts-file <path>] [--slice]`],
+      notes: ['Validates one change document and reports whether it is dispatchable. The verdicts file holds the JSON array of hygiene verdicts; --slice treats the document as a member of a slice set.'],
+      examples: [`${CD} check --document-file document.md`, `${CD} check --document-file document.md --verdicts-file verdicts.json --slice`],
+      flags: { '--document-file': true, '--verdicts-file': true, '--slice': false, '--json': false },
+      required: ['--document-file'],
+    },
+    'check-set': {
+      usage: [`${CD} check-set --document-file <path> [--document-file <path> ...]`],
+      notes: ['Validates a slice set: each document, unique names, implementation items, dependencies.'],
+      examples: [`${CD} check-set --document-file slice-1.md --document-file slice-2.md`],
+      flags: { '--document-file': { repeat: true }, '--json': false },
+      required: ['--document-file'],
+    },
+    hash: {
+      usage: [`${CD} hash --document-file <path>`],
+      notes: ['Prints the sha256 of the whole document file, line endings normalized to LF.'],
+      examples: [`${CD} hash --document-file document.md`],
+      flags: { '--document-file': true, '--json': false },
+      required: ['--document-file'],
+    },
+    'verify-file': {
+      usage: [`${CD} verify-file --document-file <path> --document-hash <sha256>`],
+      notes: ['Verifies an exported document file against its hash; a file without a "# <title>" first line or with more than one document fails.'],
+      examples: [`${CD} verify-file --document-file document.md --document-hash 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`],
+      flags: { '--document-file': true, '--document-hash': true, '--json': false },
+      required: ['--document-file', '--document-hash'],
+    },
+    compare: {
+      usage: [`${CD} compare --stored-file <path> --document-file <path>`],
+      notes: ['Reports whether the amended document differs from the stored one in content or in metadata only.'],
+      examples: [`${CD} compare --stored-file stored.md --document-file amended.md`],
+      flags: { '--stored-file': true, '--document-file': true, '--json': false },
+      required: ['--stored-file', '--document-file'],
+    },
+    sections: {
+      usage: [`${CD} sections [--origin <issue-url>] [--input-file <path>]`],
+      notes: ['Reads the sections of an issue description (from the input file, or stdin) for the issue intake; --origin is the imported issue URL a missing Backlog origin takes.'],
+      examples: [`${CD} sections --origin https://github.com/owner/repo/issues/12 --input-file issue.md`],
+      flags: { '--origin': true, '--input-file': true, '--json': false },
+    },
+    split: {
+      usage: [`${CD} split --document-file <path> [--document-hash <sha256>]`],
+      notes: ['Prints the title line and the description of a verified document: the issue title and description of its publication.'],
+      examples: [`${CD} split --document-file document.md --document-hash 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`],
+      flags: { '--document-file': true, '--document-hash': true, '--json': false },
+      required: ['--document-file'],
+    },
+    'set-origin': {
+      usage: [`${CD} set-origin --document-file <path> --origin <issue-url> [--harness <claude|opencode>]`],
+      notes: ['Writes a copy of a stored document whose Backlog origin is the imported URL; a different existing value is kept and reported.'],
+      examples: [`${CD} set-origin --document-file document.md --origin https://github.com/owner/repo/issues/12 --harness claude`],
+      flags: { '--document-file': true, '--origin': true, '--harness': HARNESSES, '--json': false },
+      required: ['--document-file', '--origin'],
+    },
+    'attach-origin': {
+      usage: [`${CD} attach-origin --input-file <path> [--harness <claude|opencode>]`],
+      notes: ['The input file holds the JSON {document_files: [{document_file, hash}], correspondence}. Each document of a published set takes its child issue URL as Backlog origin, and the amended documents go to a private directory.'],
+      examples: [`${CD} attach-origin --input-file attach.json --harness opencode`],
+      flags: { '--input-file': true, '--harness': HARNESSES, '--json': false },
+      required: ['--input-file'],
+    },
+  },
+};
+
 function usage() {
-  return [
-    'Usage: node sai/tools/change-document.js check --document-file <path> [--verdicts-file <path>] [--slice]',
-    '       node sai/tools/change-document.js check-set --document-file <path> --document-file <path> ...',
-    '       node sai/tools/change-document.js hash --document-file <path>',
-    '       node sai/tools/change-document.js verify-file --document-file <path> --document-hash <sha256>',
-    '       node sai/tools/change-document.js compare --stored-file <path> --document-file <path>',
-    '       node sai/tools/change-document.js sections [--origin <issue-url>] [--input-file <path>]  (issue description; stdin also accepted)',
-    '       node sai/tools/change-document.js set-origin --document-file <path> --origin <issue-url> [--harness <claude|opencode>]',
-    '       node sai/tools/change-document.js attach-origin [--harness <claude|opencode>] --input-file <path>  (JSON {document_files: [{document_file, hash}], correspondence})',
-    '       node sai/tools/change-document.js split --document-file <path> [--document-hash <sha256>]',
-    '',
-    '  check        Validate one change document and report whether it is dispatchable; the verdicts file holds the JSON array of hygiene verdicts',
-    '  check-set    Validate a slice set: each document, unique names, implementation items, dependencies',
-    '  hash         Print the sha256 of the whole document file (line endings normalized to LF)',
-    '  verify-file  Verify an exported document file against its hash; a file without a "# <title>" first line or with more than one document fails',
-    '  compare      Report whether the amended document differs from the stored one in content or in metadata only',
-    '  sections     Read the sections of an issue description for the issue intake; --origin is the imported issue URL a missing Backlog origin takes',
-    '  set-origin   Write a copy of a stored document whose Backlog origin is the imported URL (a different existing value is kept and reported)',
-    '  attach-origin  Give each document of a published set its child issue URL as Backlog origin and write the amended documents to a private directory',
-    '  split        Print the title line and the description of a verified document: the issue title and the issue description of its publication',
-    '  --slice      Treat the document as a member of a slice set (it owes one in-scope I#)',
-  ].join('\n');
+  return usageKit.render(USAGE);
 }
 
 const VALUE_FLAGS = ['--document-file', '--document-hash', '--verdicts-file', '--stored-file', '--input-file', '--origin', '--harness'];
@@ -1131,6 +1181,8 @@ function readDocument(file) {
 }
 
 function main(argv, readStdin = () => fs.readFileSync(0, 'utf8')) {
+  const guarded = usageKit.handle(USAGE, argv);
+  if (guarded !== null) return guarded;
   const parsed = parseArgs(argv);
   if (parsed.error) {
     process.stderr.write(`${parsed.error}\n${usage()}\n`);
@@ -1274,6 +1326,7 @@ module.exports = {
   isHtmlDescription,
   parseExploreOrigin,
   main,
+  USAGE,
 };
 
 if (require.main === module) {

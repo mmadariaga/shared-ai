@@ -10,6 +10,7 @@ const { makeTempDir } = require('./temp-root');
 const { receiptPath: backlogReceiptPath } = require('./to-backlog-github');
 const { checkPrTitleRules, checkAiAttribution } = require('./lint');
 const projectSettings = require('./project-settings');
+const usageKit = require('./usage');
 const riskSignals = require('./risk-signals');
 const riskComments = require('./to-pr-comments');
 const planPublication = require('./plan-publication');
@@ -433,7 +434,32 @@ async function resume(request, io) {
   if (request.approved !== true || !result.continuation || request.confirmation !== result.continuation) throw new Error('Exact pending-comment approval required after read-only recovery');
   return await writeComment(receiptPath(request.receipt), io);
 }
+const TP = 'node sai/tools/to-pr.js';
+const PR_OPERATIONS = ['prepare', 'collect', 'resolve', 'destination', 'query', 'push-query', 'push', 'publish', 'recover', 'resume', 'plan-query', 'plan-commit'];
+
+const USAGE = {
+  subcommands: Object.fromEntries(PR_OPERATIONS.map(operation => {
+    const unattended = UNATTENDED_OPERATIONS.includes(operation);
+    return [operation, {
+      usage: [`${TP} ${operation} <registry.json> --input-file <path>${unattended ? ' [--unattended]' : ''}`],
+      notes: [
+        `The JSON or YAML request of the \`${operation}\` operation is the input file (stdin is also accepted); the JSON result is printed on stdout.`,
+        ...(unattended ? ['--unattended is for a SAI coordinator that holds a recorded publication answer of `yes`: it replaces the approval and confirmation tokens and keeps every other check.'] : []),
+      ],
+      examples: [`${TP} ${operation} providers/registry.json --input-file request.yaml${unattended ? ' --unattended' : ''}`],
+      flags: { '--input-file': { once: true }, ...(unattended ? { '--unattended': false } : {}) },
+      positionals: { min: 1, max: 1, names: ['registry.json'] },
+      messages: { unknown: { '--unattended': `--unattended applies only to ${UNATTENDED_OPERATIONS.join(', ')}` } },
+    }];
+  })),
+};
+
 async function main(rawArgv) {
+  const guarded = usageKit.handle(USAGE, rawArgv, {
+    json: info => (info.help ? { usage: info.usage, examples: info.examples }
+      : { status: 'blocked', message: info.cause, usage: info.usage, examples: info.examples }),
+  });
+  if (guarded !== null) return guarded;
   let request;
   try {
     const unattended = rawArgv.includes('--unattended');
@@ -460,4 +486,4 @@ async function main(rawArgv) {
   } catch (error) { process.stdout.write(JSON.stringify({ status: 'blocked', message: error.message, ...(error.code === 'description-too-long' ? { code: error.code, provider: error.provider, length: error.length, limit: error.limit, excess: error.excess } : {}), ...(error.refusal ? { refusal: error.refusal, ...(error.request ? { request: error.request } : {}) } : {}), ...(typeof request?.receipt === 'string' ? { receipt: request.receipt } : {}) }) + '\n'); return 2; }
 }
 if (require.main === module) main(process.argv.slice(2)).then(code => { process.exitCode = code; });
-module.exports = { prepare, resolve, collect, closingReferences, destination, query, pushQuery, push, publish, recover, resume, validateDescription, main };
+module.exports = { prepare, resolve, collect, closingReferences, destination, query, pushQuery, push, publish, recover, resume, validateDescription, main, USAGE };

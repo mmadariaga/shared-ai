@@ -249,5 +249,5 @@ test('the mechanics, the docs, and AGENTS.md describe the simulation, and the au
   const authority = section(read('sai/commands/merge/coordinator.md'), '**Authority.**', '## Start');
   assert.doesNotMatch(authority, /simulat/);
   assert.match(authority, /Never push, amend, force/);
-  assert.match(read('sai/tools/merge.js'), /simulate: --source-ref/);
+  assert.match(read('sai/tools/merge.js'), /simulate --source-ref <full-ref> --method <merge\|rebase\|squash>/);
 });

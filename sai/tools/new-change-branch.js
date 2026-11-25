@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { extractInputFile, readInput } = require('./input-reader');
+const usageKit = require('./usage');
 
 function git(cwd, args) {
   const result = spawnSync('git', args, { cwd, encoding: 'utf8', windowsHide: true });
@@ -124,8 +125,45 @@ function execute(operation, input = {}, cwd = process.cwd()) {
   }
 }
 
+const NB = 'node sai/tools/new-change-branch.js';
+const NB_INPUT = { '--input-file': { once: true } };
+
+const USAGE = {
+  subcommands: {
+    inspect: {
+      usage: [`${NB} inspect [--input-file <path>]`],
+      notes: ['Lists the candidate bases (refreshing the remote-tracking references first). The optional JSON input is {"fetch": false} to skip the refresh; stdin is also accepted.'],
+      examples: [`${NB} inspect --input-file inspect-input.json`],
+      flags: NB_INPUT,
+    },
+    name: {
+      usage: [`${NB} name --input-file <path>`],
+      notes: ['The JSON input is {"type": "feat|fix|docs|chore", "name": "...", "id": "..."}; prints the branch name it produces.'],
+      examples: [`${NB} name --input-file branch-name.json`],
+      flags: NB_INPUT,
+    },
+    base: {
+      usage: [`${NB} base --input-file <path>`],
+      notes: ['The JSON input is {"base": "<ref>"}; resolves the base to its commit.'],
+      examples: [`${NB} base --input-file branch-base.json`],
+      flags: NB_INPUT,
+    },
+    create: {
+      usage: [`${NB} create --input-file <path>`],
+      notes: ['The JSON input is {"type", "name", "id", "base", "sha", "require_clean"}; creates and switches to the branch. Exit codes: 0 = done; 1 = failed; 2 = usage error.'],
+      examples: [`${NB} create --input-file branch-create.json`],
+      flags: NB_INPUT,
+    },
+  },
+};
+
 if (require.main === module) {
-  try {
+  const guarded = usageKit.handle(USAGE, process.argv.slice(2), {
+    json: info => (info.help ? { usage: info.usage, examples: info.examples }
+      : { status: 'failed', reason: info.cause, attempted: false, created: false, active_branch: active(process.cwd()), incomplete: 'invalid input', usage: info.usage, examples: info.examples }),
+  });
+  if (guarded !== null) process.exitCode = guarded;
+  else try {
     const { argv, inputFile } = extractInputFile(process.argv.slice(2));
     const text = inputFile ? readInput(inputFile) : fs.readFileSync(0, 'utf8');
     const result = execute(argv[0], text.trim() ? JSON.parse(text) : {});
@@ -137,4 +175,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { execute, fetchEnvironment };
+module.exports = { execute, fetchEnvironment, USAGE };

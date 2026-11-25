@@ -40,6 +40,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const usageKit = require('./usage');
 
 const SCHEMA_LINE = /^schema:\s*sai-workflow\s*$/m;
 
@@ -229,28 +230,25 @@ function commandCheck(cwd, harness) {
   return { ok: true, action: 'check', verdict: 'pass', failed_check: null, checks };
 }
 
+const USAGE = {
+  notes: ['Exit codes: 0 = pass; 1 = halt, a check failed; 2 = usage or IO error.'],
+  subcommands: {
+    check: {
+      usage: ['node sai/tools/prereqs.js check --require-openspec-skills <opencode|claude> [--json] [--cwd <dir>]'],
+      notes: [
+        'Evaluates the four OpenSpec preconditions (the openspec binary, the openspec/ directory, the `schema: sai-workflow`',
+        "line in openspec/config.yaml, and the OpenSpec skill in the active harness's project-local skills root) and reports",
+        'verdict pass or halt. Exit codes: 0 = pass; 1 = halt, a check failed; 2 = usage or I/O error.',
+      ],
+      examples: ['node sai/tools/prereqs.js check --json --cwd /path/to/project --require-openspec-skills claude'],
+      flags: { '--require-openspec-skills': ['opencode', 'claude'], '--json': false, '--cwd': true },
+      required: ['--require-openspec-skills'],
+    },
+  },
+};
+
 function usage() {
-  return [
-    'Usage: node sai/tools/prereqs.js check --require-openspec-skills <opencode|claude> [--json] [--cwd <dir>]',
-    '',
-    '  check                    Evaluate the four OpenSpec preconditions — the',
-    '                           openspec binary, the openspec/ directory, the',
-    '                           schema: sai-workflow line in openspec/config.yaml,',
-    "                           and the OpenSpec skill in the active",
-    "                           harness's project-local skills root — and report",
-    '                           verdict pass or halt.',
-    '',
-    '  --require-openspec-skills <harness>',
-    '                           Mandatory harness selector: `opencode` or',
-    '                           `claude`. Omitting the flag or passing any',
-    '                           other value is a usage error (exit 2), never',
-    '                           a halt verdict.',
-    '',
-    '  --json                   Emit the report as JSON on stdout.',
-    '  --cwd <dir>              Project root to check (default: cwd).',
-    '',
-    'Exit codes: 0 = pass; 1 = halt, a check failed; 2 = usage or IO error.',
-  ].join('\n');
+  return usageKit.render(USAGE);
 }
 
 function parseArgs(argv) {
@@ -281,6 +279,8 @@ function render(payload, json) {
 }
 
 function main(argv) {
+  const guarded = usageKit.handle(USAGE, argv);
+  if (guarded !== null) return guarded;
   const parsed = parseArgs(argv);
   if (parsed.error) {
     process.stderr.write(`${parsed.error}\n${usage()}\n`);
@@ -334,4 +334,4 @@ if (require.main === module) {
   process.exitCode = main(process.argv.slice(2));
 }
 
-module.exports = { main, commandCheck, checkDir, checkSchema, checkSkills, usage, CHECKS, REQUIRED_SKILLS, SCHEMA_LINE };
+module.exports = { main, commandCheck, checkDir, checkSchema, checkSkills, usage, USAGE, CHECKS, REQUIRED_SKILLS, SCHEMA_LINE };

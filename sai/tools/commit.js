@@ -35,6 +35,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { checkCommitRules, ToolError: LintToolError } = require('./lint');
 const { readInput } = require('./input-reader');
+const usageKit = require('./usage');
 
 /** Usage error / tooling failure. Carries the exit code the caller sees. */
 class ToolError extends Error {
@@ -493,28 +494,38 @@ function applyCommit(cwd, acknowledgeSecretsArg, amend = false, allowAttribution
   };
 }
 
+const COMMIT_FLAGS = {
+  '--json': false,
+  '--cwd': true,
+  '--amend': false,
+  '--allow-attribution': false,
+  '--acknowledge-secrets': true,
+  '--input-file': true,
+};
+
+const USAGE = {
+  subcommands: {
+    collect: {
+      usage: ['node sai/tools/commit.js collect [--amend] [--json] [--cwd <dir>]'],
+      examples: [
+        'node sai/tools/commit.js collect --json',
+        'node sai/tools/commit.js collect --amend --json',
+      ],
+      flags: COMMIT_FLAGS,
+    },
+    apply: {
+      usage: ['node sai/tools/commit.js apply [--input-file <path>] [--amend] [--allow-attribution] [--acknowledge-secrets <list>] [--json] [--cwd <dir>]'],
+      examples: [
+        'node sai/tools/commit.js apply --input-file message.txt --cwd /path/to/repo',
+        'node sai/tools/commit.js apply --amend --input-file message.txt --cwd /path/to/repo',
+      ],
+      flags: COMMIT_FLAGS,
+    },
+  },
+};
+
 function usage() {
-  return [
-    'Usage: node sai/tools/commit.js <subcommand> [options]',
-    '',
-    '  Subcommands:',
-    '    collect                    Report staged state, inferred scope, detected style, and amend target',
-    '    apply                      Read message from --input-file (or stdin), validate, and commit (or amend)',
-    '',
-    '  Options:',
-    '    --json                     Emit output as JSON',
-    '    --cwd <dir>                Working directory (default: current directory)',
-    '    --input-file <path>        File holding the commit message for apply (default: stdin)',
-    '    --amend                    Amend the previous commit instead of creating a new one',
-    '    --allow-attribution        Allow AI credit explicitly requested by the user',
-    '    --acknowledge-secrets <list>  Comma-separated list of sensitive files to allow',
-    '',
-    '  Examples:',
-    '    node sai/tools/commit.js collect --json',
-    '    node sai/tools/commit.js collect --amend --json',
-    '    node sai/tools/commit.js apply --input-file message.txt --cwd /path/to/repo',
-    '    node sai/tools/commit.js apply --amend --input-file message.txt --cwd /path/to/repo',
-  ].join('\n');
+  return usageKit.render(USAGE);
 }
 
 function parseArgs(argv) {
@@ -556,6 +567,8 @@ function parseArgs(argv) {
 }
 
 function main(argv) {
+  const guarded = usageKit.handle(USAGE, argv);
+  if (guarded !== null) return guarded;
   const parsed = parseArgs(argv);
   if (parsed.error) {
     process.stderr.write(`${parsed.error}\n${usage()}\n`);
@@ -653,4 +666,6 @@ function main(argv) {
   }
 }
 
-process.exitCode = main(process.argv.slice(2));
+if (require.main === module) process.exitCode = main(process.argv.slice(2));
+
+module.exports = { main, USAGE };
