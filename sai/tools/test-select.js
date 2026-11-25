@@ -46,12 +46,18 @@
  * `files` lists them), `codegraph-error` (a call failed), `timeout` (the calls
  * exceeded `--timeout-ms`, 60000 by default), `invalid-output` (a call printed
  * JSON the tool cannot read), or `no-dependents` (a changed non-test file has no
- * dependents in the graph; `files` lists them). The per-file calls run in
+ * dependents in the graph; `files` lists them), `deleted-referenced`, or
+ * `reference-check-failed`. The per-file calls run in
  * parallel, at most 4 at a time, under one shared `--timeout-ms` deadline. It
  * uses only the public codegraph CLI and never opens
  * `.codegraph/codegraph.db`. Paths under `openspec/` are plan artifacts, not
  * code, and are left out of the list, and so is a file the run deleted (absent
- * from the working tree and from the index): the files that used it changed with it.
+ * from the working tree and from the index). The graph lost a deleted file at the
+ * sync, so its former dependents are checked as text: a file of an indexed type
+ * that is not in the list and still names the deleted file (its stem as a whole
+ * word, or its directory's name for an `index`, `__init__`, `mod`, `main`, or
+ * `lib` file) gives `deleted-referenced`, with those files in `files`;
+ * `reference-check-failed` is a `git grep` that could not run.
  *
  * `swap` restores to the change base, in the working tree only, the files the
  * change modified or deleted, and removes the files it added, so the coordinator
@@ -333,6 +339,35 @@ const extensionOf = (file) => path.extname(file).toLowerCase();
 /** Whether the working tree holds `file` (a symbolic link counts, even a dangling one). */
 const present = (cwd, file) => fs.lstatSync(path.join(cwd, file), { throwIfNoEntry: false }) !== undefined;
 
+// File stems that name their directory's module rather than themselves (`foo/index.js` is imported as `foo`).
+const DIRECTORY_STEMS = new Set(['index', '__init__', 'mod', 'main', 'lib']);
+
+/** The word a reference to `file` most likely carries: its stem, or its directory's name for a directory module. */
+function referenceTerm(file) {
+  const stem = path.posix.basename(file, path.posix.extname(file));
+  const directory = path.posix.basename(path.posix.dirname(file));
+  return DIRECTORY_STEMS.has(stem.toLowerCase()) && directory && directory !== '.' ? directory : stem;
+}
+
+/**
+ * The files that still name a deleted file: every file of an indexed type, tracked or untracked and not ignored,
+ * outside `changed` and outside `openspec/`, that holds the deleted file's reference term as a whole word. The graph
+ * lost the deleted file at the sync, so this textual check stands in for its dependents: a file that did not change
+ * with the deletion and still names it may import code that no longer exists. A common term finds false positives,
+ * which cost one full-suite run, never a missed reference.
+ */
+function referencesTo(deleted, { cwd, changed, indexedTypes }) {
+  const terms = [...new Set(deleted.map(referenceTerm).filter((term) => term && !/[\r\n]/.test(term)))];
+  if (terms.length === 0) return [];
+  const args = ['grep', '-l', '-z', '-w', '-F', '--untracked', ...terms.flatMap((term) => ['-e', term]), '--', '.'];
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  // `git grep` exits 1 when nothing matches; anything else that is not 0 is a failed check.
+  if (result.error || (result.status !== 0 && result.status !== 1)) throw new Fallback('reference-check-failed');
+  return nulList(result.stdout || '').map(normalizePath)
+    .filter((file) => indexedTypes.has(extensionOf(file)) && !changed.has(file) && !isPlanArtifact(file))
+    .sort();
+}
+
 async function selectTests(allFiles, cwd, timeoutMs) {
   if (allFiles.length === 0) return { verdict: 'selected', tests: [], reason: null };
   const options = { cwd, timeoutMs };
@@ -360,9 +395,15 @@ async function selectTests(allFiles, cwd, timeoutMs) {
     // A file the run deleted is gone from the working tree and, after `sync`, from the graph: there is nothing left to
     // ask about it, and the files that used it changed with it, so it is left out instead of making the selection
     // untrustworthy. Only a file that exists and that the listing lacks is unindexed.
+    // Its former dependents are checked by `referencesTo`: one that did not change with it fails the selection.
+    const deleted = allFiles.filter((file) => indexedTypes.has(extensionOf(file)) && !indexed.has(file) && !present(cwd, file));
     files = allFiles.filter((file) => indexedTypes.has(extensionOf(file)) && (indexed.has(file) || present(cwd, file)));
     const unindexed = files.filter((file) => /[\r\n]/.test(file) || !indexed.has(file));
     if (unindexed.length) throw new Fallback('unindexed-file', { files: unindexed });
+    if (deleted.length) {
+      const referencing = referencesTo(deleted, { cwd, changed: new Set(allFiles), indexedTypes });
+      if (referencing.length) throw new Fallback('deleted-referenced', { files: referencing });
+    }
     if (files.length === 0) return { verdict: 'selected', tests: [], reason: null };
 
     const results = await affectedPerFile(files, options);
