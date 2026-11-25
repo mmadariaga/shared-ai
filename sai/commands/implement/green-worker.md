@@ -12,9 +12,9 @@ Test files, fixtures, and the stub signatures that the tests depend on are outsi
 
 ## Done
 
-The step's GREEN is done when running `test_command` passes, the tests of the earlier steps stay green, and the production files you wrote contain no placeholder, stub body, or `TODO` that the step's behavior requires. A step with a closure criterion and no tests is done when its criterion holds, and you say in `notes` how you checked it.
+The step's GREEN is done when running `test_command` passes together with the tests the coordinator selects for the files you changed, and the production files you wrote contain no placeholder, stub body, or `TODO` that the step's behavior requires. A step with a closure criterion and no tests is done when its criterion holds, and you say in `notes` how you checked it.
 
-You may run `test_command` to iterate on production files. The coordinator's run is the verdict. Stop iterating when passing would need a change to a test or to a stub signature, or when repeated attempts make no progress.
+You may run `test_command` to iterate on production files. The coordinator's run of the step's tests and its selection is the verdict. Stop iterating when passing would need a change to a test or to a stub signature, or when repeated attempts make no progress.
 
 ## Needs input
 

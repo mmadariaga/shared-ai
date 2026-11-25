@@ -189,6 +189,16 @@ test('references are recorded as paths without duplicates', () => {
   assert.equal(machine.transition(result.state, { kind: 'record', ref: 'deviation', path: '/x' }).rejected, 'unknown reference kind');
 });
 
+test('I6: the dirty git state and the swap record of a test classification are recorded as paths', () => {
+  const result = run(start, ...base,
+    { kind: 'record', ref: 'baseline', path: RUN_DIR + '/baseline-dirty.txt' },
+    { kind: 'record', ref: 'swap', path: RUN_DIR + '/swap.json' },
+    { kind: 'record', ref: 'baseline', path: RUN_DIR + '/baseline-dirty.txt' });
+  assert.deepEqual(result.run.baselines, [RUN_DIR + '/baseline-dirty.txt']);
+  assert.deepEqual(result.run.swaps, [RUN_DIR + '/swap.json']);
+  assert.equal(machine.transition(result.state, { kind: 'record', ref: 'baseline', path: 'a\nb' }).rejected !== undefined, true, 'a path with a line break is refused');
+});
+
 test('each step has a budget of three attempts that survives a resume, and resume keeps the counters', () => {
   let state = run(start, { kind: 'field', field: 'fix_rounds', value: '2' }, { kind: 'step', step: 'step-4' }).state;
   for (let spent = 1; spent <= 3; spent++) {

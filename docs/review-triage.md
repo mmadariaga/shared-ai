@@ -93,8 +93,8 @@ When every fixable finding is excluded, no fix runs.
 
 Otherwise a `/sai-3-implement` segment fixes the findings left to fix through
 RED → GREEN, reviews each step, commits each step locally (never a push), appends
-` (FIXED)` to each resolved finding heading in the same commit, and runs the unit
-and integration suites, checking each failing test against the change base to
+` (FIXED)` to each resolved finding heading in the same commit, and runs the plan
+tests and the tests related to the change, checking each failing test against the change base to
 tell a new failure from one the base already had. Finding bodies and the
 original tally remain unchanged. `/sai-3-implement` acts only on **open** findings that carry no excluded mark. Regenerating a report
 replaces its findings and marks, so the next review checks the current code afresh.

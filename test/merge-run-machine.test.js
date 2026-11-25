@@ -22,7 +22,7 @@ function run(...events) {
 }
 
 const start = { kind: 'start', dir: '/tmp/claude-1000/sai/merge-1a2b' };
-const launch = { kind: 'launch', method: 'rebase-squash', branch: 'feature/login', head: HEAD, baseline: '/tmp/claude-1000/sai/merge-1a2b/baseline.json' };
+const launch = { kind: 'launch', method: 'rebase-squash', branch: 'feature/login', head: HEAD, baseline: '/tmp/claude-1000/sai/merge-1a2b/baseline-dirty.txt' };
 
 test('merge-run@1 is registered, sits on the run core, and declares the machine contract', () => {
   assert.ok(registry.has('merge-run@1'));

@@ -26,15 +26,16 @@ const fetches = text => text.split('\n').filter(line => /^Fetch `?@/.test(line))
 const coordinator = () => read('sai/commands/merge/coordinator.md');
 const STEPS = ['strategy', 'resolve', 'reuse', 'test-correction', 'renumbering-plan'];
 
-test('the coordinator is one goal-driven card that loads only the six policies and no budget binding', () => {
+test('the coordinator is one goal-driven card that loads only seven policies and no budget binding', () => {
   const card = coordinator();
-  assert.deepEqual(fetches(card).slice(0, 6), [
+  assert.deepEqual(fetches(card).slice(0, 7), [
     'Fetch `@sai/policies/public-chat.md`',
     'Fetch `@sai/policies/remember.md`',
     'Fetch `@skills/safe-operations/SKILL.md`',
     'Fetch `@sai/policies/tool-resolution.md`',
     'Fetch `@sai/policies/obstacle-escalation.md`',
     'Fetch `@sai/policies/incremental-review.md`',
+    'Fetch `@sai/policies/test-execution.md`',
   ]);
   for (const forbidden of ['command-runner', 'worker-core', 'bounded-recovery', 'stop-options', 'unattended-runtime-recovery',
     'no-commit-guard', 'command-execution', 'commit-rules', 'budget-explorer', 'budget-executor', 'budget-subagent']) {
@@ -44,7 +45,7 @@ test('the coordinator is one goal-driven card that loads only the six policies a
   for (const heading of ['## Goal', '## Start', '## A conflict stop', '## Final', '## Obstacles', '## Run state', '## Resuming', '## Close']) {
     assert.ok(card.includes(heading), heading);
   }
-  assert.ok(card.length < 32000, 'the coordinator stays a short goal-driven card');
+  assert.ok(card.length < 33500, 'the coordinator stays a short goal-driven card');
 });
 
 test('the wrappers load the harness fetch skill and the coordinator directly, with no boot adapter or bootstrap', () => {
@@ -89,7 +90,7 @@ test('start: the branch, method, and autostash questions are asked in one picker
   assert.match(step, /Without a native picker, ask a missing branch in plain text, take a merge as the method, and ask no autostash question/);
   assert.match(step, /Cancelling or dismissing the picker ends the run with nothing launched and nothing written/);
   assert.match(step, /A merge ignores the autostash answer and launches without `--autostash`/);
-  assert.match(step, /on no, or with no picker for an explicit `--rebase` or `--squash`, end the run with the cause, before the first mutation: no suite has run and nothing is launched/);
+  assert.match(step, /on no, or with no picker for an explicit `--rebase` or `--squash`, end the run with the cause, before the first mutation: no test has run and nothing is launched/);
   assert.match(step, /untracked files never open it/);
   assert.match(step, /Never change `git config`/);
   assert.doesNotMatch(step, /recommend squash|mark squash|as recommended/);
@@ -97,9 +98,9 @@ test('start: the branch, method, and autostash questions are asked in one picker
   assert.match(start, /the method comes from the store and nothing is asked/);
   assert.ok(start.indexOf('3. Settle') < start.indexOf('5. Simulate'));
   assert.ok(start.indexOf('5. Simulate') < start.indexOf('6. Open the run state'));
-  assert.ok(start.indexOf('3. Settle') < start.indexOf('Fix the test command once'));
+  assert.ok(start.indexOf('3. Settle') < start.indexOf('Resolve the test command once'));
   assert.ok(start.indexOf('3. Settle') < start.indexOf('Run `merge.js provenance`'));
-  assert.ok(start.indexOf('3. Settle') < start.indexOf('Take the baseline'));
+  assert.ok(start.indexOf('3. Settle') < start.indexOf('Write `git status --porcelain` to `baseline-dirty.txt`'));
   assert.match(start, /rebase command line carries `--autostash`/);
   assert.match(coordinator(), /name the stash entry that stays[\s\S]+`git stash pop`/);
 });
@@ -109,7 +110,7 @@ test('E7: the run directory exists before provenance.json is saved, and a resume
   assert.ok(start.indexOf('temp-root.js mkdtemp') < start.indexOf('Run `merge.js provenance`'));
   assert.ok(start.indexOf('emit `start` with its `dir`') < start.indexOf('Run `merge.js provenance`'));
   assert.match(start, /as `stash-base\.txt` in the run directory/);
-  assert.ok(start.indexOf('Run `merge.js provenance`') < start.indexOf('Take the baseline'));
+  assert.ok(start.indexOf('Run `merge.js provenance`') < start.indexOf('Write `git status --porcelain` to `baseline-dirty.txt`'));
   assert.match(start, /follow Resuming and skip the rest of Start: the method comes from the store and nothing is asked/);
 });
 
@@ -143,28 +144,31 @@ test('E1: a launch with no conflict creates no worker and goes straight to verif
   assert.match(section(card, '## Final', '## Commit messages'), /\*\*Final-tree review\.\*\*[\s\S]+\*\*Verify\.\*\*[\s\S]+\*\*Collision\.\*\*[\s\S]+\*\*Finalize\.\*\*/);
 });
 
-test('E2, E3: the baseline is taken once at HEAD before the launch, and verification compares only new failures', () => {
+test('E5, E6, E10: the test command is resolved once before the launch, no test runs before it, and verification classifies under the policy', () => {
   const card = coordinator();
   const start = section(card, '## Start', '## A conflict stop');
-  assert.ok(start.indexOf('Fix the test command once') < start.indexOf('Take the baseline'));
-  assert.ok(start.indexOf('Take the baseline') < start.indexOf('10. Launch.'));
-  assert.match(card, /`merge\.js verify --baseline --record <run>\/baseline\.json`/);
-  assert.match(card, /`merge\.js verify --baseline-record <run>\/baseline\.json --baseline-hash <hash>/);
-  assert.match(card, /A \*\*new failure\*\* is a test that passes in the baseline and fails after the resolution on two consecutive runs: it is the only failure that blocks/);
-  assert.match(card, /A \*\*pre-existing failure\*\* already fails in the baseline: it is reported and never blocks/);
-  assert.match(card, /`preexisting`, `flaky`, and `not-comparable` are reported and never block/);
-  assert.match(card, /A `new` failure is the obstacle `new-failure`/);
-  assert.match(card, /With no command, or several ambiguous ones, the baseline and the verification are unavailable: the run goes on and the report says so/);
+  assert.ok(start.indexOf('Resolve the test command once') < start.indexOf('Write `git status --porcelain` to `baseline-dirty.txt`'));
+  assert.ok(start.indexOf('Write `git status --porcelain` to `baseline-dirty.txt`') < start.indexOf('10. Launch.'));
+  assert.match(start, /`node <tool-path> command --cwd <project-root>` \(`test-select\.js`\)/);
+  assert.match(start, /no test runs before the launch/);
+  assert.match(card, /A \*\*new failure\*\* is a test that `test-execution\.md` classifies as new against the pre-launch `HEAD`: it is the only failure that blocks/);
+  assert.match(card, /A \*\*pre-existing failure\*\* also fails there: it is reported and never blocks/);
+  assert.match(card, /Flaky and pre-existing failures are reported and never block; a new failure is the obstacle `new-failure`/);
+  assert.match(card, /`ambiguous` is the obstacle `test-command`/);
+  assert.match(card, /`merge\.js verify --command '<line>' --record <run>\/verify-\{k\}\.json`/);
+  assert.match(card, /test-select\.js swap --record <run>\/swap\.json --dirty-baseline <run>\/baseline-dirty\.txt --base <pre-launch HEAD> --paths-file/);
+  assert.match(card, /a `restore` that answers `failed` blocks the run/);
+  assert.doesNotMatch(card, /verify --baseline|merge\.js suite|baseline-record/);
   assert.doesNotMatch(card, /three rounds|round 1 or 2|cap-exhausted|failed-no-correction/, 'the three-round verification budget retired');
 });
 
-test('E4: a rebase runs the suite once on the final tree and corrects a new failure in one additional local commit', () => {
+test('E4: a rebase runs the tests once on the final tree and corrects a new failure in one additional local commit', () => {
   const final = section(coordinator(), '## Final', '## Commit messages');
-  assert.match(final, /The suite runs once, on the final tree: after the resolution is staged for a merge, and after the last stop for a rebase, never per stop/);
+  assert.match(final, /The tests run once, on the final tree \(after the resolution is staged for a merge, after the last stop for a rebase; never per stop\)/);
   assert.match(final, /the corrections go in one additional local commit on top of the rebased branch, made when verification shows no new failure/);
   assert.match(final, /On a merge the corrections join the merge commit/);
   assert.match(coordinator(), /another unmerged stop starts a new stop \(with the same worker, once one exists\)/);
-  assert.match(coordinator(), /Name each obstacle `stop-\{n\}`, `final-review`, `new-failure`, or `collision`/);
+  assert.match(coordinator(), /Name each obstacle `stop-\{n\}`, `final-review`, `test-command`, `new-failure`, or `collision`/);
 });
 
 test('E5, E10: commit intent that cannot decide escalates through the picker with written options, and abort is only explicit', () => {
@@ -354,7 +358,7 @@ test('the run state, review, and report: merge-run@1, review-delta, and the goal
   assert.match(card, /A stopped, escalated, or unanswered run keeps its directories/);
   assert.match(card, /A run that finalized the integration ends with exactly `Merge done\.`/);
   const close = section(card, '## Close', null);
-  for (const fact of ['the method, the target and source branches', 'the conflicts resolved per stop', 'the verification against the baseline',
+  for (const fact of ['the method, the target and source branches', 'the conflicts resolved per stop', 'the verification: the test runs with their selection results',
     'the findings still pending after round 3', 'the collision repairs and reported escalations', 'the assumptions and the escalations']) {
     assert.ok(close.includes(fact), fact);
   }

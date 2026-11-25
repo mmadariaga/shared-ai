@@ -112,7 +112,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0161b — Capability deltas stay change-local until archive sync](./0161b-capability-deltas-stay-change-local-until-archive.md) — Refs 0158c
 - [0171c — Single-string invocation envelope across active SAI surfaces](./0171c-single-string-invocation-envelope.md) — Supersedes 0166, **Reframes** 0159b, Refs 0136, Refs ddr:0114
 - [0173b — Build composition inherits pointer delivery with no opt-out special case](./0173b-build-composition-inherits-pointer-delivery.md) — Refs 0172c, Refs 0163, Refs 0156
-- [0229 — Find the failures the base already had lazily at Close, in the working tree](./0229-lazy-failure-baseline-in-the-working-tree.md)
+- [0232 — Find the failures the base already had lazily at Close, in the working tree](./0232-lazy-failure-baseline-in-the-working-tree.md)
+- [0233 — SAI commands run indicated and related tests; the routine full-suite run belongs to CI](./0233-sai-commands-run-indicated-and-related-tests-ci-owns-the-full-suite.md) — **Amends** 0232, Refs 0201
 
 ### `/sai-4-apply`
 

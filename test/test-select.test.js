@@ -127,13 +127,29 @@ test('E2: pending changes after the sync run the full suite with stale-index', (
   assert.deepEqual(f.select(['src/a.js'], config).report, { verdict: 'full', tests: [], reason: 'stale-index' });
 });
 
-test('E3: a changed file the index lacks runs the full suite and names it', (t) => {
+test('E3: a changed file of an indexed type that the index lacks runs the full suite and names it', (t) => {
   const f = selectFixture(t);
-  const { report } = f.select(['src/a.js', 'README.md', 'data/config.json']);
+  const { report } = f.select(['src/a.js', 'src/new.js', 'test/new.test.js']);
   assert.equal(report.verdict, 'full');
   assert.equal(report.reason, 'unindexed-file');
-  assert.deepEqual(report.files, ['README.md', 'data/config.json']);
+  assert.deepEqual(report.files, ['src/new.js', 'test/new.test.js']);
   assert.deepEqual(report.tests, []);
+  assert.equal(f.calls().some((call) => call.args[0] === 'affected'), false);
+});
+
+test('E3 I4: a file of a type the index never holds stays out of the selection and never causes unindexed-file', (t) => {
+  const f = selectFixture(t);
+  const mixed = f.select(['src/a.js', 'README.md', 'data/config.json', 'docs/logo.png']);
+  assert.equal(mixed.report.verdict, 'selected');
+  assert.deepEqual(mixed.report.tests, ['test/a.test.js', 'test/b.test.js']);
+  const affected = f.calls().filter((call) => call.args[0] === 'affected');
+  assert.deepEqual(affected.map((call) => call.stdin.trim()), ['src/a.js'], 'only the file of an indexed type is asked about');
+});
+
+test('E4 I4: a change of documentation and configuration alone selects no test', (t) => {
+  const f = selectFixture(t);
+  const { report } = f.select(['README.md', 'data/config.json']);
+  assert.deepEqual([report.verdict, report.tests, report.reason], ['selected', [], null]);
   assert.equal(f.calls().some((call) => call.args[0] === 'affected'), false);
 });
 
@@ -328,8 +344,8 @@ test('E8: the earlier reasons keep priority over no-dependents', (t) => {
   const base = { ...HAPPY, perFile };
   assert.equal(f.select(['src/a.js'], { ...base, sync: { exit: 1 } }).report.reason, 'sync-failed');
   assert.equal(f.select(['src/a.js'], { ...base, ...statusWith({ ...INDEX, reindexRecommended: true }) }).report.reason, 'stale-index');
-  const unindexed = f.select(['src/a.js', 'README.md'], base).report;
-  assert.deepEqual([unindexed.reason, unindexed.files], ['unindexed-file', ['README.md']]);
+  const unindexed = f.select(['src/a.js', 'src/new.js'], base).report;
+  assert.deepEqual([unindexed.reason, unindexed.files], ['unindexed-file', ['src/new.js']]);
   assert.equal(f.select(['src/a.js', 'src/b.js'], { ...base, perFile: { ...perFile, 'src/b.js': { exit: 2 } } }).report.reason, 'codegraph-error');
   assert.equal(f.select(['src/a.js', 'src/b.js'], { ...base, perFile: { ...perFile, 'src/b.js': { raw: 'x' } } }).report.reason, 'invalid-output');
   assert.equal(f.select(['src/a.js'], base).report.reason, 'no-dependents');
@@ -570,4 +586,185 @@ test('swap and restore report usage errors as exit 2', (t) => {
   assert.equal(run('restore', '--record', path.join(f.run, 'missing.json')).status, 2);
   write(f.run, 'junk.json', '{"a":1}');
   assert.equal(run('restore', '--record', path.join(f.run, 'junk.json')).status, 2);
+});
+
+test('I3: swap --base takes a commit as the classification base and excludes --parent-branch', (t) => {
+  const f = swapFixture(t);
+  const base = f.git('rev-parse', 'main').trim();
+  const swapped = f.swap(['--base', base]);
+  assert.equal(swapped.status, 0);
+  assert.equal(swapped.report.verdict, 'swapped');
+  assert.equal(swapped.report.change_base, base);
+  assert.equal(f.read('src/modified.js'), 'base modified\n');
+  assert.equal(f.restore().report.verdict, 'restored');
+  assert.equal(f.git('status', '--porcelain'), '');
+  assert.equal(f.swap(['--base', base, '--parent-branch', 'main']).status, 2, 'the two options exclude each other');
+  assert.equal(f.swap(['--base', 'no-such-commit']).status, 2);
+});
+
+// A run whose changes no commit holds: Direct Build before its commit, and /sai-merge with the resolution staged.
+function uncommittedFixture(t) {
+  const r = repo(t);
+  write(r.root, 'src/kept.js', 'base kept\n');
+  write(r.root, 'src/modified.js', 'base modified\n');
+  write(r.root, 'src/deleted.js', 'base deleted\n');
+  write(r.root, 'notes.txt', 'base notes\n');
+  r.commit('base');
+  const base = r.git('rev-parse', 'HEAD').trim();
+  write(r.root, 'src/modified.js', 'run modified\n');
+  write(r.root, 'src/added/new.js', 'run added\n');
+  fs.rmSync(path.join(r.root, 'src/deleted.js'));
+  const run = scratch(t, 'sai-test-select-run-');
+  const record = path.join(run, 'swap.json');
+  const baseline = write(run, 'baseline-dirty.txt', '');
+  const paths = write(run, 'paths.json', JSON.stringify(['src/modified.js', 'src/added/new.js', 'src/deleted.js', 'src/kept.js']));
+  const call = (...args) => {
+    const result = spawnSync(process.execPath, [tool, ...args, '--cwd', r.root], { encoding: 'utf8' });
+    return { ...result, report: result.stdout ? JSON.parse(result.stdout) : null };
+  };
+  const swap = (extra = []) => call('swap', '--record', record, '--dirty-baseline', baseline, '--base', base, '--paths-file', paths, ...extra);
+  const read = (relative) => fs.readFileSync(path.join(r.root, relative), 'utf8');
+  const exists = (relative) => fs.existsSync(path.join(r.root, relative));
+  return { ...r, base, run, record, baseline, paths, swap, restore: () => call('restore', '--record', record), read, exists };
+}
+
+test('E9 E11: swap --paths-file puts the base version in the working tree and restore writes the saved copies back', (t) => {
+  const f = uncommittedFixture(t);
+  const before = f.git('status', '--porcelain');
+  const indexBefore = f.git('diff', '--cached', '--name-only');
+  const swapped = f.swap();
+  assert.equal(swapped.status, 0);
+  assert.equal(swapped.report.verdict, 'swapped');
+  assert.equal(swapped.report.paths, 3, 'src/kept.js equals the base and is not part of the swap');
+  assert.equal(swapped.report.change_base, f.base);
+  assert.equal(f.read('src/modified.js'), 'base modified\n');
+  assert.equal(f.read('src/deleted.js'), 'base deleted\n');
+  assert.equal(f.exists('src/added/new.js'), false);
+  assert.equal(f.git('diff', '--cached', '--name-only'), indexBefore, 'the git index is untouched');
+  const restored = f.restore();
+  assert.equal(restored.status, 0);
+  assert.equal(restored.report.verdict, 'restored');
+  assert.equal(f.read('src/modified.js'), 'run modified\n');
+  assert.equal(f.read('src/added/new.js'), 'run added\n');
+  assert.equal(f.exists('src/deleted.js'), false);
+  assert.equal(f.git('status', '--porcelain'), before, 'nothing of the run is lost and nothing is staged');
+  assert.equal(f.restore().report.verdict, 'clean');
+});
+
+test('E9: restore heals a --paths-file swap that stopped half way, with the working tree as the run left it', (t) => {
+  const f = uncommittedFixture(t);
+  const before = f.git('status', '--porcelain');
+  f.swap();
+  fs.writeFileSync(path.join(f.root, 'src/modified.js'), 'run modified\n'); // one file already back
+  assert.equal(f.restore().report.verdict, 'restored');
+  assert.equal(f.git('status', '--porcelain'), before);
+});
+
+test('E11: a --paths-file path that the dirty baseline holds refuses the swap and changes nothing', (t) => {
+  const f = uncommittedFixture(t);
+  fs.writeFileSync(f.baseline, ' M src/modified.js\n');
+  const swapped = f.swap();
+  assert.equal(swapped.status, 1);
+  assert.equal(swapped.report.verdict, 'refused');
+  assert.equal(swapped.report.reason, 'dirty-baseline-overlap');
+  assert.deepEqual(swapped.report.paths, ['src/modified.js']);
+  assert.equal(f.read('src/modified.js'), 'run modified\n');
+  assert.equal(fs.existsSync(f.record), false);
+});
+
+test('E9: swap --paths-file needs --base and a readable list, and a record of an unrestored swap refuses the next one', (t) => {
+  const f = uncommittedFixture(t);
+  const run = (...args) => spawnSync(process.execPath, [tool, ...args, '--cwd', f.root], { encoding: 'utf8' });
+  assert.equal(run('swap', '--record', f.record, '--dirty-baseline', f.baseline, '--paths-file', f.paths).status, 2);
+  assert.equal(f.swap(['--paths-file', path.join(f.run, 'missing.json')]).status, 2);
+  assert.equal(f.swap().report.verdict, 'swapped');
+  assert.equal(f.swap().report.reason, 'record-exists');
+  f.restore();
+});
+
+// ---- command ---------------------------------------------------------------
+
+function commandFixture(t) {
+  const root = scratch(t, 'sai-test-select-command-');
+  const run = (...args) => {
+    const result = spawnSync(process.execPath, [tool, 'command', '--cwd', root, ...args], { encoding: 'utf8' });
+    return { ...result, report: result.stdout ? JSON.parse(result.stdout) : null };
+  };
+  return { root, run };
+}
+
+const tasksWith = (field) => `# Tasks\n\n## Step 1\n\ndone\n\n## Implementation Context\n\n${field}\n`;
+
+test('I1 E5: the command comes from tasks.md first, with the scoping idiom in its parameterised form', (t) => {
+  const f = commandFixture(t);
+  write(f.root, 'openspec/changes/demo/tasks.md', tasksWith('**Test Command**: `dotnet test tests/Api --filter FullyQualifiedName~<TestName>`'));
+  write(f.root, 'SAI_LEARNINGS.md', '## Test Command\n\nnpm test\n*Observed:* other\n');
+  write(f.root, 'AGENTS.md', 'Run `make test` for everything.\n');
+  const found = f.run('--change', 'demo').report;
+  assert.deepEqual(found, {
+    verdict: 'found',
+    command: 'dotnet test tests/Api --filter FullyQualifiedName~<TestName>',
+    scoping_idiom: 'dotnet test tests/Api --filter FullyQualifiedName~<TestName>',
+    source: 'tasks.md',
+  });
+  assert.equal(f.run().report.source, 'SAI_LEARNINGS.md', 'without a change, tasks.md is not a source');
+});
+
+test('I1 E5: a tasks.md value on the next line, in a fence or not, is read, and the no-runner sentinel is none', (t) => {
+  const f = commandFixture(t);
+  write(f.root, 'openspec/changes/demo/tasks.md', tasksWith('**Test Command**:\n\n```\npytest tests/<file>\n```'));
+  assert.equal(f.run('--change', 'demo').report.command, 'pytest tests/<file>');
+  write(f.root, 'openspec/changes/demo/tasks.md', tasksWith('**Test Command**: None — no test runner in this project'));
+  const none = f.run('--change', 'demo').report;
+  assert.deepEqual([none.verdict, none.command, none.source], ['none', null, 'tasks.md']);
+  assert.equal(f.run('--change', 'missing').report.verdict, 'none', 'a change with no tasks.md falls through to the later sources and, with none, to the markers');
+});
+
+test('I1 E5: SAI_LEARNINGS.md gives its keyless command without the provenance line or a trailing remark', (t) => {
+  const f = commandFixture(t);
+  write(f.root, 'package.json', JSON.stringify({ scripts: { test: 'node --test' } }));
+  write(f.root, 'SAI_LEARNINGS.md', '# Learnings\n\n## Stack\n\n- **node**: 22\n\n## Test Command\n\nnpm test (runs node --test from the repo root)\n*Observed:* earlier\n\n## Avoid\n');
+  const found = f.run().report;
+  assert.deepEqual(found, { verdict: 'found', command: 'npm test', scoping_idiom: 'append `-- <test files>` to the command', source: 'SAI_LEARNINGS.md' });
+});
+
+test('E5: AGENTS.md then README.md name the command; a general command with narrower variants wins, and unrelated ones are ambiguous', (t) => {
+  const f = commandFixture(t);
+  write(f.root, 'AGENTS.md', 'Run `npm test` before a push; `npm test -- --watch` while editing; `npm run test:e2e` is for CI.\n');
+  assert.deepEqual(f.run().report, { verdict: 'found', command: 'npm test', scoping_idiom: null, source: 'AGENTS.md' });
+  write(f.root, 'AGENTS.md', 'Nothing about tests here.\n');
+  write(f.root, 'README.md', '```sh\n$ pytest\n$ make test\n```\n');
+  const ambiguous = f.run().report;
+  assert.equal(ambiguous.verdict, 'ambiguous');
+  assert.equal(ambiguous.source, 'README.md');
+  assert.deepEqual(ambiguous.candidates, ['pytest', 'make test']);
+  assert.equal(ambiguous.command, null);
+});
+
+test('I1: the project markers give the command and the idiom that merge.js used to detect, and the .NET solutions are ambiguous when several', (t) => {
+  const f = commandFixture(t);
+  assert.deepEqual(f.run().report, { verdict: 'none', command: null, scoping_idiom: null, source: 'marker' });
+  write(f.root, 'pyproject.toml', '[tool.pytest]\n');
+  assert.deepEqual(f.run().report, { verdict: 'found', command: 'pytest', scoping_idiom: 'append the test files as path arguments', source: 'marker:pyproject.toml' });
+  write(f.root, 'package.json', JSON.stringify({ scripts: { test: 'vitest run' }, packageManager: 'pnpm@9.0.0' }));
+  assert.deepEqual(f.run().report, { verdict: 'found', command: 'pnpm test', scoping_idiom: 'append the test files as path arguments', source: 'marker:package.json' });
+  write(f.root, 'package.json', JSON.stringify({ scripts: { test: 'tsc && node --test' } }));
+  assert.deepEqual(f.run().report, { verdict: 'found', command: 'npm test', scoping_idiom: null, source: 'marker:package.json' });
+  fs.rmSync(path.join(f.root, 'package.json'));
+  fs.rmSync(path.join(f.root, 'pyproject.toml'));
+  write(f.root, 'src/App.csproj', '<Project/>');
+  write(f.root, 'One.sln', '');
+  write(f.root, 'Two.sln', '');
+  const dotnet = f.run().report;
+  assert.equal(dotnet.verdict, 'ambiguous');
+  assert.deepEqual(dotnet.candidates, ['dotnet test One.sln', 'dotnet test Two.sln']);
+});
+
+test('I1: command is read-only and takes no input file', (t) => {
+  const f = commandFixture(t);
+  write(f.root, 'package.json', JSON.stringify({ scripts: { test: 'node --test' } }));
+  const before = fs.readdirSync(f.root).sort();
+  f.run();
+  assert.deepEqual(fs.readdirSync(f.root).sort(), before);
+  assert.equal(f.run('--input-file', path.join(f.root, 'package.json')).status, 2);
 });

@@ -231,106 +231,24 @@ The merge efficiency documentation SHALL compare the same scenario before and af
 - **WHEN** the comparison reports the after-side worker stretches and merge-tool calls with no traced after-run
 - **THEN** it identifies them as contract-derived and reports the after-side token counts as unmeasured
 
-### Requirement: Test command resolution order
-
-The merge coordinator SHALL fix the test command once in preflight, before the integration launches, from the first source that names an explicit command, in this order: `AGENTS.md` at the project root, `README.md` at the project root, then the merge tool's marker list. An explicit command SHALL be a test invocation written literally in the document, copied exactly; a command that would have to be inferred SHALL NOT count. A document that names several test commands, none clearly the general one, SHALL count as naming none. When neither document names an explicit command, the coordinator SHALL capture the marker list's outcome in preflight with `suite --record` and SHALL retain the returned record reference and hash as the fixed value.
-
-#### Scenario: Command documented in AGENTS.md is chosen
-
-- **WHEN** `AGENTS.md` at the project root names one explicit test command
-- **THEN** the coordinator fixes that command exactly as written and consults neither `README.md` nor the marker list
-
-#### Scenario: README decides when AGENTS.md names none
-
-- **WHEN** `AGENTS.md` names no explicit test command and `README.md` at the project root names one
-- **THEN** the coordinator fixes the `README.md` command exactly as written
-
-#### Scenario: Several documented commands count as none
-
-- **WHEN** a document names several test commands and none is clearly the general one
-- **THEN** that document counts as naming none and the next source in the order decides
-
-#### Scenario: Marker list outcome is captured in preflight
-
-- **WHEN** neither `AGENTS.md` nor `README.md` names an explicit test command
-- **THEN** the coordinator records the marker list's outcome with `suite --record` before the launch and keeps the record reference and hash
-
-### Requirement: Verification runs the fixed test command
-
-The merge tool's `verify` action SHALL accept `--command <line>` for a documented command, or `--suite <record> --suite-hash <sha256>` for a suite record captured before the launch, and the coordinator SHALL pass one of the two on every verification call, including the baseline and the comparison against it, so that no run of the suite detects the command again. A documented command SHALL run instead of the marker list and its receipt SHALL carry `command_source: documented`; a marker-list command SHALL carry `command_source: list`. A captured suite record SHALL decide the command, or the absence of one, whatever marker files the integration later adds or removes. The tool MUST refuse with a usage or collection error a `--suite` without a matching `--suite-hash`, a record whose bytes do not match the hash, a record that is not a suite receipt, and `--command` together with `--suite`.
-
-#### Scenario: Documented command runs instead of the detected suite
-
-- **WHEN** `verify` receives `--command` in a repository whose marker list would select a different command
-- **THEN** the documented command runs and the receipt reports it with `command_source: documented`
-
-#### Scenario: Marker added after preflight starts no test
-
-- **WHEN** the suite record captured in preflight holds no command and a marker file appears before verification
-- **THEN** `verify --suite` with that record returns `unavailable` with `unavailable_reason: no-suite` and runs nothing
-
-#### Scenario: Marker changed after preflight keeps the fixed command
-
-- **WHEN** the suite record captured in preflight holds one command and a later marker file would select another
-- **THEN** `verify --suite` with that record runs the captured command with `command_source: list`
-
-#### Scenario: Changed suite record is refused
-
-- **WHEN** `verify --suite` is called without `--suite-hash` or with a hash that does not match the record
-- **THEN** the call exits 2 and runs no test
-
-#### Scenario: Two command sources are refused
-
-- **WHEN** `verify` receives both `--command` and `--suite`
-- **THEN** the call exits 2 and runs no test
-
-### Requirement: .NET marker detection
-
-The merge tool's marker list SHALL recognize .NET projects: every `*.sln` file at the project root or one level below it, outside dot-directories, and, only when no such solution exists, every `*.csproj` file at the project root. Exactly one candidate SHALL resolve to `dotnet test <candidate>`. The previously listed markers SHALL keep precedence over the .NET markers. Several candidates SHALL yield no command, SHALL be reported as ambiguous with the candidate list, and SHALL make verification `unavailable` with `unavailable_reason: ambiguous-suite`.
-
-#### Scenario: Single solution resolves to dotnet test
-
-- **WHEN** the only marker is one `*.sln` file at the root or one level below it
-- **THEN** the detected command is `dotnet test` with that solution's path
-
-#### Scenario: Root project resolves when no solution exists
-
-- **WHEN** no solution marker exists and exactly one `*.csproj` file is at the root
-- **THEN** the detected command is `dotnet test` with that project file
-
-#### Scenario: Solution two levels below is not a marker
-
-- **WHEN** the only `*.sln` file is two directory levels below the root
-- **THEN** it is not treated as a marker
-
-#### Scenario: Several candidates are unavailable
-
-- **WHEN** several solution candidates exist, or no solution exists and several root `*.csproj` files exist
-- **THEN** no command is selected and verification returns `unavailable` with `unavailable_reason: ambiguous-suite` and the candidates in `detail`
-
-#### Scenario: Existing markers keep precedence
-
-- **WHEN** a previously listed marker such as `Cargo.toml` exists beside .NET markers
-- **THEN** the previously listed marker's command is selected
-
 ### Requirement: Not-runnable test command outcome
 
-When the fixed test command fails to start, the merge tool SHALL return `verification_result: unavailable` with `unavailable_reason: not-runnable` and the reason in `detail`, as a non-applicable outcome rather than a failed test run. A not-runnable result SHALL NOT use a verification round and SHALL NOT start a test correction, and the run SHALL continue. A command that started and exited non-zero SHALL remain `failed`. Every `unavailable` result SHALL carry `unavailable_reason` as one of `no-suite`, `ambiguous-suite`, or `not-runnable`. The coordinator SHALL print the not-runnable notice with the command and the reason, stating that no test ran and that it is neither a gate nor a test failure, and the final summary SHALL report the verification status as `unavailable (command not runnable: <reason>)`.
+When the test command line fails to start, the merge tool SHALL return `verification_result: unavailable` with `unavailable_reason: not-runnable` and the reason in `detail`, as a non-applicable outcome rather than a failed test run. A not-runnable result SHALL NOT use a correction round of `new-failure` and SHALL NOT start a test correction. A command that started and exited non-zero SHALL remain `failed`. The coordinator SHALL treat a not-runnable result as the obstacle `test-command` under `sai/policies/test-execution.md`, with a budget of 3 attempts, each a different approach, and then escalation, and SHALL NOT finalize as if tests had run.
 
 #### Scenario: Unknown command is not runnable
 
-- **WHEN** the fixed test command names a tool that is not installed or a command that is unknown
+- **WHEN** the test command line names a tool that is not installed or a command that is unknown
 - **THEN** `verify` exits 0 with `verification_result: unavailable`, `unavailable_reason: not-runnable`, and a non-empty `detail`
 
 #### Scenario: Started command that fails stays a test failure
 
-- **WHEN** the fixed test command starts and exits with a non-zero code
-- **THEN** the result is `failed` and the round counts against the three-round budget
+- **WHEN** the test command line starts and exits with a non-zero code
+- **THEN** the result is `failed` and its failing tests go through the classification of the test-execution policy
 
 #### Scenario: Not-runnable result uses no round
 
 - **WHEN** verification returns `unavailable` with `unavailable_reason: not-runnable`
-- **THEN** the coordinator prints the not-runnable notice, records `verification_result: unavailable`, starts no test correction, and continues without a question
+- **THEN** the coordinator starts no test correction and works the `test-command` obstacle instead
 
 ### Requirement: Merge runs unattended from its arguments
 
@@ -379,44 +297,6 @@ Before the launch, the coordinator SHALL run `merge.js preflight` and SHALL resu
 
 - **WHEN** a rebase is in progress in a worktree and the only stored run for the branch is under a key with a different `worktree_id`, or under the earlier `merge-{branch}` key
 - **THEN** no recorded run owns the operation, so the run stops with its existing message and changes nothing
-
-### Requirement: Suite baseline before the launch
-
-The coordinator SHALL fix the test command once before anything runs and SHALL take the baseline with `merge.js verify --baseline --record <run directory>/baseline.json` at `HEAD` before the launch, using that fixed command. The baseline mode SHALL run the suite once and store its result with the failing tests named when the output allows it. With no detectable suite or several ambiguous ones, the baseline and the later verification SHALL be marked unavailable, the run SHALL continue, and the closing report SHALL say so.
-
-#### Scenario: Baseline is taken once before the launch
-
-- **WHEN** a run with a fixed test command reaches its launch
-- **THEN** the suite has run exactly once at the pre-launch `HEAD` and its record is kept in the run directory
-
-#### Scenario: No suite leaves verification unavailable
-
-- **WHEN** no test command can be fixed
-- **THEN** the run continues and the closing report states that the baseline and verification were unavailable and why
-
-### Requirement: Final-tree verification against the baseline
-
-The suite SHALL run once on the final tree, after the resolution is staged for a merge and after the last stop for a rebase, never per stop, through `merge.js verify --baseline-record <file> --baseline-hash <sha256>`. The tool SHALL refuse a baseline record whose bytes do not match the hash or that is not a baseline. A failing test that is not in the baseline SHALL be rerun once with the whole suite and SHALL count as a new failure only when it fails on both runs; the comparison status SHALL be `clean`, `preexisting`, `flaky`, `not-comparable`, `new`, or `unavailable`, and `verification_result` SHALL be `failed` only for a new failure. When the suite names no individual test and the baseline already failed, the result SHALL be not comparable. Failing tests SHALL be named from the output formats of common runners, and a runner's summary header ending with a colon SHALL NOT count as a test name. Only a new failure SHALL block: it SHALL be the obstacle `new-failure`, corrected through the worker's test-correction and `resolve` steps; on a merge the correction SHALL join the merge commit, and on a rebase it SHALL be one additional local commit on top of the rebased branch.
-
-#### Scenario: Failure that passes on the rerun is flaky
-
-- **WHEN** a test that passed in the baseline fails after the integration and passes on the rerun
-- **THEN** it is reported as flaky and does not block finalization
-
-#### Scenario: Pre-existing failure does not block
-
-- **WHEN** a test that already failed in the baseline fails on the final tree
-- **THEN** it is reported as pre-existing, is not rerun for confirmation, and does not block
-
-#### Scenario: Confirmed new failure blocks
-
-- **WHEN** a test that passed in the baseline fails on two consecutive runs after the integration
-- **THEN** `comparison.status` is `new`, `verification_result` is `failed`, and the coordinator works the `new-failure` obstacle before finalizing
-
-#### Scenario: Summary header is not a test
-
-- **WHEN** a `node --test` run prints a `failing tests:` summary header followed by the failing test names
-- **THEN** the named failing tests are the real tests only and the header is not counted
 
 ### Requirement: Conflict stop cycle
 
@@ -543,12 +423,12 @@ The merge tool's `provenance` action SHALL also record the current branch's upst
 
 ### Requirement: Merge tool has no stage entry points
 
-`sai/tools/merge.js` SHALL offer only its fact and write actions (`preflight`, `provenance`, `conflicts`, `correction`, `bundle`, `write`, `valid`, `resolution`, `suite`, `verify`, `collision`, and `status`) and SHALL NOT offer `enter --stage`, `instructions --stage`, or `--reconstruct`. Worker instructions SHALL travel by pointer to the step files under `sai/commands/merge/steps/`, and replacement state SHALL travel by hand-over file.
+`sai/tools/merge.js` SHALL offer only its fact and write actions (`preflight`, `provenance`, `simulate`, `conflicts`, `correction`, `bundle`, `write`, `valid`, `resolution`, `verify`, `collision`, `duplicates`, and `status`) and SHALL NOT offer `enter --stage`, `instructions --stage`, `--reconstruct`, or `suite`. Worker instructions SHALL travel by pointer to the step files under `sai/commands/merge/steps/`, and replacement state SHALL travel by hand-over file.
 
 #### Scenario: Retired entry point is unknown
 
 - **WHEN** the merge tool's usage text is printed
-- **THEN** it lists neither `enter` nor `instructions`
+- **THEN** it lists neither `enter`, `instructions`, nor `suite`
 
 ### Requirement: Harness-parity goal-driven merge
 
@@ -561,12 +441,12 @@ Claude Code and opencode SHALL run `/sai-merge` from the same coordinator, worke
 
 ### Requirement: Start questions precede the baseline
 
-When the invocation leaves the branch or the method open, or the autostash question applies, the coordinator SHALL settle what is open in one question step right after the preflight, before it runs the pre-launch simulation, opens the run state, fixes the test command, and takes the baseline. The open questions, in this order, SHALL be: the branch, when no branch argument is given, with the newest preflight `candidates` as options up to the picker capacity and the picker's free text for any other branch; the method (merge, rebase, or squash), when neither `--rebase` nor `--squash` is given, with no option marked as recommended; and the autostash question, when it applies. The coordinator SHALL ask every open question in one native picker call, answered in one turn: one `AskUserQuestion` call with one entry of `questions` per open question on Claude Code, and one `question` call with several questions on opencode. With no open question, the coordinator SHALL open no picker. On Claude Code, when the branch is open and the preflight returns fewer than 2 candidates, the coordinator SHALL ask the branch first in plain text and then the remaining open questions in one picker call; opencode SHALL keep one picker. When the native picker is unavailable, the coordinator SHALL ask a missing branch in plain text, the method SHALL be a merge, no autostash question SHALL be asked, and the run SHALL go on. Cancelling or dismissing the picker SHALL end the run with nothing launched and nothing written. A run that resumes an interrupted integration SHALL take the method from the `merge-run@1` store and SHALL ask nothing.
+When the invocation leaves the branch or the method open, or the autostash question applies, the coordinator SHALL settle what is open in one question step right after the preflight, before it runs the pre-launch simulation, opens the run state, resolves the test command, and records the dirty git state. The open questions, in this order, SHALL be: the branch, when no branch argument is given, with the newest preflight `candidates` as options up to the picker capacity and the picker's free text for any other branch; the method (merge, rebase, or squash), when neither `--rebase` nor `--squash` is given, with no option marked as recommended; and the autostash question, when it applies. The coordinator SHALL ask every open question in one native picker call, answered in one turn: one `AskUserQuestion` call with one entry of `questions` per open question on Claude Code, and one `question` call with several questions on opencode. With no open question, the coordinator SHALL open no picker. On Claude Code, when the branch is open and the preflight returns fewer than 2 candidates, the coordinator SHALL ask the branch first in plain text and then the remaining open questions in one picker call; opencode SHALL keep one picker. When the native picker is unavailable, the coordinator SHALL ask a missing branch in plain text, the method SHALL be a merge, no autostash question SHALL be asked, and the run SHALL go on. Cancelling or dismissing the picker SHALL end the run with nothing launched and nothing written. A run that resumes an interrupted integration SHALL take the method from the `merge-run@1` store and SHALL ask nothing.
 
 #### Scenario: Method is asked with the branch before the baseline
 
 - **WHEN** `/sai-merge` is invoked with no arguments on a harness with a native picker and the preflight returns at least 2 candidates
-- **THEN** the branch and the method are asked in one picker call, answered in one turn, before the simulation runs, before the test command is fixed, and before the baseline suite run
+- **THEN** the branch and the method are asked in one picker call, answered in one turn, before the simulation runs, before the test command is resolved, and before the dirty git state is recorded
 
 #### Scenario: No picker falls back to a merge
 
@@ -576,7 +456,7 @@ When the invocation leaves the branch or the method open, or the autostash quest
 #### Scenario: Cancelled question launches nothing
 
 - **WHEN** the user cancels or dismisses the start picker
-- **THEN** the run ends before the simulation and the baseline with nothing launched and nothing written
+- **THEN** the run ends before the simulation and the dirty git state record with nothing launched and nothing written
 
 #### Scenario: Resumed run asks no method
 
@@ -899,3 +779,50 @@ When Start produced a simulation file, the coordinator SHALL emit `record` (`sim
 
 - **WHEN** the user cancels the start picker that holds the method question
 - **THEN** the run ends with nothing launched and no simulation directory exists, because the simulation has not run
+
+### Requirement: Merge resolves its test command through the shared resolver
+
+The merge coordinator SHALL resolve the test command once, before the launch, with `test-select.js command --cwd <project-root>` under `sai/policies/test-execution.md`, and SHALL keep the answer in `assumptions.md`. `merge.js` SHALL NOT discover a test command or a suite itself. A `none` answer SHALL make the verification unavailable, and the closing report SHALL say so; an `ambiguous` answer SHALL be the obstacle `test-command`. No test SHALL run before the launch: the coordinator SHALL record only the dirty git state (`git status --porcelain` to `baseline-dirty.txt` in the run directory) and pass its path as the `baseline` of the `launch` event of `merge-run@1`.
+
+#### Scenario: No test runs before the launch
+
+- **WHEN** a run with a resolved test command reaches its launch
+- **THEN** no test has run, and `baseline-dirty.txt` holds the dirty git state recorded before the launch
+
+#### Scenario: An ambiguous command is an obstacle
+
+- **WHEN** the resolver answers `ambiguous`
+- **THEN** the coordinator works the `test-command` obstacle with its budget of 3 attempts
+
+### Requirement: Merge verification runs related tests on the final tree
+
+The tests SHALL run once on the final tree, after the resolution is staged for a merge and after the last stop for a rebase, never per stop, and after the final-tree review. The test set SHALL be the tests related to the files that differ between the pre-launch `HEAD` and the final tree, deletions included, selected with `test-select.js select`, and the coordinator SHALL run the exact command line built from the resolver's command, its scoping idiom, and that set with `merge.js verify --command '<line>' --record <file>`. An `unavailable` verify result SHALL be the obstacle `test-command`. Each failing test SHALL be classified under `sai/policies/test-execution.md` against the pre-launch `HEAD`: rerun once with `merge.js verify`, then run at the pre-launch `HEAD` through `test-select.js swap --base <pre-launch HEAD> --paths-file <the changed paths>` and `restore`, leaving the index that holds the resolution unchanged; a `restore` that answers `failed` SHALL block the run. Flaky and pre-existing failures SHALL be reported and SHALL NOT block. Only a new failure SHALL block: it SHALL be the obstacle `new-failure`, corrected through the worker's test-correction and `resolve` steps and verified again with the selection computed again; on a merge the correction SHALL join the merge commit, and on a rebase it SHALL be one additional local commit on top of the rebased branch.
+
+#### Scenario: Only tests related to the integration run
+
+- **WHEN** the integration changed two source files and `select` reports three related test files
+- **THEN** `merge.js verify` runs one command line over those three test files on the final tree
+
+#### Scenario: A failure the pre-launch HEAD already had does not block
+
+- **WHEN** a failing test fails again on its rerun and also fails with the changed paths swapped to the pre-launch `HEAD`
+- **THEN** `restore` brings the final tree back, the test is reported as pre-existing, and finalization goes on
+
+#### Scenario: A confirmed new failure blocks
+
+- **WHEN** a failing test fails again on its rerun and passes at the pre-launch `HEAD`
+- **THEN** the coordinator works the `new-failure` obstacle before finalizing
+
+#### Scenario: Classification never runs at a conflict stop
+
+- **WHEN** a rebase stops on a conflict
+- **THEN** no test runs and no `swap` happens until the rebase has finished
+
+### Requirement: Merge verify takes only an explicit command line
+
+`merge.js verify` SHALL require `--command <test-command-line>`, the exact line the coordinator built from the resolver and the selection, and SHALL run it once. It SHALL NOT accept `--baseline`, `--baseline-record`, `--suite`, or `--suite-hash`, and SHALL NOT compare its result with a baseline. Its `verification_result` SHALL be `passed`, `failed`, or `unavailable`, and `failing` SHALL name the failing tests when the output allows it.
+
+#### Scenario: Verify without a command is refused
+
+- **WHEN** `merge.js verify` is called without `--command`
+- **THEN** it exits with a usage error and runs no test

@@ -1,4 +1,4 @@
-# ADR 0229: Find the failures the base already had lazily at Close, in the working tree
+# ADR 0232: Find the failures the base already had lazily at Close, in the working tree
 
 ## Status
 
