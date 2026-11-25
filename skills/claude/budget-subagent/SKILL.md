@@ -32,6 +32,12 @@ Dispatch in the background only from a main agent, routed SAI coordinator, or ro
 
 Give one task per spawn: what to do, the files or area it covers, and, when you need a specific result, the exact shape to return. Without a shape the subagent returns its structured completion report. Split independent tasks into separate spawns.
 
+## Report delivery
+
+Every spawn prompt opens with the line `--report-dir <dir>`, the helper report directory the dispatcher opened with `transfer.js open`; the agent saves its report there and replies with its `{path, sha256}` reference only, and there is no text reply. A Claude Code dispatcher that dispatches this agent routed to opencode (`harness: opencode`, `@sai/policies/opencode-dispatch.md`) adds `--harness claude` as the second line. Creating the directory, accepting the reference before reading the report, recovering an undelivered report, and closing the directory follow `@sai/policies/worker-report-transport.md` § Budget agents, dispatcher side.
+
+Fetch `@sai/policies/worker-report-transport.md`
+
 ## Warming and dispose
 
 Fetch `@sai/policies/cache-warming.md`

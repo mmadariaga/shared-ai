@@ -32,7 +32,7 @@ An opencode-routed agent receives no cache-warming switch: its messages end with
 
 ## Reports and questions
 
-The report directory is the one the coordinator opened under the Claude Code SAI temp root. The worker runs from the OpenCode install, so its tools would infer the OpenCode temp root. For that reason a task message to an opencode-routed worker that carries `--report-dir` has `--harness claude` as its second line, right after it, the envelope line that `@sai/policies/worker-report-transport.md` § Author boundary defines. A message without `--report-dir` (the ready prompt, for example) carries no such line, and the tool adds nothing to any message: it passes the file's text unchanged.
+The report directory is the one the coordinator opened under the Claude Code SAI temp root. The worker runs from the OpenCode install, so its tools would infer the OpenCode temp root. For that reason a task message to an opencode-routed worker or budget agent that carries `--report-dir` has `--harness claude` as its second line, right after it, the envelope line that `@sai/policies/worker-report-transport.md` § Author boundary and § Budget agents define. A message without `--report-dir` (the ready prompt, for example) carries no such line, and the tool adds nothing to any message: it passes the file's text unchanged.
 
 A worker question reaches the coordinator only as a `needs_input` report. No turn opens an interactive opencode prompt: the process has no input, and the tool never passes `--auto`, so a permission that asks is rejected and the turn continues or fails without blocking. The agent works with the permissions and tools of its OpenCode agent file, not the `tools:` list of its Claude Code file.
 

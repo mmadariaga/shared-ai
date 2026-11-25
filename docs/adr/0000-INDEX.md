@@ -571,6 +571,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0219 — Coordinators recover undelivered worker reports with a background watch](./0219-coordinators-recover-undelivered-worker-reports-with-a-background-watch.md) — Refs 0214, Refs 0218
 - [0220 — opencode dispose closes the worker's cache-warm chain](./0220-opencode-dispose-closes-the-workers-cache-warm-chain.md) — **Amends** 0213
 - [0221 — Claude Code dispatches opencode-routed agents through the OpenCode CLI](./0221-claude-code-dispatches-opencode-routed-agents-through-the-opencode-cli.md) — **Amends** 0077, **Amends** 0133
+- [0231 — Budget agents deliver results as saved report references](./0231-budget-agents-deliver-results-as-saved-report-references.md)
 
 ### Testability routing & RED → GREEN
 

@@ -46,11 +46,13 @@ output-contract format. Your side of it:
 1. Delegate I/O to `budget-explorer` subagents: web fetches, broad
    `Grep`/`Glob` searches, and open-ended exploration. Yourself, you may open a
    single known file or run a targeted search for a known symbol or literal.
-2. Run independent subagent calls in parallel. When your brief names
-   `research_dir`, open each explorer task with the line
-   `--report-dir <research_dir>` (and, when the explorer is routed to the other
-   harness, the `--harness` line that the budget-explorer skill states), so its report is saved
-   verbatim and its reference is yours to keep (`worker.md` § Research hand-over).
+2. Run independent subagent calls in parallel. Open each explorer task with the
+   line `--report-dir <dir>` (and, when the explorer is routed to the other
+   harness, the `--harness` line that the budget-explorer skill states): `<dir>`
+   is `research_dir` when your brief names it, so the report is saved verbatim and
+   its reference is yours to keep (`worker.md` § Research hand-over), and
+   otherwise a helper directory you open and close yourself
+   (`@sai/policies/worker-report-transport.md` § Budget agents).
 3. Reuse what is already in context; re-read a file only when it may have
    changed.
 4. Keep reasoning, synthesis, and every decision yourself: a subagent returns
