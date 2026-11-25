@@ -216,7 +216,7 @@ test('I2, E10, E11: the simulation runs after the answers for the chosen method,
   const step = start.slice(start.indexOf('5. Simulate'), start.indexOf('6. Open the run state'));
   assert.doesNotMatch(questions, /merge\.js simulate|repeated_files|mark squash|as recommended/, 'the questions neither run nor read the simulation');
   assert.ok(start.indexOf('3. Settle') < start.indexOf('merge.js simulate'));
-  assert.ok(start.indexOf('merge.js simulate') < start.indexOf('Take the baseline'));
+  assert.ok(start.indexOf('merge.js simulate') < start.indexOf('Write `git status --porcelain` to `baseline-dirty.txt`'));
   assert.match(step, /with the branch and the method known \(the method of the arguments, the answer, or a merge without a picker\): run `merge\.js simulate` for that method/);
   assert.match(step, /It asks nothing and recommends nothing: its predicted stops and `repeated_files` go only to the `simulation` record and the closing report/);
   assert.doesNotMatch(read('sai/commands/merge/coordinator.md'), /mark squash as recommended|`rebase` while it is missing/);

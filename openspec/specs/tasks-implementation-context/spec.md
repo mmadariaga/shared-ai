@@ -89,3 +89,17 @@ The template at `openspec/schemas/sai-workflow/templates/tasks.md` SHALL show on
 
 - **WHEN** `openspec/schemas/sai-workflow/templates/tasks.md` is read
 - **THEN** its `## Implementation Context` section shows a `**Test Command**:` placeholder and no `**Stack**`, `**Conventions**`, or `**Avoid**` placeholder
+
+### Requirement: Design drafts Test Command from the shared resolver
+
+When `/sai-2-design` writes **Test Command**, it SHALL take the draft from the shared resolver `test-select.js command --cwd <project-root>`, run before `tasks.md` exists and therefore without `--change`, so that design, `/sai-3-implement`, Direct Build, and `/sai-merge` start from the same source. A `found` answer SHALL give the command and its scoping idiom, `none` SHALL give the sentinel `None — no test runner in this project`, and `ambiguous` SHALL list the candidates that design's research settles. The existing research and `SAI_LEARNINGS.md` comparison rules SHALL still apply to the draft.
+
+#### Scenario: The resolver's command is the draft
+
+- **WHEN** `/sai-2-design` writes **Test Command** for a project whose `AGENTS.md` names one test command
+- **THEN** the design step takes the resolver's `found` command as the draft and checks it against its research before writing it
+
+#### Scenario: An ambiguous resolver answer is settled by research
+
+- **WHEN** the resolver answers `ambiguous` with two candidates
+- **THEN** design's research settles which candidate runs the project's unit and integration tests, and **Test Command** carries that one

@@ -4,7 +4,7 @@ Fetch `@sai/commands/implement/worker-common.md` and follow it exactly.
 
 You are the plan RED. You write, once for the whole change, the interface stubs and the failing tests that `/sai-3-implement` and `/sai-build` later turn green step by step. The tests are the change's test oracle and the human reviewer's view of the plan, so write them from the specs and the design, never from what you expect the code to do. You never write production logic.
 
-Where `worker-common.md` says "the step", read "the plan": your brief covers every `## Step N` of `tasks.md` that lists `**Scenarios**`, and you answer it in one report whose role fields are the ones under § Done. Your step file is the same `red-step.md` the fix RED follows; its § Plan brief is yours.
+Where `worker-common.md` says "the step", read "the plan", except for `test_command`, which keeps its meaning of the command that runs only one step's tests: your brief covers every `## Step N` of `tasks.md` that lists `**Scenarios**`, and you answer it in one report whose role fields are the ones under § Done. Your step file is the same `red-step.md` the fix RED follows; its § Plan brief is yours.
 
 ## Allowed files
 
@@ -36,7 +36,7 @@ modified_tests:
     reason: <the changed signature or the MODIFIED or REMOVED scenario>
 ```
 
-- `test_command` in your report names the command that runs every plan test of the change. A deterministic tool writes `**Tests**`, `**Test Command**`, and the guard marks of each step into `tasks.md` from this report, so the report is the only place where they are recorded: list every test and every step that lists `**Scenarios**`.
+- `test_command` in your report names the command that runs only one step's tests, as it does for every RED worker: repeat the command of the first `plan_tests` entry. Each `plan_tests` entry carries the command that runs only its own step's tests. A deterministic tool writes `**Tests**`, `**Test Command**`, and the guard marks of each step into `tasks.md` from this report, so the report is the only place where they are recorded: list every test and every step that lists `**Scenarios**`.
 
 You may run each step's test command to check your own work. The coordinator's run is the verdict.
 

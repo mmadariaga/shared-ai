@@ -27,15 +27,12 @@ All calls take `--json --cwd <project-root>`.
 | `bundle [--out <file>]`, `write` | the conflict bundle for the worker (with `--out`, written to a new record file outside the repository and summarized on stdout), and the worker's only way to change an affected file (`steps/common.md`, `steps/resolve.md`) |
 | `resolution --record --record-hash --source --confirmed [--phase authored\|materialized] [--partial]` | the check of a written resolution against the snapshot: complete inventory, decisions that match, text only inside the regions, unrelated content untouched, and, in `materialized`, whole-side checkouts equal to their captured stage. `--partial` checks only the files the resolution names, for the shortcut files of a mixed stop |
 | `correction --record <file>` | a snapshot of explicit byte ranges (array in `--input-file <path>`) that authorizes a correction outside the conflict regions |
-| `suite --record <file>` | the project-marker test command, when no documented command exists |
-| `verify` | one run of the fixed test command; `--command '<line>'` for a documented command, else `--suite <record> --suite-hash <sha256>` |
-| `verify --baseline --record <file>` | the suite before the integration, with the failing tests named when the output allows it |
-| `verify --baseline-record <file> --baseline-hash <sha256>` | the suite compared with the baseline: a failure not in the baseline is rerun once, and `comparison.status` is `clean`, `preexisting`, `flaky`, `not-comparable`, `new`, or `unavailable`. `verification_result` is `failed` only for a new failure |
+| `verify --command '<line>'` | one run of the exact test command line the coordinator built from `test-select.js command` and `select` (`test-execution.md`); `verification_result` is `passed`, `failed`, or `unavailable`, and `failing` names the failing tests when the output allows it. The tool discovers no suite and compares with no baseline: the classification of failing tests is the policy's, through `test-select.js swap` and `restore` |
 | `collision` (provenance in `--input-file <path>`, `--record <file>`) | the ADR/DDR collision frontier: `not-applicable`, `no-collision`, or `needs-judgment` |
 | `duplicates` (provenance in `--input-file <path>`, `--record <file>`) | the introduced duplicate blocks of the final tree: see Introduced duplicates |
 | `status` | `HEAD`, its subject, the current branch, the staged and unmerged paths, and the operation state |
 
-`verify` reports `unavailable` with its reason when no suite is detected, several candidates are ambiguous, or the command cannot start; that is not a failing test and not a pass.
+`verify` reports `unavailable` with its reason when the command cannot start; that is not a failing test and not a pass.
 
 ## Simulation
 

@@ -70,6 +70,7 @@ test('the implement, review, and build coordinators load only the policies that 
     '@sai/policies/prereqs-paths.md',
     '@sai/policies/tool-resolution.md',
     '@sai/policies/obstacle-escalation.md',
+    '@sai/policies/test-execution.md',
     '@skills/budget-executor/SKILL.md',
     '@skills/budget-explorer/SKILL.md',
     '@sai/policies/incremental-review.md',
@@ -134,7 +135,7 @@ test('the implement-new coordinator carries the run goals and every pinned edge-
   assert.match(source, /every task is already checked/);
 });
 
-test('step commits default to no AI attribution and the all-checked case runs the suites once', () => {
+test('step commits default to no AI attribution and the all-checked case runs the Close tests once', () => {
   const source = read(COORDINATORS[0]);
   assert.match(source, /human coauthor credits are allowed/i);
   assert.match(source, /Omit AI attribution unless the user explicitly requests it in the conversation/);
@@ -143,8 +144,8 @@ test('step commits default to no AI attribution and the all-checked case runs th
   const start = source.indexOf('## Start');
   const section = source.slice(start, source.indexOf('## The step cycle'));
   assert.equal(section.split('every task is already checked').length - 1, 1);
-  assert.match(section, /run the suites once through the executor, report their result, and close/);
-  assert.match(section, /8\. Run no suite at Start/);
+  assert.match(section, /run the Close tests once through the executor, report their result, and close/);
+  assert.match(section, /8\. Run no other tests at Start/);
   assert.doesNotMatch(section, /failure baseline|baseline-failures/);
 });
 
@@ -154,8 +155,9 @@ test('the implement coordinator selects each step\'s tests with test-select.js a
   assert.match(cycle, /\*\*Test selection\.\*\*/);
   assert.match(cycle, /`test-select\.js` \(resolved per `tool-resolution\.md`\)/);
   assert.match(cycle, /select --input-file <file> --cwd <project root>/);
+  const policy = read('sai/policies/test-execution.md');
   for (const reason of ['no-binary', 'no-index', 'sync-failed', 'stale-index', 'unindexed-file', 'no-dependents', 'codegraph-error', 'timeout', 'invalid-output']) {
-    assert.match(cycle, new RegExp(`\`${reason}\``), reason);
+    assert.match(policy, new RegExp(`\`${reason}\``), reason);
   }
   assert.match(cycle, /no scoping idiom/);
   assert.match(cycle, /selection\.md/);
@@ -175,10 +177,12 @@ test('the implement coordinator selects each step\'s tests with test-select.js a
 test('the implement coordinator reuses the design context and promotes learnings at run close', () => {
   const source = read(COORDINATORS[0]);
   const start = source.slice(source.indexOf('## Start'), source.indexOf('## The step cycle'));
-  const step7 = start.slice(start.indexOf('7. Find the project'), start.indexOf('8. Run no suite at Start'));
-  assert.ok(step7.indexOf('`**Test Command**` in `tasks.md`') !== -1);
-  assert.ok(step7.indexOf('`**Test Command**` in `tasks.md`') < step7.indexOf('`SAI_LEARNINGS.md`'), 'the design test command comes first');
-  assert.match(step7, /None — no test runner in this project/);
+  const step7 = start.slice(start.indexOf('7. Resolve the project'), start.indexOf('8. Run no other tests at Start'));
+  assert.match(step7, /node <tool-path> command --change \{name\} --cwd <project-root>/);
+  assert.match(step7, /its `tasks\.md` source is the `\*\*Test Command\*\*` of `## Implementation Context`/);
+  const policy = read('sai/policies/test-execution.md');
+  assert.ok(policy.indexOf('`tasks.md`') < policy.indexOf('`SAI_LEARNINGS.md`'), 'the design test command comes first');
+  assert.match(policy, /None — no test runner in this project/);
   assert.match(source, /`path :: signature` entries of `design\.md` `## Target State` that the step's tests exercise/);
   assert.match(source, /never a test path, which GREEN never receives/);
   const close = source.slice(source.indexOf('## Close'));

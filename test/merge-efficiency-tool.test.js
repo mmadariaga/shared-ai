@@ -184,11 +184,12 @@ test('Windows 8.3 paths work through the API and CLI without weakening snapshot 
 
 test('dependency validity invalidates changed paths, not unrelated settled metadata', t => {
   const { cwd } = fixture(t);
-  const suite = merge.suite(cwd);
+  const dependencies = ['path:package.json'];
+  const receipt = { version: 1, action: 'status', outcome: 'success', dependencies, state: merge.state(cwd, dependencies), data: {} };
   fs.writeFileSync(path.join(cwd, 'unrelated.txt'), 'changed');
-  assert.equal(merge.valid(cwd, suite).outcome, 'success');
+  assert.equal(merge.valid(cwd, receipt).outcome, 'success');
   fs.writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({ scripts: { test: 'node --test' } }));
-  assert.deepEqual(merge.valid(cwd, suite).changed_dependencies, ['path:package.json']);
+  assert.deepEqual(merge.valid(cwd, receipt).changed_dependencies, ['path:package.json']);
 });
 
 test('provenance is immutable historical evidence and collision absence is mechanical', t => {
@@ -382,7 +383,7 @@ test('markers support diff3, wider labels, CRLF and malformed marker rejection',
   }
 });
 
-test('verification runs Windows package-manager shims through the shell and keeps native spawning elsewhere', t => {
+test('verification runs the exact command line through the shell on every platform', t => {
   const { cwd } = fixture(t);
   const source = fs.readFileSync(TOOL, 'utf8');
   const toolRequire = createRequire(TOOL);
@@ -393,103 +394,63 @@ test('verification runs Windows package-manager shims through the shell and keep
       if (command === 'git') return spawnSync(command, args, options);
       const opts = Array.isArray(args) ? options : args;
       calls.push({ command, args: Array.isArray(args) ? args : [], options: opts });
-      if (platform === 'win32' && !opts.shell) return { status: null, error: new Error('spawn npm ENOENT') };
       return { status: 3, signal: null, stdout: '', stderr: 'failure evidence\n' };
     };
     vm.runInNewContext(source, {
       module: loaded, __dirname: path.dirname(TOOL), process: { platform, env: process.env },
       require: name => name === 'node:child_process' ? { spawnSync: spawn } : toolRequire(name),
     }, { filename: TOOL });
-    for (const manager of ['npm', 'pnpm', 'yarn']) {
-      fs.writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({ packageManager: `${manager}@1.0.0`, scripts: { test: 'ignored by the spawn stub' } }));
-      const result = loaded.exports.verify(cwd);
-      assert.equal(result.data.error, null, result.data.error);
-      assert.equal(result.data.exit_code, 3);
-      assert.equal(result.data.verification_result, 'failed');
-      assert.match(result.data.stderr, /failure evidence/);
-      const call = calls.at(-1);
-      assert.equal(call.command, platform === 'win32' ? `${manager} test` : manager);
-      assert.equal(call.args.join(' '), platform === 'win32' ? '' : 'test');
-      assert.equal(Boolean(call.options.shell), platform === 'win32');
-      assert.equal(call.options.env.NODE_TEST_CONTEXT, undefined);
-    }
+    const line = 'npm test -- test/a.test.js test/b.test.js';
+    const result = loaded.exports.verify(cwd, line);
+    assert.equal(result.data.error, null, result.data.error);
+    assert.equal(result.data.exit_code, 3);
+    assert.equal(result.data.verification_result, 'failed');
+    assert.match(result.data.stderr, /failure evidence/);
+    const call = calls.at(-1);
+    assert.equal(call.command, line, 'the command line is passed whole, never split or rebuilt from a list');
+    assert.equal(call.options.shell, true);
+    assert.equal(call.options.env.NODE_TEST_CONTEXT, undefined);
   }
 });
 
 test('verification distinguishes passed, failed and unavailable and retains failure evidence', t => {
   const { cwd, parent } = fixture(t);
-  const unavailable = merge.verify(cwd);
-  assert.equal(unavailable.outcome, 'not-applicable');
-  assert.equal(unavailable.data.verification_result, 'unavailable');
-  fs.writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({ scripts: { test: 'node -e "console.error(\'failure evidence\'); process.exit(3)"' } }));
-  const failed = merge.verify(cwd);
+  assert.throws(() => merge.verify(cwd), /verify requires --command/);
+  const failing = 'node -e "console.error(\'failure evidence\'); process.exit(3)"';
+  const failed = merge.verify(cwd, failing);
   assert.equal(failed.data.error, null, failed.data.error);
   assert.equal(failed.data.verification_result, 'failed'); assert.equal(failed.data.exit_code, 3);
   assert.match(failed.data.stderr, /failure evidence/); assert.ok(failed.data.test_ms > 0);
-  const stored = cli(cwd, ['verify', '--record', path.join(parent, 'verification.json')]);
+  const stored = cli(cwd, ['verify', '--command', failing, '--record', path.join(parent, 'verification.json')]);
   assert.equal(stored.status, 1);
   assert.equal(stored.payload.data.stderr, undefined);
   const full = fs.readFileSync(stored.payload.record);
   assert.equal(hash(full), stored.payload.record_hash);
   assert.match(JSON.parse(full).data.stderr, /failure evidence/);
   assert.equal(stored.payload.data.stderr_hash, hash(JSON.parse(full).data.stderr));
-  fs.writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({ scripts: { test: 'node -e "console.log(\'pass\')"' } }));
-  assert.equal(merge.verify(cwd).data.verification_result, 'passed');
-  fs.writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({ scripts: { test: 'node -e "require(\'fs\').writeFileSync(\'unrelated.txt\', \'test side effect\')"' } }));
-  const changed = merge.verify(cwd);
+  assert.equal(merge.verify(cwd, 'node -e "console.log(\'pass\')"').data.verification_result, 'passed');
+  const changed = merge.verify(cwd, 'node -e "require(\'fs\').writeFileSync(\'unrelated.txt\', \'test side effect\')"');
   assert.equal(changed.data.state_changed_during_run, true); assert.equal(changed.data.verification_result, 'failed');
 });
 
-test('a documented command runs instead of the detected suite, on every entry path', t => {
+test('a command line runs as given, on every entry path', t => {
   const { cwd, parent } = fixture(t);
   fs.writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({ scripts: { test: 'node -e "process.exit(3)"' } }));
   const documented = 'node -e "console.log(\'documented ran\')"';
   const passed = merge.verify(cwd, documented);
   assert.equal(passed.data.verification_result, 'passed', passed.data.stderr);
   assert.equal(passed.data.command, documented);
-  assert.equal(passed.data.command_source, 'documented');
   assert.match(passed.data.stdout, /documented ran/);
-  const listed = merge.verify(cwd);
-  assert.equal(listed.data.verification_result, 'failed');
-  assert.equal(listed.data.command_source, 'list');
   const failing = merge.verify(cwd, 'node -e "process.exit(4)"');
   assert.equal(failing.data.verification_result, 'failed'); assert.equal(failing.data.exit_code, 4);
   const stored = cli(cwd, ['verify', '--command', 'node --version', '--record', path.join(parent, 'documented.json')]);
   assert.equal(stored.status, 0, stored.stdout);
   assert.equal(stored.payload.data.verification_result, 'passed');
   assert.equal(stored.payload.data.command, 'node --version');
-  assert.equal(stored.payload.data.command_source, 'documented');
-});
-
-test('.NET markers resolve to dotnet test and several candidates are unavailable', t => {
-  const { cwd } = fixture(t);
-  const command = () => merge.suite(cwd).data;
-  fs.writeFileSync(path.join(cwd, 'App.csproj'), '<Project />');
-  assert.deepEqual(command(), { command: ['dotnet', 'test', 'App.csproj'] });
-  fs.mkdirSync(path.join(cwd, 'src', 'deep'), { recursive: true });
-  fs.writeFileSync(path.join(cwd, 'src', 'deep', 'TooDeep.sln'), '');
-  assert.deepEqual(command(), { command: ['dotnet', 'test', 'App.csproj'] }, 'two levels below is not a marker');
-  fs.writeFileSync(path.join(cwd, 'src', 'App.sln'), '');
-  assert.deepEqual(command(), { command: ['dotnet', 'test', 'src/App.sln'] }, 'a solution wins over a root project');
-  const receipt = merge.suite(cwd);
-  assert.ok(receipt.dependencies.includes('path:src/App.sln'));
-  fs.writeFileSync(path.join(cwd, 'Other.sln'), '');
-  assert.deepEqual(command(), { command: null, ambiguous: ['Other.sln', 'src/App.sln'] });
-  const ambiguous = merge.verify(cwd);
-  assert.equal(ambiguous.outcome, 'not-applicable');
-  assert.equal(ambiguous.data.verification_result, 'unavailable');
-  assert.equal(ambiguous.data.unavailable_reason, 'ambiguous-suite');
-  assert.match(ambiguous.data.detail, /Other\.sln, src\/App\.sln/);
-  fs.writeFileSync(path.join(cwd, 'Cargo.toml'), '');
-  assert.deepEqual(command(), { command: ['cargo', 'test'] }, 'the existing list keeps its precedence');
-  fs.rmSync(path.join(cwd, 'Cargo.toml')); fs.rmSync(path.join(cwd, 'Other.sln')); fs.rmSync(path.join(cwd, 'src'), { recursive: true });
-  fs.writeFileSync(path.join(cwd, 'Second.csproj'), '<Project />');
-  assert.deepEqual(command(), { command: null, ambiguous: ['App.csproj', 'Second.csproj'] });
 });
 
 test('a command that fails to start is unavailable with its reason, apart from failing tests', t => {
   const { cwd, parent } = fixture(t);
-  assert.equal(merge.verify(cwd).data.unavailable_reason, 'no-suite');
   const missing = merge.verify(cwd, 'sai-merge-no-such-tool --run');
   assert.equal(missing.outcome, 'not-applicable');
   assert.equal(missing.data.verification_result, 'unavailable');
@@ -501,70 +462,16 @@ test('a command that fails to start is unavailable with its reason, apart from f
   assert.equal(stored.payload.data.unavailable_reason, 'not-runnable');
   // A command that started and exited 1 stays a test failure.
   assert.equal(merge.verify(cwd, 'node -e "process.exit(1)"').data.verification_result, 'failed');
-  // The list path: a listed tool that is not installed never starts either.
-  const source = fs.readFileSync(TOOL, 'utf8');
-  const loaded = { exports: {} };
-  const spawn = (command, args, options) => command === 'git' ? spawnSync(command, args, options)
-    : { status: null, signal: null, error: Object.assign(new Error('spawn cargo ENOENT'), { code: 'ENOENT' }) };
-  vm.runInNewContext(source, { module: loaded, __dirname: path.dirname(TOOL), process: { platform: 'linux', env: process.env },
-    require: name => name === 'node:child_process' ? { spawnSync: spawn } : createRequire(TOOL)(name) }, { filename: TOOL });
-  fs.writeFileSync(path.join(cwd, 'Cargo.toml'), '');
-  const uninstalled = loaded.exports.verify(cwd);
-  assert.equal(uninstalled.data.verification_result, 'unavailable');
-  assert.equal(uninstalled.data.unavailable_reason, 'not-runnable');
-  assert.match(uninstalled.data.detail, /ENOENT/);
 });
 
-test('the marker-list outcome captured at run start decides every later round', t => {
-  const { cwd, parent } = fixture(t);
-  // No marker at run start: a marker file added later starts no test.
-  const none = cli(cwd, ['suite', '--record', path.join(parent, 'suite-none.json')]);
-  assert.equal(none.status, 0, none.stdout);
-  assert.equal(none.payload.data.command, null);
-  const fixedNone = ['--suite', none.payload.record, '--suite-hash', none.payload.record_hash];
-  fs.writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({ scripts: { test: 'node -e "process.exit(3)"' } }));
-  assert.equal(merge.verify(cwd).data.verification_result, 'failed', 'detection now would run the new marker');
-  const stillNone = cli(cwd, ['verify', ...fixedNone, '--record', path.join(parent, 'verify-none.json')]);
-  assert.equal(stillNone.status, 0, stillNone.stdout);
-  assert.equal(stillNone.payload.data.verification_result, 'unavailable');
-  assert.equal(stillNone.payload.data.unavailable_reason, 'no-suite');
-  // One command at run start: a marker file that would select another command changes nothing.
-  fs.writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({ scripts: { test: 'node -e "console.log(1)"' } }));
-  const npm = cli(cwd, ['suite', '--record', path.join(parent, 'suite-npm.json')]);
-  assert.deepEqual(npm.payload.data.command, ['npm', 'test']);
-  const fixedNpm = ['--suite', npm.payload.record, '--suite-hash', npm.payload.record_hash];
-  fs.writeFileSync(path.join(cwd, 'pnpm-lock.yaml'), '');
-  assert.deepEqual(merge.suite(cwd).data.command, ['pnpm', 'test'], 'detection now would select another command');
-  const fixedRun = cli(cwd, ['verify', ...fixedNpm, '--record', path.join(parent, 'verify-npm.json')]).payload;
-  assert.deepEqual(fixedRun.data.command, ['npm', 'test']);
-  assert.equal(fixedRun.data.command_source, 'list');
-  assert.equal(fixedRun.data.verification_result, 'passed', JSON.stringify(fixedRun.data));
-  // An ambiguous outcome at run start stays unavailable with its reason.
-  fs.rmSync(path.join(cwd, 'package.json')); fs.rmSync(path.join(cwd, 'pnpm-lock.yaml'));
-  fs.writeFileSync(path.join(cwd, 'A.sln'), ''); fs.writeFileSync(path.join(cwd, 'B.sln'), '');
-  const ambiguous = merge.suite(cwd);
-  fs.rmSync(path.join(cwd, 'B.sln'));
-  assert.equal(merge.verify(cwd, undefined, ambiguous).data.unavailable_reason, 'ambiguous-suite');
-  // The record is used only unchanged, and only one source is named.
-  assert.equal(cli(cwd, ['verify', '--suite', npm.payload.record, '--suite-hash', none.payload.record_hash]).status, 2);
-  assert.equal(cli(cwd, ['verify', '--suite', npm.payload.record]).status, 2);
-  assert.equal(cli(cwd, ['verify', ...fixedNpm, '--command', 'node --version']).status, 2);
-  assert.throws(() => merge.verify(cwd, undefined, merge.preflight(cwd)), /captured suite receipt required/);
-});
-
-test('the coordinator fixes the test command once, before anything runs, and reports a not-runnable command apart', () => {
+test('the coordinator resolves the test command through the shared resolver and keeps no detection in merge.js', () => {
   const coordinator = fs.readFileSync(path.join(ROOT, 'sai/commands/merge/coordinator.md'), 'utf8');
-  const fix = coordinator.indexOf('Fix the test command once');
-  assert.ok(fix > coordinator.indexOf('2. Run `merge.js preflight`'));
-  assert.ok(fix < coordinator.indexOf('Take the baseline with `merge.js verify --baseline'), 'fixed before the baseline and the launch');
-  assert.ok(coordinator.indexOf('`AGENTS.md`, then `README.md`') > fix);
-  assert.match(coordinator, /`merge\.js suite --record`/);
-  assert.match(coordinator, /a document naming several with none clearly the general one names none/);
-  assert.match(coordinator, /use it for every run of the suite/);
+  assert.match(coordinator, /`node <tool-path> command --cwd <project-root>` \(`test-select\.js`\)/);
+  assert.match(coordinator, /Fetch `@sai\/policies\/test-execution\.md`/);
+  assert.doesNotMatch(coordinator, /merge\.js suite|verify --baseline/);
   const mechanics = fs.readFileSync(path.join(ROOT, 'sai/commands/merge/mechanics.md'), 'utf8');
   assert.match(mechanics, /`verify` reports `unavailable` with its reason[\s\S]+not a failing test and not a pass/);
-  const doc = fs.readFileSync(path.join(ROOT, 'docs/commands/sai-merge.md'), 'utf8');
-  assert.match(doc, /`AGENTS\.md`, then one in `README\.md`, then the project markers/);
+  assert.doesNotMatch(mechanics, /`suite --record|baseline-record/);
 });
 
 test('the tool has no stage entry points: instructions travel by pointer and the hand-over by file', () => {
@@ -579,7 +486,7 @@ test('the tool has no stage entry points: instructions travel by pointer and the
     assert.match(help, new RegExp(action), `${action} stays`);
   }
   const mechanics = fs.readFileSync(path.join(ROOT, 'sai/commands/merge/mechanics.md'), 'utf8');
-  for (const action of ['preflight', 'provenance', 'conflicts', 'bundle', 'write', 'resolution', 'correction', 'suite', 'verify', 'collision', 'status']) {
+  for (const action of ['preflight', 'provenance', 'conflicts', 'bundle', 'write', 'resolution', 'correction', 'verify', 'collision', 'status']) {
     assert.match(mechanics, new RegExp(`\`${action}`), `mechanics documents ${action}`);
   }
 });
@@ -640,15 +547,13 @@ test('one preflight, provenance, conflicts, resolution, collision and status seq
 
   const snapshot = JSON.parse(fs.readFileSync(stop.payload.record));
   writeAuthored(cwd, snapshot); git(cwd, ['add', 'f.txt']);
-  const verified = cli(cwd, ['verify', '--record', path.join(parent, 'verify-1.json')]);
+  const verified = cli(cwd, ['verify', '--command', 'sai-merge-no-such-tool', '--record', path.join(parent, 'verify-1.json')]);
   assert.equal(verified.status, 0, verified.stdout);
   assert.equal(verified.payload.data.verification_result, 'unavailable');
-  fs.writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({ scripts: { test: 'node -e "process.exit(3)"' } }));
-  const failed = cli(cwd, ['verify', '--record', path.join(parent, 'verify-2.json')]);
+  const failed = cli(cwd, ['verify', '--command', 'node -e "process.exit(3)"', '--record', path.join(parent, 'verify-2.json')]);
   assert.equal(failed.status, 1, 'a failed test run exits 1');
   assert.equal(failed.payload.data.verification_result, 'failed');
   assert.equal(failed.payload.data.stdout, undefined);
-  fs.rmSync(path.join(cwd, 'package.json'));
 
   const collided = cli(cwd, ['collision', '--record', path.join(parent, 'collision.json')], JSON.stringify(captured.payload));
   assert.equal(collided.status, 0, collided.stdout);

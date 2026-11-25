@@ -973,41 +973,6 @@ function checkResolution(cwd, snapshot, source, confirmed, phase = 'authored', p
   return { outcome: errors.length ? 'failure' : 'success', source_hash: sourceHash, errors, checked_files: [...seen] };
 }
 
-const METADATA = ['package.json', 'pnpm-lock.yaml', 'yarn.lock', 'Cargo.toml', 'go.mod', 'pyproject.toml', 'setup.py', 'setup.cfg', 'Makefile', 'mix.exs', 'pom.xml', 'build.gradle'];
-
-// .NET markers have no fixed name: every *.sln at the root or one level below,
-// else every *.csproj at the root.
-function dotnetMarkers(cwd) {
-  const list = directory => fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => compare(a.name, b.name));
-  const named = (entries, extension) => entries.filter(entry => entry.isFile() && entry.name.toLowerCase().endsWith(extension)).map(entry => entry.name);
-  const root = list(cwd);
-  const solutions = [...named(root, '.sln'), ...root.filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
-    .flatMap(directory => named(list(path.join(cwd, directory.name)), '.sln').map(name => `${directory.name}/${name}`))];
-  return solutions.length ? solutions : named(root, '.csproj');
-}
-
-function suite(cwd) {
-  const markers = dotnetMarkers(cwd);
-  return fact(cwd, 'suite', [...METADATA, ...markers].map(name => `path:${name}`), () => {
-    const exists = name => fs.existsSync(localPath(cwd, name));
-    if (exists('package.json')) {
-      const pkg = JSON.parse(fs.readFileSync(localPath(cwd, 'package.json'), 'utf8'));
-      if (pkg.scripts?.test) {
-        const manager = pkg.packageManager?.split('@')[0] || (exists('pnpm-lock.yaml') ? 'pnpm' : exists('yarn.lock') ? 'yarn' : 'npm');
-        if (!['npm', 'pnpm', 'yarn'].includes(manager)) throw new Error(`unsupported package manager: ${manager}`);
-        return { command: [manager, 'test'] };
-      }
-    }
-    const options = [['Cargo.toml', ['cargo', 'test']], ['go.mod', ['go', 'test', './...']],
-      ['pyproject.toml', ['pytest']], ['setup.py', ['pytest']], ['setup.cfg', ['pytest']],
-      ['Makefile', ['make', 'test']], ['mix.exs', ['mix', 'test']], ['pom.xml', ['mvn', 'test']], ['build.gradle', ['gradle', 'test']]];
-    const listed = options.find(([filename]) => exists(filename))?.[1];
-    if (listed || !markers.length) return { command: listed || null };
-    // Several candidates give no single target to test: report them instead of choosing one.
-    return markers.length === 1 ? { command: ['dotnet', 'test', markers[0]] } : { command: null, ambiguous: markers };
-  });
-}
-
 function collision(cwd, captured) {
   const provenanceData = captured?.data;
   if (captured?.action !== 'provenance' || !Array.isArray(provenanceData?.source_introduced_records)) throw new Error('captured provenance required');
@@ -1157,41 +1122,32 @@ function startFailure(cwd, run, line, shell) {
   return run.status === 9009 || run.status === 1 && !resolvable(cwd, line) ? 'command not found on PATH' : null;
 }
 
-// `explicit` is the documented command line the coordinator fixed at run start;
-// `fixed` is the suite receipt captured at run start. With neither, the marker
-// list is read now.
-function verify(cwd, explicit, fixed) {
-  if (fixed && (fixed.action !== 'suite' || !fixed.data || !('command' in fixed.data))) throw new Error('captured suite receipt required');
-  const detected = explicit ? null : fixed || suite(cwd);
-  const chosen = explicit || detected.data.command;
+// `explicit` is the exact command line the coordinator built from the shared resolver (`test-select.js command`) and
+// the selection (`test-select.js select`): this tool never discovers a test command itself.
+function verify(cwd, explicit) {
+  if (!explicit) throw new Error('verify requires --command <test-command-line>');
   const dependencies = ['head', 'index', 'operations', 'tree'];
   const before = state(cwd, dependencies);
   const unavailable = (reason, current, data) => ({ version: 1, action: 'verify', outcome: 'not-applicable', dependencies,
     state: current, data: { verification_result: 'unavailable', unavailable_reason: reason, command: null, exit_code: null, test_ms: 0, ...data } });
-  if (!chosen) {
-    return detected.data.ambiguous
-      ? unavailable('ambiguous-suite', before, { detail: `several .NET candidates: ${detected.data.ambiguous.join(', ')}` })
-      : unavailable('no-suite', before);
-  }
+  const chosen = explicit;
   const start = performance.now();
   const options = { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
     env: { ...process.env, NODE_TEST_CONTEXT: undefined } };
-  // A documented command is a shell line, and Windows package managers ship
-  // .cmd shims, which need a shell too. The line comes only from the
-  // coordinator's fixed choice or suite's allowlist, never from script content.
-  const shell = Boolean(explicit) || process.platform === 'win32';
-  const line = explicit || chosen.map(part => /[\s&|<>^()"]/.test(part) ? `"${part}"` : part).join(' ');
-  const run = shell ? spawnSync(line, { ...options, shell: true, windowsHide: true }) : spawnSync(chosen[0], chosen.slice(1), options);
+  // The command is a shell line the coordinator built from the resolver and the selection, never from script content.
+  const line = explicit;
+  const run = spawnSync(line, { ...options, shell: true, windowsHide: true });
   const elapsed = performance.now() - start;
   const after = state(cwd, dependencies);
-  const evidence = { command: chosen, command_source: explicit ? 'documented' : 'list', exit_code: run.status, signal: run.signal,
+  const evidence = { command: chosen, exit_code: run.status, signal: run.signal,
     error: run.error?.message || null, test_ms: elapsed, stdout: run.stdout || '', stderr: run.stderr || '' };
-  const notStarted = startFailure(cwd, run, line, shell);
+  const notStarted = startFailure(cwd, run, line, true);
   if (notStarted) return unavailable('not-runnable', after, { ...evidence, detail: notStarted });
   const changed = JSON.stringify(before) !== JSON.stringify(after);
   const passed = run.status === 0 && !run.error && !changed;
   return { version: 1, action: 'verify', outcome: passed ? 'success' : 'failure', dependencies,
-    state: after, data: { verification_result: passed ? 'passed' : 'failed', ...evidence, state_changed_during_run: changed } };
+    state: after, data: { verification_result: passed ? 'passed' : 'failed', ...evidence, state_changed_during_run: changed,
+      failing: passed ? [] : failingTests(evidence) } };
 }
 
 // Failing tests named in a suite's output, for the formats the common runners
@@ -1204,7 +1160,6 @@ const FAILING_TEST_LINES = [
   /^\s*test (\S+) \.\.\. FAILED$/,
   /^\s*Failed (\S+)(?: \[.*\])?$/,
 ];
-const WHOLE_SUITE = '(suite)';
 
 function failingTests(data) {
   const text = `${data.stdout || ''}\n${data.stderr || ''}`.replace(/\x1b\[[0-9;]*m/g, '');
@@ -1215,60 +1170,6 @@ function failingTests(data) {
     if (match && !match[1].trim().endsWith(':')) names.add(match[1].trim());
   }
   return [...names].sort(compare);
-}
-
-// The suite as it stands before the integration: the reference every later
-// verification compares against. It runs on the working tree as launched.
-function baseline(cwd, explicit, fixed) {
-  const receipt = verify(cwd, explicit, fixed);
-  const failing = receipt.data.verification_result === 'failed' ? failingTests(receipt.data) : [];
-  return { ...receipt, outcome: receipt.outcome === 'failure' ? 'success' : receipt.outcome,
-    data: { ...receipt.data, mode: 'baseline', head: git(cwd, ['rev-parse', '--verify', 'HEAD']).trim(), failing, identified: failing.length > 0 } };
-}
-
-// Verification against the baseline. `verification_result` is the blocking
-// verdict: `failed` only for a new failure, a test that passes in the baseline
-// and fails on two consecutive runs. `comparison.status` names what the report
-// must say: clean, preexisting, flaky, not-comparable, new, or unavailable.
-function compareToBaseline(cwd, reference, explicit, fixed) {
-  if (reference?.action !== 'verify' || reference.data?.mode !== 'baseline') throw new Error('captured baseline record required');
-  const base = reference.data;
-  const dependencies = ['head', 'index', 'operations', 'tree'];
-  const failed = receipt => receipt.data.verification_result === 'failed';
-  const settle = (receipt, status, found, runs) => ({ ...receipt,
-    outcome: found.new.length ? 'failure' : receipt.outcome === 'failure' ? 'success' : receipt.outcome,
-    data: { ...receipt.data, verification_result: found.new.length ? 'failed' : receipt.data.verification_result === 'unavailable' ? 'unavailable' : 'passed',
-      comparison: { status, ...found },
-      runs: runs.map(run => ({ exit_code: run.data.exit_code, test_ms: run.data.test_ms, stdout: run.data.stdout || '', stderr: run.data.stderr || '' })) } });
-  const none = { new: [], flaky: [], preexisting: [] };
-  if (base.verification_result === 'unavailable') {
-    const receipt = { version: 1, action: 'verify', outcome: 'not-applicable', dependencies, state: state(cwd, dependencies),
-      data: { verification_result: 'unavailable', unavailable_reason: base.unavailable_reason, command: null, exit_code: null, test_ms: 0, detail: 'the baseline was unavailable' } };
-    return settle(receipt, 'unavailable', none, []);
-  }
-  const first = verify(cwd, explicit, fixed);
-  if (first.data.verification_result === 'unavailable') return settle(first, 'unavailable', none, [first]);
-  if (!failed(first)) return settle(first, 'clean', none, [first]);
-  const names = failingTests(first.data);
-  const baselineFailed = base.verification_result === 'failed';
-  if (baselineFailed && (!base.identified || !names.length)) return settle(first, 'not-comparable', none, [first]);
-  const known = new Set(base.failing);
-  const preexisting = names.filter(name => known.has(name));
-  const candidates = baselineFailed ? names.filter(name => !known.has(name)) : names.length ? names : [WHOLE_SUITE];
-  if (!candidates.length) return settle(first, 'preexisting', { ...none, preexisting }, [first]);
-  const second = verify(cwd, explicit, fixed);
-  if (second.data.verification_result === 'unavailable') return settle(second, 'unavailable', none, [first, second]);
-  if (!failed(second)) return settle(second, 'flaky', { new: [], flaky: candidates.filter(name => name !== WHOLE_SUITE), preexisting }, [first, second]);
-  const again = failingTests(second.data);
-  const confirmed = candidates.includes(WHOLE_SUITE) ? again.length ? again : [WHOLE_SUITE]
-    : again.length ? candidates.filter(name => again.includes(name)) : candidates;
-  // A test that failed in only one of the two runs is flaky, whichever run it
-  // failed in; one already failing in the baseline stays pre-existing.
-  const rerunOnly = again.filter(name => !candidates.includes(name) && !confirmed.includes(name));
-  const flaky = [...candidates.filter(name => name !== WHOLE_SUITE && !confirmed.includes(name)), ...rerunOnly.filter(name => !known.has(name))];
-  const found = { new: confirmed, flaky: [...new Set(flaky)].sort(compare),
-    preexisting: [...new Set([...preexisting, ...rerunOnly.filter(name => known.has(name))])].sort(compare) };
-  return settle(second, confirmed.length ? 'new' : 'flaky', found, [first, second]);
 }
 
 function saveReceipt(cwd, result, filename) {
@@ -1302,24 +1203,7 @@ function collect(action, cwd, opts, stdin) {
   } else if (action === 'conflicts') result = saveSnapshot(cwd, conflicts(cwd, opts.record ? path.dirname(path.resolve(opts.record)) : null), opts.record);
   else if (action === 'correction') result = saveSnapshot(cwd, correction(cwd, stdin()), opts.record);
   else if (action === 'valid') result = valid(cwd, stdin());
-  else if (action === 'suite') result = suite(cwd);
-  else if (action === 'verify') {
-    if (opts.command && opts.suite) throw new Error('verify takes --command or --suite, not both');
-    let fixed;
-    if (opts.suite) {
-      const record = fs.readFileSync(opts.suite);
-      if (!opts['suite-hash'] || hash(record) !== opts['suite-hash']) throw new Error('missing or changed suite record hash');
-      fixed = JSON.parse(record);
-    }
-    if (opts.baseline) {
-      if (!opts.record) throw new Error('verify --baseline requires --record (new file outside the repository)');
-      result = baseline(cwd, opts.command, fixed);
-    } else if (opts['baseline-record']) {
-      const reference = fs.readFileSync(opts['baseline-record']);
-      if (!opts['baseline-hash'] || hash(reference) !== opts['baseline-hash']) throw new Error('missing or changed baseline record hash');
-      result = compareToBaseline(cwd, JSON.parse(reference), opts.command, fixed);
-    } else result = verify(cwd, opts.command, fixed);
-  }
+  else if (action === 'verify') result = verify(cwd, opts.command);
   else if (action === 'collision') result = collision(cwd, stdin());
   else if (action === 'duplicates') result = duplicates(cwd, stdin());
   else if (action === 'bundle' || action === 'write') {
@@ -1356,20 +1240,17 @@ function collect(action, cwd, opts, stdin) {
 
 function main(argv) {
   const opts = { cwd: process.cwd() }; let action;
-  const flags = ['cwd', 'source-ref', 'method', 'squash', 'record', 'record-hash', 'source', 'confirmed', 'phase', 'command', 'suite', 'suite-hash', 'baseline-record', 'baseline-hash', 'context', 'input', 'input-file', 'out', 'harness'];
+  const flags = ['cwd', 'source-ref', 'method', 'squash', 'record', 'record-hash', 'source', 'confirmed', 'phase', 'command', 'context', 'input', 'input-file', 'out', 'harness'];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--json') continue;
-    if (arg === '--baseline') { opts.baseline = true; continue; }
     if (arg === '--partial') { opts.partial = true; continue; }
     if (arg === '--help') {
-      process.stdout.write('Usage: node merge.js <preflight|provenance|simulate|conflicts|correction|bundle|write|valid|resolution|suite|verify|collision|duplicates|status> --cwd <root> [--json]\n'
+      process.stdout.write('Usage: node merge.js <preflight|provenance|simulate|conflicts|correction|bundle|write|valid|resolution|verify|collision|duplicates|status> --cwd <root> [--json]\n'
         + 'provenance: --source-ref <full-ref> --method merge|rebase --squash yes|no|not-applicable (validates the ref, then captures; records the upstream facts of the current branch)\n'
         + 'simulate: --source-ref <full-ref> --method merge|rebase|squash [--harness claude|opencode] (before the launch: predicts the stops with git merge-tree --write-tree, one step per replayed commit for rebase and squash and one for merge, never touching the working tree, the index, or a ref; after a predicted stop the next step starts from the current tip\'s version of each conflicted file, as the whole-side shortcut resolves it; writes the detail to a private file under the SAI temp root and prints the summary, the repeated files, and the file\'s path and hash; not-applicable with a reason when the prediction cannot run)\n'
         + 'valid/collision/duplicates: receipt JSON in --input-file <path> (stdin also accepted); duplicates takes the captured provenance and, with --record <external-new-file>, saves its receipt; conflicts/correction: --record <external-new-file>; correction: authorized region inventory in --input-file <path> (stdin also accepted)\n'
-        + 'verify: --command <documented-test-command-line>, or --suite <suite-record-file> --suite-hash <sha256> (the outcome of `suite --record` captured at run start); with neither, the marker list is read now\n'
-        + 'verify --baseline --record <external-new-file>: run the suite before the integration and store the baseline, naming the failing tests when the output allows it\n'
-        + 'verify --baseline-record <baseline-file> --baseline-hash <sha256>: run the suite and compare with the baseline; a failure that is not in the baseline is rerun once, and only a test that fails both times is new (comparison: new, flaky, preexisting, not-comparable, clean, unavailable)\n'
+        + 'verify: --command <test-command-line> (one run of the exact command line the coordinator built from `test-select.js command` and `select`; this tool never discovers a suite; failing tests are named in `failing` when the output allows it)\n'
         + 'conflicts: the record holds the complete containment indicators of each file; stdout carries their bounded summary and the conflict signature of each file (path, category, region count, ours and theirs line counts per region, and the id a saved procedure is matched by)\n'
         + 'bundle: --record <snapshot-file> --record-hash <sha256> [--context <0-20 lines, default 3>] [--out <external-new-file>] (each conflict region with its three versions, bounded context, the conflict category, and each side\'s commit messages; with --out the bundle goes to the file and stdout prints its summary and hash)\n'
         + 'write: --record <snapshot-file> --record-hash <sha256> [--input <payload-file>]; {"conflict_id", "text"} or {"conflict_id", "segments"} (each segment {"side": "ours"|"theirs"|"base"} or {"text"}, concatenated from the snapshot), or an array of them, from the UTF-8 JSON file or from stdin, never both (splices resolved text keeping the file\'s encoding, BOM and line endings; a rejection writes nothing)\n'
@@ -1419,4 +1300,4 @@ if (require.main === module) {
   try { process.exitCode = main(process.argv.slice(2)); }
   catch (error) { process.stdout.write(JSON.stringify({ outcome: 'failure', error: error.message }) + '\n'); process.exitCode = 2; }
 }
-module.exports = { preflight, provenance, simulate, repeatedFiles, conflicts, correction, bundle, write, valid, regions, checkResolution, suite, verify, baseline, compareToBaseline, failingTests, collision, duplicates, status, state, main };
+module.exports = { preflight, provenance, simulate, repeatedFiles, conflicts, correction, bundle, write, valid, regions, checkResolution, verify, failingTests, collision, duplicates, status, state, main };

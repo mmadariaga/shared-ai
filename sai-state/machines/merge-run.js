@@ -5,7 +5,7 @@
 // coordinator resume an interrupted run. The generic run core (attempt budget,
 // escalation, answers, records, close) lives in `run-core.js`; this machine
 // adds the merge vocabulary: the method and branch of the run, the `HEAD`
-// recorded before the launch, the baseline record, the conflict stop now being
+// recorded before the launch, the dirty git state (`baseline`), the conflict stop now being
 // worked, and the reference kinds whose free text lives in files inside the run
 // directory (the `shortcut` kind names a stop's `stop-{n}-shortcuts.md`), except the
 // `simulation` kind: the pre-launch simulation file sits in its own private directory under the SAI temp root.
@@ -15,7 +15,8 @@
 //                                                     a completed or stopped run starts fresh
 //   launch     {method, branch, head, baseline}       names the integration: method is merge | rebase |
 //                                                     rebase-squash, head is the pre-launch HEAD, baseline is the
-//                                                     path of the baseline record (omit when it is unavailable)
+//                                                     path of the dirty git state recorded before the launch (the
+//                                                     uncommitted paths the run never owns, which `swap` honors)
 //   stop       {stop}                                 names the conflict stop now in progress (a positive integer)
 //   attempt    {obstacle}                             spends one of the obstacle's attempts
 //   escalate   {obstacle}                             the run waits for the user's answer

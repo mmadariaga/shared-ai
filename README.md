@@ -99,7 +99,7 @@ authorization; add `--url <url>` for the accessibility dev server), or `--parent
 See [review options](docs/review-triage.md) for scope and cost trade-offs.
 
 Deep review selects and applies fixes automatically. The fixes run through
-the fix RED (only when a finding needs a new test) and GREEN with one local commit per fix step, and the suites then run, with each
+the fix RED (only when a finding needs a new test) and GREEN with one local commit per fix step, and the plan tests and the tests related to the change then run, with each
 failing test checked against the change base. To apply open findings from a standalone
 review later, run `/sai-3-implement`, then review again. See
 [findings and exclusions](docs/review-triage.md#findings-the-run-fixes).

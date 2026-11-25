@@ -7,7 +7,7 @@ TBD - created by archiving change direct-build-run-state-store. Update Purpose a
 
 ### Requirement: Direct Build run state machine holds identifiers and paths of one slice
 
-`sai-state` SHALL register a `direct-build-run@1` machine built on the shared run core (`sai-state/machines/run-core.js`). It SHALL hold the run state of ONE Direct Build slice at a time, identified by `change`, and only identifiers and paths: `step` (`step-1` through `step-8`, with `step-2b`), `base_sha` (a commit identifier), `slice_snapshot` (a record name or the literal `n/a`), `route` (`no-specs` or `worker`), `fix_rounds` and `gate_rounds` (integers from 0 to 99), the in-flight `order` with its `order_snapshot` and `order_state`, the checkpointed route `items`, the `consumed` orders and grants, the worker handles recorded as `role:handle` entries, and the recorded paths of the report directory, the transfer directory, the evidence files, the backfill validation project directories, and the confirmed commits. Reports and free text SHALL stay in the run directory. A `start` event SHALL require `dir` and `change` and SHALL open the run with both counters at `0`; a `start` without a usable change name SHALL be rejected. A `field` event with an unknown field or a value that is not valid for that field SHALL be rejected and SHALL change nothing.
+`sai-state` SHALL register a `direct-build-run@1` machine built on the shared run core (`sai-state/machines/run-core.js`). It SHALL hold the run state of ONE Direct Build slice at a time, identified by `change`, and only identifiers and paths: `step` (`step-1` through `step-8`, with `step-2b`), `base_sha` (a commit identifier), `slice_snapshot` (a record name or the literal `n/a`), `route` (`no-specs` or `worker`), `fix_rounds` and `gate_rounds` (integers from 0 to 99), the in-flight `order` with its `order_snapshot` and `order_state`, the checkpointed route `items`, the `consumed` orders and grants, the worker handles recorded as `role:handle` entries, and the recorded paths of the report directory, the transfer directory, the evidence files, the backfill validation project directories, the confirmed commits, the dirty git state file (`record` ref `baseline`, listed as `baselines`, recorded when the implementer is dispatched), and the record files of test classifications (`record` ref `swap`, listed as `swaps`, which a resumed run reads to bring the run's files back). Reports and free text SHALL stay in the run directory. A `start` event SHALL require `dir` and `change` and SHALL open the run with both counters at `0`; a `start` without a usable change name SHALL be rejected. A `field` event with an unknown field or a value that is not valid for that field SHALL be rejected and SHALL change nothing.
 
 #### Scenario: A start without a change name is refused
 
@@ -18,6 +18,11 @@ TBD - created by archiving change direct-build-run-state-store. Update Purpose a
 
 - **WHEN** a running `direct-build-run@1` receives `field` with `field` `base_sha` and a value that is not a commit identifier
 - **THEN** the machine rejects it and the stored `base_sha` stays as it was
+
+#### Scenario: The dirty git state and the swap record are recorded
+
+- **WHEN** a running `direct-build-run@1` receives `record` with ref `baseline` and then `record` with ref `swap`, each with a path
+- **THEN** the run view lists the first path under `baselines` and the second under `swaps`
 
 ### Requirement: A route item checkpoint needs its stored state
 

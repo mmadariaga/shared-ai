@@ -28,7 +28,11 @@
 //   attempt      {obstacle}                 spends one of the obstacle's attempts (obstacle: step-1 … step-8)
 //   escalate     {obstacle}                 the run waits for the user's answer
 //   answer       {obstacle, choice}         `continue` resets the obstacle, `stop` stops the run
-//   record       {ref, path}                ref: report-dir | transfer-dir | evidence | project-dir | commit
+//   record       {ref, path}                ref: report-dir | transfer-dir | evidence | project-dir | commit |
+//                                           baseline | swap (`baseline` points only to the dirty git state, the
+//                                           uncommitted paths the run never owns, recorded when the implementer is
+//                                           dispatched; `swap` points to the record file of a test classification,
+//                                           which a resumed run reads to bring the run's files back)
 //   record       {ref: worker, role, handle, reason}
 //                                           registers the handle of the worker of a role (implementer,
 //                                           backfill, archive); reason: create | replace | resume
@@ -71,6 +75,8 @@ const REFS = Object.freeze({
   evidence: 'evidence',
   'project-dir': 'project_dirs',
   commit: 'commits',
+  baseline: 'baselines',
+  swap: 'swaps',
 });
 
 // A snapshot reference is the name of a record directory, or the literal `n/a`
