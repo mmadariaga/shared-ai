@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { runProcess, stepLabel } = require('./backlog-process');
 const { extractInputFile, readInput } = require('./input-reader');
+const { readRequest, normalizeRequestText } = require('./yaml-subset');
 const projectSettings = require('./project-settings');
 const OPERATIONS = ['resolve', 'resolve-origin', 'query', 'publish', 'recover', 'read-update', 'query-update', 'update', 'recover-update', 'query-set', 'publish-set', 'recover-set', 'continue-set', 'query-set-update', 'update-set', 'recover-set-update', 'continue-set-update', 'lookup-slice', 'inspect-assignment', 'propose-assignment', 'assign', 'verify-assignment'];
 
@@ -141,9 +142,9 @@ async function main(rawArgv) {
     const { argv, inputFile } = extractInputFile(rawArgv);
     const [operation, registryPath] = argv;
     if (!OPERATIONS.includes(operation) || !registryPath || argv.length !== 2) {
-      throw new Error(`Usage: node to-backlog.js ${OPERATIONS.join('|')} <registry.json>; JSON request in --input-file <path> (stdin also accepted); JSON result on stdout`);
+      throw new Error(`Usage: node to-backlog.js ${OPERATIONS.join('|')} <registry.json>; JSON or YAML request in --input-file <path> (stdin also accepted); JSON result on stdout`);
     }
-    const request = JSON.parse(readInput(inputFile));
+    const request = normalizeRequestText(readRequest(readInput(inputFile)));
     const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
     const cwd = process.cwd();
     const io = { run: async (command, args, input) => await run(command, args, cwd, input) };

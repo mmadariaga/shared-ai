@@ -1,6 +1,6 @@
 # GitHub origin update mechanics
 
-Use `node <tool> <operation> <registry>` with structured JSON in `--input-file <path>`.
+Use `node <tool> <operation> <registry>` with the request in `--input-file <path>`: YAML in a `.yaml` file with a quoted `title` and `description: |` as a block scalar holding the Markdown, indented consistently (JSON is still accepted).
 Requires Node, gh authenticated on github.com, and permission to edit the
 originating issue. Missing access stops; do not install tools or change auth.
 All operations include `provider: "github"`. Other hosts are unsupported.

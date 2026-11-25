@@ -456,7 +456,7 @@ test('CLI dispatch uses simulated glab with literal JSON stdin and no shell inte
   const ready = invoke('to-backlog', 'query', request);
   assert.equal(invoke('to-backlog', 'publish', { ...request, confirmation: ready.confirmation, receipt: receipt() }).status, 'complete');
   const imported = invoke('from-backlog', 'read', { reference });
-  assert.equal(imported.item.description, text.description);
+  assert.equal(imported.item.description, text.description.replace(/[\r\n]+$/, '')); // I4: trailing line breaks are removed before publication
   const saved = JSON.parse(fs.readFileSync(stateFile));
   saved.issue.web_url = `${url}/-/work_items/7`;
   fs.writeFileSync(stateFile, JSON.stringify(saved));
@@ -464,7 +464,7 @@ test('CLI dispatch uses simulated glab with literal JSON stdin and no shell inte
     const importedEquivalent = invoke('from-backlog', 'read', { reference: `${url}/-/${inputRoute}/7?view=1#details` });
     assert.equal(importedEquivalent.status, 'complete');
     assert.equal(importedEquivalent.item.url, saved.issue.web_url);
-    assert.equal(importedEquivalent.item.description, text.description);
+    assert.equal(importedEquivalent.item.description, text.description.replace(/[\r\n]+$/, ''));
   }
   const current = invoke('to-backlog', 'read-update', { provider: 'gitlab', reference });
   const updateRequest = { provider: 'gitlab', reference, baseline: current.baseline, title: 'Refined', description: text.description };

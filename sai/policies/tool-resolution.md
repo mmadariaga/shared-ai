@@ -66,7 +66,7 @@ JSON). Open one private directory with `transfer.js` as `node <tool-path> open
 returned `dir` with the harness-native file-write tool (`Write` on Claude Code,
 `write` on opencode), and pass that absolute path. Each call uses its own file,
 so parallel calls never share one, and input files stay inside the SAI temp root,
-outside the repository. The tool receives the bytes exactly and exits 2 naming
+outside the repository. A request that carries model-written free text, such as the title and description of `to-pr.js` and `to-backlog.js`, may be written as YAML in a `.yaml` file, with the Markdown in a `|` block scalar of the YAML subset of `sai/tools/yaml-subset.js`; a file whose first non-blank character is `{` is read as JSON. The tool receives the bytes exactly and exits 2 naming
 the path, changing no state, when the file is missing, unreadable, or empty.
 `--input-file` wins over stdin; the `-` stdin form stays accepted only so
 instructions installed before the input file keep working. Close the directory

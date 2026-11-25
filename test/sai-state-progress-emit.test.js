@@ -251,7 +251,7 @@ test('progress emit: the installed layout sai/{bin,sai-state,tools} resolves the
     fs.mkdirSync(path.join(sai, 'tools'), { recursive: true });
     fs.copyFileSync(SAI_STATE_TOOL, path.join(sai, 'bin', 'sai-state.js'));
     copyTree(path.join(REPO_ROOT, 'sai-state'), path.join(sai, 'sai-state'));
-    for (const file of ['worker-report-validator.js', 'received-at.js', 'input-reader.js', 'temp-root.js', 'transfer.js']) {
+    for (const file of ['worker-report-validator.js', 'yaml-subset.js', 'received-at.js', 'input-reader.js', 'temp-root.js', 'transfer.js']) {
       fs.copyFileSync(path.join(REPO_ROOT, 'sai', 'tools', file), path.join(sai, 'tools', file));
     }
     const tool = path.join(sai, 'bin', 'sai-state.js');
