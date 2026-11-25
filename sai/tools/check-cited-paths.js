@@ -50,6 +50,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const usageKit = require('./usage');
 
 class ToolError extends Error {
   constructor(message, code = 2) {
@@ -59,26 +60,7 @@ class ToolError extends Error {
 }
 
 function usage() {
-  return [
-    'Usage: node sai/tools/check-cited-paths.js <sai-1|sai-2|audit-report> <change-name> [--audit <audit>] [--json] [--findings] [--root <dir>] [--cwd <dir>] [--change-dir <dir>]',
-    '',
-    '  <sai-1|sai-2>     Evidence mode: sai-1 requires every cited path to',
-    '                     exist; sai-2 lets `A` paths stay absent while `M`/`D`/`R`',
-    '                     and unprefixed paths must exist.',
-    '                     audit-report requires every path cited by the findings of',
-    '                     <change-dir>/<audit>.md to exist.',
-    '  <change-name>     OpenSpec change whose artifacts are checked.',
-    '  --audit <audit>   security, performance, or accessibility (audit-report only).',
-    '  --json            Emit the report as JSON on stdout.',
-    '  --findings        Report mode for the explore review-loop: emit violations',
-    '                     as an artifact-review findings block (High) and exit 0',
-    '                     when the report itself was produced.',
-    '  --root <dir>      Project root for path resolution (default: the working',
-    '                     directory).',
-    '  --cwd <dir>       Alias for --root (same semantics); later flag wins.',
-    '  --change-dir <dir>  Change directory holding the artifacts (default:',
-    '                     <root>/openspec/changes/<name>).',
-  ].join('\n');
+  return usageKit.render(USAGE);
 }
 
 function parseArgs(argv) {
@@ -501,7 +483,49 @@ function formatFindings(violations) {
   return lines.join('\n');
 }
 
+const CP = 'node sai/tools/check-cited-paths.js';
+const LOCATION_FLAGS = { '--json': false, '--root': true, '--cwd': true, '--change-dir': true };
+
+const USAGE = {
+  notes: [
+    '--root (alias --cwd, the later flag wins) is the project root for path resolution (default: the working directory).',
+    '--change-dir is the change directory holding the artifacts (default: <root>/openspec/changes/<name>).',
+  ],
+  subcommands: {
+    'sai-1': {
+      usage: [`${CP} sai-1 <change-name> [--json] [--findings] [--root <dir>] [--cwd <dir>] [--change-dir <dir>]`],
+      notes: [
+        'Evidence mode: every path cited by the change artifacts must exist. --findings reports violations as an artifact-review findings',
+        'block (High) and exits 0 when the report was produced; it excludes --json. --cwd is an alias of --root (the later flag wins).',
+      ],
+      examples: [`${CP} sai-1 my-change --json`, `${CP} sai-1 my-change --findings --root /path/to/project`],
+      flags: { ...LOCATION_FLAGS, '--findings': false },
+      positionals: { max: 1, names: ['change-name'] },
+    },
+    'sai-2': {
+      usage: [`${CP} sai-2 <change-name> [--json] [--findings] [--root <dir>] [--cwd <dir>] [--change-dir <dir>]`],
+      notes: [
+        'Planned-path mode: `A` paths may stay absent, while `M`, `D`, `R`, and unprefixed paths must exist. --findings reports violations',
+        'as an artifact-review findings block (High) and exits 0 when the report was produced; it excludes --json.',
+      ],
+      examples: [`${CP} sai-2 my-change --json`, `${CP} sai-2 my-change --findings --root /path/to/project`],
+      flags: { ...LOCATION_FLAGS, '--findings': false },
+      positionals: { max: 1, names: ['change-name'] },
+    },
+    'audit-report': {
+      usage: [`${CP} audit-report <change-name> --audit <${AUDITS.join('|')}> [--json] [--root <dir>] [--cwd <dir>] [--change-dir <dir>]`],
+      notes: ['Every path cited by the findings of <change-dir>/<audit>.md must exist.'],
+      examples: [`${CP} audit-report my-change --audit security --json`],
+      flags: { ...LOCATION_FLAGS, '--audit': AUDITS },
+      positionals: { max: 1, names: ['change-name'] },
+      required: ['--audit'],
+    },
+  },
+};
+
 function main(argv) {
+  const guarded = usageKit.handle(USAGE, argv);
+  if (guarded !== null) return guarded;
   const parsed = parseArgs(argv);
   if (parsed.error) {
     process.stderr.write(`${parsed.error}\n${usage()}\n`);
@@ -609,6 +633,7 @@ module.exports = {
   suggestCandidates,
   formatFindings,
   usage,
+  USAGE,
 };
 
 if (require.main === module) {

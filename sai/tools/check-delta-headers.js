@@ -39,6 +39,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const usageKit = require('./usage');
 const {
   SECTION_RE,
   ANY_H2_RE,
@@ -85,19 +86,24 @@ function collectMainHeaders(content) {
   return out;
 }
 
+const USAGE = {
+  general: {
+    usage: ['node sai/tools/check-delta-headers.js <change-name> [--json] [--root <dir>] [--delta-dir <dir>] [--specs-dir <dir>]'],
+    examples: [
+      'node sai/tools/check-delta-headers.js my-change --json',
+      'node sai/tools/check-delta-headers.js my-change --delta-dir /tmp/drafts/specs --specs-dir openspec/specs',
+    ],
+    notes: [
+      '--root is the project root (default: the working directory). --delta-dir is the delta specs root holding <capability>/spec.md files',
+      '(default: <root>/openspec/changes/<name>/specs; use an OS-temp staging copy for pre-write draft checks); --specs-dir is the main specs root (default: <root>/openspec/specs).',
+    ],
+    flags: { '--json': false, '--root': true, '--delta-dir': true, '--specs-dir': true },
+    positionals: { min: 1, max: 1, names: ['change-name'] },
+  },
+};
+
 function usage() {
-  return [
-    'Usage: node sai/tools/check-delta-headers.js <change-name> [--json]',
-    '         [--root <dir>] [--delta-dir <dir>] [--specs-dir <dir>]',
-    '',
-    '  <change-name>   OpenSpec change whose delta specs are checked.',
-    '  --json          Emit the report as JSON on stdout.',
-    '  --root <dir>    Project root (default: the working directory).',
-    '  --delta-dir <dir>  Delta specs root holding <capability>/spec.md files',
-    '                  (default: <root>/openspec/changes/<name>/specs; use an',
-    '                  OS-temp staging copy for pre-write draft checks).',
-     '  --specs-dir <dir>  Main specs root (default: <root>/openspec/specs).',
-  ].join('\n');
+  return usageKit.render(USAGE);
 }
 
 function parseArgs(argv) {
@@ -124,6 +130,8 @@ function parseArgs(argv) {
 }
 
 function main(argv) {
+  const guarded = usageKit.handle(USAGE, argv);
+  if (guarded !== null) return guarded;
   const parsed = parseArgs(argv);
   if (parsed.error) {
     process.stderr.write(`${parsed.error}\n${usage()}\n`);
@@ -286,4 +294,6 @@ function main(argv) {
   return ok ? 0 : 1;
 }
 
-process.exitCode = main(process.argv.slice(2));
+if (require.main === module) process.exitCode = main(process.argv.slice(2));
+
+module.exports = { main, USAGE };

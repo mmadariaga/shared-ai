@@ -13,6 +13,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 const { readInput } = require('./input-reader');
+const usageKit = require('./usage');
 const { verify } = require('./transfer');
 const { makeTempDir, harnessFromInstalledPath } = require('./temp-root');
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
@@ -130,6 +131,35 @@ function order(input, target = 'backfill') {
   return lines.join('\n');
 }
 
+const VB = 'node sai/tools/validate-backfill-drafts.js';
+
+const USAGE = {
+  subcommands: {
+    validate: {
+      usage: [`${VB} validate --input-file <path> [--harness <claude|opencode>] [--cwd <root>]`],
+      notes: ['The input file holds {change_name, transfer_dir, draft_references}; stdout is the JSON evidence. Exit codes: 0 = ok; 1 = validation failed; 2 = usage error.'],
+      examples: [`${VB} validate --input-file draft-set.json --harness claude --cwd /path/to/project`],
+      flags: { '--input-file': true, '--harness': ['claude', 'opencode'], '--cwd': true },
+    },
+    check: {
+      usage: [`${VB} check --fingerprint <sha256> --input-file <path> [--cwd <root>]`],
+      notes: ['Checks that the inputs still match the fingerprint of a successful validation.'],
+      examples: [`${VB} check --fingerprint 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef --input-file draft-set.json --cwd /path/to/project`],
+      flags: { '--input-file': true, '--cwd': true, '--fingerprint': { pattern: /^[a-f0-9]{64}$/, expect: '64 hex characters' } },
+      required: ['--fingerprint'],
+    },
+    order: {
+      usage: [`${VB} order [--target <backfill|archive>] --input-file <path>`],
+      notes: [
+        'Input {change_name, fingerprint, draft_references, prepared_references (required for backfill), transfer_dir (archive)}. Prints the closed text of the backfill',
+        'worker\'s `--direct-build-execute` order, or, for `archive`, the draft section of the archive worker\'s order.',
+      ],
+      examples: [`${VB} order --target backfill --input-file order-input.json`],
+      flags: { '--input-file': true, '--target': ['backfill', 'archive'] },
+    },
+  },
+};
+
 function main(argv) {
   const [command, ...args] = argv;
   const options = {};
@@ -146,10 +176,16 @@ function main(argv) {
   }
   throw new Error('Expected validate, order, or check --fingerprint <successful validation fingerprint>');
 }
-if (require.main === module) {
+// A usage error exits 2; a failed validation (a domain failure) exits 1.
+function cli(argv) {
+  const guarded = usageKit.handle(USAGE, argv, {
+    json: info => (info.help ? { usage: info.usage, examples: info.examples } : { ok: false, error: info.cause, usage: info.usage, examples: info.examples }),
+  });
+  if (guarded !== null) return guarded;
   let result;
-  try { result = main(process.argv.slice(2)); } catch (error) { result = { ok: false, error: error.message }; }
+  try { result = main(argv); } catch (error) { result = { ok: false, error: error.message }; }
   process.stdout.write(result.ok && typeof result.order === 'string' ? `${result.order}\n` : `${JSON.stringify(result, null, 2)}\n`);
-  process.exitCode = result.ok ? 0 : 1;
+  return result.ok ? 0 : 1;
 }
-module.exports = { collect, validate, order, main };
+if (require.main === module) process.exitCode = cli(process.argv.slice(2));
+module.exports = { collect, validate, order, main, USAGE };

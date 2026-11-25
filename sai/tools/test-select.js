@@ -115,6 +115,7 @@ const crypto = require('crypto');
 const { spawn, spawnSync } = require('child_process');
 const { InputFileError, extractInputFile, readInputFile } = require('./input-reader.js');
 const { UsageError, git, resolveChangeBase } = require('./change-base.js');
+const usageKit = require('./usage');
 const { makeTempDir, removeInside, TempRootError, harnessFromInstalledPath } = require('./temp-root.js');
 
 const DEFAULT_TIMEOUT_MS = 60000;
@@ -130,26 +131,33 @@ class Fallback extends Error {
   }
 }
 
-function usage() {
-  return [
-    'Usage: node sai/tools/test-select.js select --input-file <path> [--base <sha>] [--timeout-ms <n>] [--cwd <project-root>]',
-    '       node sai/tools/test-select.js swap --record <path> --dirty-baseline <path> [--parent-branch <branch> | --base <sha>] [--paths-file <path>] [--cwd <project-root>]',
-    '       node sai/tools/test-select.js restore --record <path> [--cwd <project-root>]',
-    '       node sai/tools/test-select.js command [--change <name>] [--cwd <project-root>]',
-    '',
-    '  select           <path> holds a JSON list of the files a run changed.',
-    '  swap             restores the change\'s files to the classification base in the working tree and saves them in --record.',
-    '  restore          brings the files saved in --record back to where the run left them (HEAD, or the saved copies of a --paths-file swap).',
-    '  command          resolves the test command and its scoping idiom.',
-    '  --base           swap: a commit to take as the classification base, in place of the change base;',
-    '                   select: the revision before the run\'s deletions, whose graph names the tests of a deleted file.',
-    '  --paths-file     JSON list of the uncommitted repository paths the run changed; swap copies them aside and restore writes the copies back.',
-    '  --change         The change name whose tasks.md is the first source of the test command.',
-    '  --dirty-baseline File with the `git status --porcelain` output recorded before the run.',
-    '  --timeout-ms     Timeout of each codegraph call, one shared deadline for the per-file `affected` calls (default 60000).',
-    '  --cwd            Project root (default: the working directory).',
-  ].join('\n');
-}
+const USAGE = {
+  subcommands: {
+    select: {
+      usage: ['node sai/tools/test-select.js select --input-file <path> [--base <sha>] [--timeout-ms <n>] [--cwd <project-root>]'],
+      examples: ['node sai/tools/test-select.js select --input-file changed-files.json --cwd /path/to/project'],
+      flags: { '--input-file': true, '--base': true, '--timeout-ms': true, '--cwd': true },
+      required: ['--input-file'],
+    },
+    swap: {
+      usage: ['node sai/tools/test-select.js swap --record <path> --dirty-baseline <path> [--parent-branch <branch> | --base <sha>] [--paths-file <path>] [--cwd <project-root>]'],
+      examples: ['node sai/tools/test-select.js swap --record swap-record.json --dirty-baseline baseline-dirty.txt --parent-branch main --cwd /path/to/project'],
+      flags: { '--record': true, '--dirty-baseline': true, '--parent-branch': true, '--base': true, '--paths-file': true, '--cwd': true },
+      required: ['--record', '--dirty-baseline'],
+    },
+    restore: {
+      usage: ['node sai/tools/test-select.js restore --record <path> [--cwd <project-root>]'],
+      examples: ['node sai/tools/test-select.js restore --record swap-record.json --cwd /path/to/project'],
+      flags: { '--record': true, '--cwd': true },
+      required: ['--record'],
+    },
+    command: {
+      usage: ['node sai/tools/test-select.js command [--change <name>] [--cwd <project-root>]'],
+      examples: ['node sai/tools/test-select.js command --change my-change --cwd /path/to/project'],
+      flags: { '--change': true, '--cwd': true },
+    },
+  },
+};
 
 // ---- select ---------------------------------------------------------------
 
@@ -999,10 +1007,9 @@ function parse(argv) {
 }
 
 async function main(argv) {
-  if (argv.includes('--help') || argv.includes('-h')) {
-    process.stdout.write(`${usage()}\n`);
-    return 0;
-  }
+  const guarded = usageKit.handle(USAGE, argv);
+  if (guarded !== null) return guarded;
+  const subcommand = usageKit.recognized(USAGE, argv);
   try {
     const { command: name, extra, inputFile, options } = parse(argv);
     if (extra.length) throw new UsageError(`unexpected positional argument: ${extra[0]}`);
@@ -1023,7 +1030,7 @@ async function main(argv) {
     return result.verdict === 'refused' || result.verdict === 'failed' ? 1 : 0;
   } catch (error) {
     if (!(error instanceof UsageError || error instanceof InputFileError)) throw error;
-    process.stderr.write(`${error.message}\n${usage()}\n`);
+    process.stderr.write(`${usageKit.error(USAGE, subcommand, error.message)}\n`);
     return 2;
   }
 }
@@ -1032,4 +1039,4 @@ async function main(argv) {
 const discoveredAsTest = Boolean(process.env.NODE_TEST_CONTEXT) && process.argv.length <= 2;
 if (require.main === module && !discoveredAsTest) main(process.argv.slice(2)).then((code) => { process.exitCode = code; });
 
-module.exports = { main, selectTests, dirtyBaselinePaths, resolveCommand };
+module.exports = { main, selectTests, dirtyBaselinePaths, resolveCommand, USAGE };

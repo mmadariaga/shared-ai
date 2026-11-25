@@ -93,6 +93,7 @@ const crypto = require('node:crypto');
 const { makeTempDir, TempRootError } = require('./temp-root');
 const { readInputBytes } = require('./input-reader');
 const { agentSession, SESSION } = require('./harness-session');
+const usageKit = require('./usage');
 
 const MARKER = '.sai-transfer';
 const LEDGER = '.sai-accepted';
@@ -537,21 +538,78 @@ function close(dir, { io = fs } = {}) {
   return { dir: root, removed: true };
 }
 
-function usage() {
-  return [
-    'Usage:',
-    '  node transfer.js open --harness <claude|opencode>',
-    '  node transfer.js put --dir <dir> --path <relative> [--exclusive] [--input-file <path>]   (content in the input file, else on stdin)',
-    '  node transfer.js verify --dir <dir> --path <absolute> --sha256 <hex>',
-    '  node transfer.js materialize --dir <dir> --path <absolute> --sha256 <hex> --destination <path> [--cwd <root>]',
-    '  node transfer.js accept --dir <dir> --path <path> --sha256 <hex> [--check]   (a relative --path resolves against --dir)',
-    '  node transfer.js watch --dir <dir> [--settle <duration>] [--max <duration>] [--poll <duration>] [--silent-after <minutes>] --input-file <paths> [--cwd <root>]   (--input-file is required; [] is valid)',
-    '  node transfer.js retire-handle --dir <dir> --handle <id>',
-    '  node transfer.js live --dir <dir> [--harness <claude|opencode>]',
-    '  node transfer.js close --dir <dir>',
-    '',
-    'Exit codes: 0 = success; 1 = check failure; 2 = usage error or IO failure.',
-  ].join('\n');
+const TR = 'node sai/tools/transfer.js';
+const ONCE = { once: true };
+const HARNESS = { values: ['claude', 'opencode'], once: true };
+const SHA256_FLAGS = { '--dir': ONCE, '--path': ONCE, '--sha256': ONCE };
+
+const USAGE = {
+  subcommands: {
+    open: {
+      usage: [`${TR} open --harness <claude|opencode>`],
+      examples: [`${TR} open --harness claude`],
+      flags: { '--harness': HARNESS },
+      required: ['--harness'],
+    },
+    put: {
+      usage: [`${TR} put --dir <dir> --path <relative> [--exclusive] [--input-file <path>] [--harness <claude|opencode>]`],
+      notes: ['The content comes from the input file, else from stdin. --exclusive refuses an existing name.'],
+      examples: [`${TR} put --dir /path/to/report-dir --path report.json --exclusive --input-file report.draft.json`],
+      flags: { '--dir': ONCE, '--path': ONCE, '--exclusive': false, '--input-file': ONCE, '--harness': HARNESS },
+      required: ['--dir', '--path'],
+    },
+    verify: {
+      usage: [`${TR} verify --dir <dir> --path <absolute> --sha256 <hex>`],
+      examples: [`${TR} verify --dir /path/to/report-dir --path /path/to/report-dir/report.json --sha256 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`],
+      flags: SHA256_FLAGS,
+      required: ['--dir', '--path', '--sha256'],
+    },
+    materialize: {
+      usage: [`${TR} materialize --dir <dir> --path <absolute> --sha256 <hex> --destination <path> [--cwd <root>]`],
+      examples: [`${TR} materialize --dir /path/to/transfer-dir --path /path/to/transfer-dir/proposal.md --sha256 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef --destination openspec/changes/my-change/proposal.md`],
+      flags: { ...SHA256_FLAGS, '--destination': ONCE, '--cwd': ONCE },
+      required: ['--dir', '--path', '--sha256', '--destination'],
+    },
+    accept: {
+      usage: [`${TR} accept --dir <dir> --path <path> --sha256 <hex> [--check]`],
+      notes: ['A relative --path resolves against --dir.'],
+      examples: [`${TR} accept --check --dir /path/to/report-dir --path report.json --sha256 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`],
+      flags: { ...SHA256_FLAGS, '--check': false },
+      required: ['--dir', '--path', '--sha256'],
+    },
+    watch: {
+      usage: [`${TR} watch --dir <dir> --input-file <paths> [--settle <duration>] [--max <duration>] [--poll <duration>] [--silent-after <minutes>] [--cwd <root>]`],
+      notes: ['--input-file is required: a JSON array of the paths the worker may write ([] is valid).'],
+      examples: [`${TR} watch --dir /path/to/report-dir --input-file writable-paths.json --cwd /path/to/project`],
+      flags: { '--dir': ONCE, '--input-file': ONCE, '--settle': ONCE, '--max': ONCE, '--poll': ONCE, '--silent-after': ONCE, '--cwd': ONCE },
+      required: ['--dir', '--input-file'],
+    },
+    'retire-handle': {
+      usage: [`${TR} retire-handle --dir <dir> --handle <id>`],
+      examples: [`${TR} retire-handle --dir /path/to/report-dir --handle agent-0123456789`],
+      flags: { '--dir': ONCE, '--handle': ONCE },
+      required: ['--dir', '--handle'],
+    },
+    live: {
+      usage: [`${TR} live --dir <dir> [--harness <claude|opencode>]`],
+      examples: [`${TR} live --dir /path/to/report-dir`],
+      flags: { '--dir': ONCE, '--harness': HARNESS },
+      required: ['--dir'],
+    },
+    close: {
+      usage: [`${TR} close --dir <dir>`],
+      examples: [`${TR} close --dir /path/to/report-dir`],
+      flags: { '--dir': ONCE },
+      required: ['--dir'],
+    },
+  },
+};
+
+// A usage answer keeps the `ok` and `error` keys of every transfer answer and adds the usage block.
+function usageResponse(found) {
+  return found.help
+    ? { ok: true, command: found.subcommand, usage: found.usage, examples: found.examples }
+    : { ok: false, command: null, error: found.cause, usage: found.usage, examples: found.examples };
 }
 
 const FLAGS = { '--harness': 'harness', '--dir': 'dir', '--path': 'path', '--sha256': 'sha256', '--destination': 'destination', '--cwd': 'cwd', '--input-file': 'inputFile', '--handle': 'handle', '--settle': 'settle', '--max': 'max', '--poll': 'poll', '--silent-after': 'silentAfter' };
@@ -627,15 +685,13 @@ function execute(opts) {
 }
 
 function main(argv) {
-  const parsed = parseArgs(argv);
-  if (parsed.help) {
-    process.stdout.write(`${usage()}\n`);
-    return 0;
-  }
   const respond = (payload, code) => {
     process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
     return code;
   };
+  const found = usageKit.preflight(USAGE, argv);
+  if (found) return respond(usageResponse(found), found.help ? 0 : 2);
+  const parsed = parseArgs(argv);
   if (parsed.error) return respond({ ok: false, command: null, error: parsed.error }, 2);
   try {
     return respond({ ok: true, command: parsed.opts.command, ...execute(parsed.opts) }, 0);
@@ -647,6 +703,7 @@ function main(argv) {
 
 /** Run any sub-command; `watch` is the only one that waits. */
 async function run(argv) {
+  if (usageKit.preflight(USAGE, argv)) return main(argv);
   const parsed = parseArgs(argv);
   if (parsed.help || parsed.error || !parsed.opts || parsed.opts.command !== 'watch') return main(argv);
   const { opts } = parsed;
@@ -673,4 +730,4 @@ async function run(argv) {
 
 if (require.main === module) run(process.argv.slice(2)).then(code => { process.exitCode = code; });
 
-module.exports = { MARKER, LEDGER, RETIRED, CheckError, UsageError, checkTransferDir, open, put, verify, resolveReferencePath, accept, retireHandle, live, watch, parseDuration, parseSilentAfter, parseWritablePaths, materialize, close, parseArgs, main, run };
+module.exports = { MARKER, LEDGER, RETIRED, CheckError, UsageError, checkTransferDir, open, put, verify, resolveReferencePath, accept, retireHandle, live, watch, parseDuration, parseSilentAfter, parseWritablePaths, materialize, close, parseArgs, main, run, USAGE };

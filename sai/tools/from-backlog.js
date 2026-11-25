@@ -5,6 +5,7 @@ const path = require('node:path');
 const { runProcess, stepLabel } = require('./backlog-process');
 const projectSettings = require('./project-settings');
 const { extractInputFile, readInput } = require('./input-reader');
+const usageKit = require('./usage');
 
 function fault(reason, message) {
   return Object.assign(new Error(message), { reason });
@@ -216,7 +217,24 @@ async function runAzureSdk(input) {
   return result.stdout;
 }
 
+const FB = 'node sai/tools/from-backlog.js';
+
+const USAGE = {
+  subcommands: Object.fromEntries([['resolve', 'Resolves the provider and the issue the reference names.'], ['read', 'Reads the issue (or the set of issues) the reference names.']].map(([operation, what]) => [operation, {
+    usage: [`${FB} ${operation} <registry.json> --input-file <path>`],
+    notes: [`${what} The request JSON {"reference": ...} is the input file (stdin is also accepted); the JSON result is printed on stdout.`],
+    examples: [`${FB} ${operation} providers/registry.json --input-file request.json`],
+    flags: { '--input-file': { once: true } },
+    positionals: { min: 1, max: 1, names: ['registry.json'] },
+  }])),
+};
+
 async function main(rawArgv) {
+  const guarded = usageKit.handle(USAGE, rawArgv, {
+    json: info => (info.help ? { usage: info.usage, examples: info.examples }
+      : { status: 'error', reason: 'usage', message: info.cause, usage: info.usage, examples: info.examples }),
+  });
+  if (guarded !== null) return guarded;
   try {
     const { argv, inputFile } = extractInputFile(rawArgv);
     const [operation, registryPath] = argv;
@@ -238,4 +256,4 @@ async function main(rawArgv) {
 }
 
 if (require.main === module) main(process.argv.slice(2)).then(code => { process.exitCode = code; });
-module.exports = { resolve, run, main, runAzureSdk, resetAzureMemory, SDK_SCRIPT };
+module.exports = { resolve, run, main, runAzureSdk, resetAzureMemory, SDK_SCRIPT, USAGE };

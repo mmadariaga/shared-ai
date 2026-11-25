@@ -33,6 +33,18 @@ const RECEIVED_AT_CANDIDATES = DETECTOR_CANDIDATES.map(candidate => path.join(pa
 // The shared input reader, resolved the same way. Reads `--input-file` or stdin.
 const INPUT_READER_CANDIDATES = DETECTOR_CANDIDATES.map(candidate => path.join(path.dirname(candidate), 'input-reader.js'));
 
+// The shared usage renderer, resolved the same way. Loaded by every invocation: it answers `--help`
+// and a wrong invocation before any other work, and without it the tool exits 2 naming the paths tried.
+let usageKit = null;
+const USAGE_CANDIDATES = DETECTOR_CANDIDATES.map(candidate => path.join(path.dirname(candidate), 'usage.js'));
+
+function loadUsage() {
+  for (const candidate of USAGE_CANDIDATES) {
+    if (fs.existsSync(candidate)) return require(candidate);
+  }
+  return null;
+}
+
 let receivedAt = null;
 
 const CORRUPT_WARNING = 'SESSION_FILE_CORRUPT';
@@ -103,6 +115,13 @@ function loadDetector() {
     if (fs.existsSync(candidate)) return require(candidate);
   }
   return null;
+}
+
+// A usage error keeps the message of the verb parser exactly, then shows the usage block of the verb, so the
+// message that states that no transition occurred and shows the canonical form is still the first line.
+function usageFailure(verb, message) {
+  process.stderr.write(usageKit.render(USAGE, verb, message.replace(/\n$/, '')) + '\n');
+  process.exitCode = 2;
 }
 
 const STATE_VERSION = '2.0.0';
@@ -195,7 +214,7 @@ function readEmitInput(inputFile) {
 }
 
 function inputFileFailure(error) {
-  process.stderr.write('emit: ' + error.message + '; no transition occurred\n');
+  usageFailure('emit', 'emit: ' + error.message + '; no transition occurred');
   process.exitCode = 2;
 }
 
@@ -570,8 +589,8 @@ function storeFailure(err, loadWarnings) {
 }
 
 function commandSpawn(key) {
-  if (!key) {
-    process.stderr.write('spawn requires --key <stable-key>\n');
+  if (typeof key !== 'string' || !key) {
+    usageFailure('spawn', 'spawn requires --key <stable-key>');
     process.exitCode = 2;
     return;
   }
@@ -799,7 +818,7 @@ function buildFlagEvent(flags) {
 }
 
 function flagUsageError(message) {
-  process.stderr.write('emit: ' + message + '; no transition occurred. Send it as: ' + EMIT_FLAGS_FORM + '\n');
+  usageFailure('emit', 'emit: ' + message + '; no transition occurred. Send it as: ' + EMIT_FLAGS_FORM);
   process.exitCode = 2;
 }
 
@@ -828,7 +847,7 @@ function commandEmitFlags(parsed) {
 
 function commandEmit(id, machineIdArg, eventSource, extraArgs, inputFile) {
   if (!id || !machineIdArg || !(inputFile ? eventSource === undefined || eventSource === '-' : eventSource === '-') || (extraArgs && extraArgs.length > 0) || (usesStdin(inputFile, eventSource) && process.stdin.isTTY)) {
-    process.stderr.write('emit requires <id> <machineId> and reads the event JSON from an input file: ' + EMIT_STDIN_FORM + '\n');
+    usageFailure('emit', 'emit requires <id> <machineId> and reads the event JSON from an input file: ' + EMIT_STDIN_FORM);
     process.exitCode = 2;
     return;
   }
@@ -870,17 +889,17 @@ function commandEmitProgress(id, machineIdArg, eventSource, extraArgs, inputFile
   const referenceComplete = PROGRESS_REFERENCE_FLAGS.every((flag) => typeof reference[flag] === 'string' && reference[flag] !== '' && !reference[flag].startsWith('--'));
   if (referenceMode) {
     if (!referenceComplete || inputFile || eventSource !== undefined || (extraArgs && extraArgs.length > 0)) {
-      process.stderr.write('emit --progress takes either a report reference (all of --report-dir, --report-file, and --report-hash, with no --input-file) or an input file: ' + EMIT_PROGRESS_FORM + '\n');
+      usageFailure('emit', 'emit --progress takes either a report reference (all of --report-dir, --report-file, and --report-hash, with no --input-file) or an input file: ' + EMIT_PROGRESS_FORM);
       process.exitCode = 2;
       return;
     }
   } else if (!id || !machineIdArg || !(inputFile ? eventSource === undefined || eventSource === '-' : eventSource === '-') || (extraArgs && extraArgs.length > 0) || (usesStdin(inputFile, eventSource) && process.stdin.isTTY)) {
-    process.stderr.write('emit --progress requires <id> <machineId> --progress and reads the worker progress payload JSON from an input file: ' + EMIT_PROGRESS_FORM + '\n');
+    usageFailure('emit', 'emit --progress requires <id> <machineId> --progress and reads the worker progress payload JSON from an input file: ' + EMIT_PROGRESS_FORM);
     process.exitCode = 2;
     return;
   }
   if (!id || !machineIdArg) {
-    process.stderr.write('emit --progress requires <id> <machineId>: ' + EMIT_PROGRESS_FORM + '\n');
+    usageFailure('emit', 'emit --progress requires <id> <machineId>: ' + EMIT_PROGRESS_FORM);
     process.exitCode = 2;
     return;
   }
@@ -988,13 +1007,13 @@ function commandEmitDocuments(id, machineIdArg, eventSource, extraArgs, amendNam
   if (!id || !machineIdArg || eventSource !== undefined || (extraArgs && extraArgs.length > 0) || inputFile !== undefined || orphanVerdicts
     || documents.length === 0 || documents.some((entry) => typeof entry.file !== 'string' || entry.file === '' || (entry.verdictsFile !== undefined && (typeof entry.verdictsFile !== 'string' || entry.verdictsFile === '')))
     || (amending && (typeof amendName !== 'string' || amendName === ''))) {
-    process.stderr.write('emit --document-file requires <id> explore-slice@1 and reads the documents from files: ' + form + '\n');
+    usageFailure('emit', 'emit --document-file requires <id> explore-slice@1 and reads the documents from files: ' + form);
     process.exitCode = 2;
     return;
   }
   const target = envelope.parseTarget(machineIdArg);
   if (!target || target.key !== READY_TO_PROPOSE_MACHINE) {
-    process.stderr.write('--document-file is accepted only on ' + READY_TO_PROPOSE_MACHINE + ', got ' + machineIdArg + '\n');
+    usageFailure('emit', '--document-file is accepted only on ' + READY_TO_PROPOSE_MACHINE + ', got ' + machineIdArg);
     process.exitCode = 2;
     return;
   }
@@ -1035,7 +1054,7 @@ function commandEmitDocuments(id, machineIdArg, eventSource, extraArgs, amendNam
     if (documents.length !== 1) {
       const session = getSession(id);
       seedFromRecord(session, readSessionRecord(id).record);
-      process.stderr.write('emit --amend takes exactly one document; no transition occurred. Send it as: ' + EMIT_AMEND_FORM + '\n');
+      usageFailure('emit', 'emit --amend takes exactly one document; no transition occurred. Send it as: ' + EMIT_AMEND_FORM);
       writeResponse({ error: 'INVALID_EVENT', reason: 'AMEND_DOCUMENT_COUNT', next: pointerFor(session, READY_TO_PROPOSE_MACHINE) });
       process.exitCode = 1;
       return;
@@ -1143,7 +1162,7 @@ function commandAmendDocument(id, machineIdArg, detector, text, verdicts, amendN
 // BLOCK_NOT_FOUND (exit 1) with no text; the caller dispatches nothing.
 function commandBlock(id, name, exportFile, harness) {
   if (!id || !name) {
-    process.stderr.write('block requires <id> <change-name>\n');
+    usageFailure('block', 'block requires <id> <change-name>');
     process.exitCode = 2;
     return;
   }
@@ -1180,7 +1199,7 @@ function commandBlock(id, name, exportFile, harness) {
 
 function commandReset(id, machineIdArg) {
   if (!id || !machineIdArg) {
-    process.stderr.write('reset requires <id> <machineId>\n');
+    usageFailure('reset', 'reset requires <id> <machineId>');
     process.exitCode = 2;
     return;
   }
@@ -1262,7 +1281,7 @@ function commandReset(id, machineIdArg) {
 
 function commandClose(id) {
   if (!id) {
-    process.stderr.write('close requires <id>\n');
+    usageFailure('close', 'close requires <id>');
     process.exitCode = 2;
     return;
   }
@@ -1283,7 +1302,86 @@ function commandClose(id) {
   process.exitCode = 0;
 }
 
+const SS = 'node bin/sai-state.js';
+const EMIT_SOURCES = { '--input-file': { once: true }, '--set': true, '--add': true, '--set-path': true, '--progress': false,
+  '--report-dir': { once: true }, '--report-file': { once: true }, '--report-hash': { once: true },
+  '--document-file': true, '--verdicts-file': true, '--amend': { once: true },
+  '--ready-to-propose': true, '--block-file': true };
+
+const USAGE = {
+  subcommands: {
+    spawn: {
+      usage: [`${SS} spawn --key <stable-key>`],
+      notes: ['Opens (or finds) the store session of the stable key.'],
+      examples: [`${SS} spawn --key implement-my-change`],
+      flags: { '--key': { once: true } },
+      lenient: true,
+    },
+    emit: {
+      usage: [
+        `${SS} emit <id> <machineId> --input-file <path>`,
+        `${SS} emit <id> <machineId> --set <field>=<id> [--add <field>=<id> ...] [--set-path <field>="<path>"]`,
+        `${SS} emit <id> <machineId> --progress --report-dir <dir> --report-file <path> --report-hash <sha256>`,
+        `${SS} emit <id> <machineId> --progress --input-file <path>`,
+        `${SS} emit <id> explore-slice@1 --document-file <path> [--verdicts-file <path>] [--document-file <path> ...]`,
+        `${SS} emit <id> explore-slice@1 --amend <change-name> --document-file <path> [--verdicts-file <path>]`,
+      ],
+      notes: [
+        'Each line is one shape of emit, and the shapes do not combine:',
+        '  --input-file: the event JSON is in the input file (`-` as a third argument reads stdin).',
+        '  --set, --add, --set-path: an identifier event built from flags, with no input file.',
+        '  --progress --report-dir --report-file --report-hash: the worker progress report reference, verified and validated here.',
+        '  --progress --input-file: the worker progress payload JSON is in the input file.',
+        '  --document-file: one change document file per change, each optionally followed by its --verdicts-file.',
+        '  --amend: the one amended change document of the named change.',
+      ],
+      examples: [
+        `${SS} emit implement-my-change implement-run@1 --input-file event.json`,
+        `${SS} emit implement-my-change implement-run@1 --set stage=green --add done=step-1`,
+        `${SS} emit review-my-change review-steps@1 --progress --report-dir /path/to/report-dir --report-file progress-1.yaml --report-hash 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`,
+        `${SS} emit review-my-change review-steps@1 --progress --input-file progress.json`,
+        `${SS} emit explore-session explore-slice@1 --document-file document.md --verdicts-file verdicts.json`,
+        `${SS} emit explore-session explore-slice@1 --amend my-change --document-file document.md`,
+      ],
+      flags: EMIT_SOURCES,
+      lenient: true,
+    },
+    block: {
+      usage: [`${SS} block <id> <change-name> [--export --harness <claude|opencode>]`],
+      notes: ['Reads the stored change document of the change; --export writes it to a private file for the named harness.'],
+      examples: [`${SS} block explore-session my-change --export --harness claude`],
+      flags: { '--export': false, '--harness': true },
+      lenient: true,
+    },
+    reset: {
+      usage: [`${SS} reset <id> <machineId>`],
+      notes: ['Resets one machine of the session to its initial state; a step machine answers with the pointer of its first filed step.'],
+      examples: [`${SS} reset review-my-change review-steps@1`],
+      flags: {},
+      lenient: true,
+    },
+    close: {
+      usage: [`${SS} close <id>`],
+      notes: ['Removes the session from the store.'],
+      examples: [`${SS} close implement-my-change`],
+      flags: {},
+      lenient: true,
+    },
+  },
+};
+
 function main(argv) {
+  usageKit = loadUsage();
+  if (!usageKit) {
+    process.stderr.write('sai-state could not load usage.js; tried: ' + USAGE_CANDIDATES.join(', ') + '\n');
+    process.exitCode = 2;
+    return;
+  }
+  const guarded = usageKit.handle(USAGE, argv);
+  if (guarded !== null) {
+    process.exitCode = guarded;
+    return;
+  }
   const parsed = parseArgs(argv);
   if (['spawn', 'emit', 'reset', 'close', 'block'].includes(parsed.command)) {
     const clock = loadReceivedAt();
@@ -1297,7 +1395,7 @@ function main(argv) {
   if (['emit', 'reset', 'close', 'block'].includes(parsed.command)) {
     const sessionId = parsed.positional[0];
     if (sessionId !== undefined && !isSessionId(sessionId)) {
-      process.stderr.write(parsed.command + ': ' + new SessionIdError(sessionId).message + '\n');
+      usageFailure(parsed.command, parsed.command + ': ' + new SessionIdError(sessionId).message);
       process.exitCode = 2;
       return;
     }
@@ -1311,13 +1409,13 @@ function main(argv) {
     return;
   }
   if (parsed.command === 'emit' && (parsed.named['ready-to-propose'] !== undefined || parsed.named['block-file'] !== undefined)) {
-    process.stderr.write('emit --ready-to-propose and --block-file are retired: the Ready to Propose block is a retired format. Send the change documents as: ' + EMIT_DOCUMENTS_FORM + '\n');
+    usageFailure('emit', 'emit --ready-to-propose and --block-file are retired: the Ready to Propose block is a retired format. Send the change documents as: ' + EMIT_DOCUMENTS_FORM);
     process.exitCode = 2;
     return;
   }
   if (parsed.command === 'emit' && (parsed.documents.length > 0 || parsed.orphanVerdicts)) {
     if (parsed.named.progress !== undefined) {
-      process.stderr.write('--document-file cannot be combined with --progress\n');
+      usageFailure('emit', '--document-file cannot be combined with --progress');
       process.exitCode = 2;
       return;
     }
@@ -1346,27 +1444,18 @@ function main(argv) {
   }
   if (parsed.command === 'block') {
     if (parsed.named.export !== undefined && (parsed.named.export !== true || !['claude', 'opencode'].includes(parsed.named.harness))) {
-      process.stderr.write('block --export requires --harness <claude|opencode>\n');
+      usageFailure('block', 'block --export requires --harness <claude|opencode>');
       process.exitCode = 2;
       return;
     }
     commandBlock(parsed.positional[0], parsed.positional[1], parsed.named.export === true, parsed.named.harness);
     return;
   }
-  process.stderr.write('Usage: sai-state spawn --key <stable-key>\n');
-  process.stderr.write('       sai-state emit <id> <machineId> --input-file <path>   (event JSON in the input file; `-` reads stdin)\n');
-  process.stderr.write('       sai-state emit <id> <machineId> --set <field>=<id> [--add <field>=<id> ...] [--set-path <field>="<path>"]   (identifier event built from flags)\n');
-  process.stderr.write('       sai-state emit <id> <machineId> --progress --report-dir <dir> --report-file <path> --report-hash <sha256>   (the worker progress report reference, verified and validated)\n');
-  process.stderr.write('       sai-state emit <id> <machineId> --progress --input-file <path>   (worker progress payload JSON in the input file; `-` reads stdin)\n');
-  process.stderr.write('       sai-state emit <id> explore-slice@1 --document-file <path> [--verdicts-file <path>] [--document-file <path> ...]   (one change document file per change, each optionally followed by its verdicts file)\n');
-  process.stderr.write('       sai-state emit <id> explore-slice@1 --amend <change-name> --document-file <path> [--verdicts-file <path>]   (the one amended change document)\n');
-  process.stderr.write('       sai-state block <id> <change-name> [--export --harness <claude|opencode>]\n');
-  process.stderr.write('       sai-state reset <id> <machineId>\n');
-  process.stderr.write('       sai-state close <id>\n');
+  process.stderr.write(usageKit.render(USAGE) + '\n');
   process.exitCode = 2;
 }
 
-module.exports = { sessionFile, sessionDir, isUuidv4, STATE_VERSION, entryRev, stateByMachineMap, unionDoneInCanonicalOrder, persistMachineOutcome, normalizeEventText };
+module.exports = { USAGE, sessionFile, sessionDir, isUuidv4, STATE_VERSION, entryRev, stateByMachineMap, unionDoneInCanonicalOrder, persistMachineOutcome, normalizeEventText };
 if (require.main === module) {
   try {
     main(process.argv.slice(2));

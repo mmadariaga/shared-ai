@@ -48,8 +48,24 @@ const RECORD_FILE = /^(\d{4})([a-z]*)-.+\.md$/;
 
 const compare = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 
+const usageKit = require('./usage');
+
+const USAGE = {
+  subcommands: {
+    inventory: {
+      usage: ['node sai/tools/decision-records.js inventory --family <adr|ddr> [--json] [--cwd <project-root>]'],
+      examples: [
+        'node sai/tools/decision-records.js inventory --family adr --json',
+        'node sai/tools/decision-records.js inventory --family ddr --json --cwd /path/to/project',
+      ],
+      flags: { '--family': FAMILIES, '--json': false, '--cwd': true },
+      required: ['--family'],
+    },
+  },
+};
+
 function usage() {
-  return 'Usage: node sai/tools/decision-records.js inventory --family <adr|ddr> [--json] [--cwd <dir>]';
+  return usageKit.render(USAGE);
 }
 
 /** Files directly inside `dir`; a missing directory holds none. */
@@ -133,6 +149,8 @@ function parseArgs(argv) {
 }
 
 function main(argv) {
+  const guarded = usageKit.handle(USAGE, argv);
+  if (guarded !== null) return guarded;
   const parsed = parseArgs(argv);
   if (parsed.error) {
     process.stderr.write(`${parsed.error}\n${usage()}\n`);
@@ -170,4 +188,4 @@ if (require.main === module) {
   process.exitCode = main(process.argv.slice(2));
 }
 
-module.exports = { main, inventory, usage };
+module.exports = { main, inventory, usage, USAGE };

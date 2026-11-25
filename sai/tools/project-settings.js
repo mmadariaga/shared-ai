@@ -6,6 +6,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const usageKit = require('./usage');
 
 // Keep the repo-relative display path stable across platforms. `path.join`
 // normalizes it when resolving the actual filesystem path below.
@@ -407,6 +408,27 @@ function addWarnings(result, extra = []) {
   return merged.length ? { ...result, warnings: merged } : result;
 }
 
+const PS = 'node sai/tools/project-settings.js';
+const ONCE = { once: true };
+
+const USAGE = {
+  subcommands: {
+    get: {
+      usage: [`${PS} get <setting> [--json] [--cwd <root>] [--providers <id,id>] [--pr-providers <id,id>]`],
+      notes: [`<setting> is one of: ${Object.keys(CATALOGUE).join(', ')}.`],
+      examples: [`${PS} get ${Object.keys(CATALOGUE)[0]} --json --cwd /path/to/project`],
+      flags: { '--json': false, '--cwd': ONCE, '--providers': ONCE, '--pr-providers': ONCE },
+      positionals: { min: 1, max: 1, names: ['setting'], values: Object.keys(CATALOGUE) },
+    },
+    warming: {
+      usage: [`${PS} warming --provider <provider> [--model <model>] --role <${WARMING_ROLES.join('|')}> --harness <${WARMING_HARNESSES.join('|')}> [--json] [--cwd <root>]`],
+      examples: [`${PS} warming --provider anthropic --model claude-sonnet-4-5 --role ${WARMING_ROLES[0]} --harness claude --json`],
+      flags: { '--provider': ONCE, '--model': ONCE, '--role': { values: WARMING_ROLES, once: true }, '--harness': { values: WARMING_HARNESSES, once: true }, '--json': false, '--cwd': ONCE },
+      required: ['--provider', '--role', '--harness'],
+    },
+  },
+};
+
 function parseWarmingArguments(args) {
   const options = {};
   const query = {};
@@ -424,6 +446,10 @@ function parseWarmingArguments(args) {
 }
 
 function main(argv) {
+  const guarded = usageKit.handle(USAGE, argv, {
+    json: info => (info.help ? { usage: info.usage, examples: info.examples } : { status: 'error', message: info.cause, usage: info.usage, examples: info.examples }),
+  });
+  if (guarded !== null) return guarded;
   try {
     const [command, id, ...rest] = argv;
     if (command === 'warming') {
@@ -449,4 +475,4 @@ function main(argv) {
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
-module.exports = { CATALOGUE, SETTINGS_FILE, LOCAL_SETTINGS_FILE, WARMING_ROLES, WARMING_HARNESSES, isKeyword, parseJsonc, projectRoot, readSettings, get, autoApprove, addWarnings, warming, resolveWarmingValue, readBacklog, readPr, notices, overrides, notice, report, main };
+module.exports = { USAGE, CATALOGUE, SETTINGS_FILE, LOCAL_SETTINGS_FILE, WARMING_ROLES, WARMING_HARNESSES, isKeyword, parseJsonc, projectRoot, readSettings, get, autoApprove, addWarnings, warming, resolveWarmingValue, readBacklog, readPr, notices, overrides, notice, report, main };

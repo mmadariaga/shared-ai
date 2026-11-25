@@ -56,6 +56,7 @@ const { execFileSync } = require('node:child_process');
 const os = require('node:os');
 const path = require('node:path');
 const { fileURLToPath } = require('node:url');
+const usageKit = require('./usage');
 const { OPENCODE_MAX_DEPTH, OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, directoryForms, parseInvocation, opencodeRoot, opencodeChildren, opencodeSessionMessages, withOpencodeContent, opencodeWakes, changeNameFromArgs, writtenChanges, changeNameOf } = require('./opencode-db');
 const { claudeProjectsRoot, projectFolder, parseTranscript, readRecords, blocks, textOf, invocationOf, claudeTokens, readAgents, dispatchedWorkers, claudeWaitTasks, claudeWakes } = require('./claude-transcripts');
 
@@ -1261,12 +1262,41 @@ function renderBaseline(report, aliases) {
   return `${lines.join('\n').trimEnd()}\n`;
 }
 
+const RT = 'node sai/tools/retrospective.js';
+
+const USAGE = {
+  subcommands: {
+    index: {
+      usage: [`${RT} index <target> [--paths "<p1>,<p2>"] [--with-worktrees] [--limit <N>] [--cwd <dir>]`],
+      notes: ['<target> is a Claude Code session ID, an opencode ses_ session ID, or a SAI command name. Prints the index of the matching SAI command executions as JSON.'],
+      examples: [`${RT} index sai-build --limit 5`, `${RT} index 0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d --with-worktrees`],
+      flags: { '--paths': true, '--with-worktrees': false, '--limit': true, '--cwd': true },
+      positionals: { max: 1, names: ['target'] },
+    },
+    cost: {
+      usage: [`${RT} cost [--paths "<p1>,<p2>"] [--with-worktrees] [--alias "<path>=<alias>"] [--format <json|markdown>] [--cwd <dir>]`],
+      notes: ['Prints the cost report of tokens and tool calls per agent and pipeline segment.'],
+      examples: [`${RT} cost --with-worktrees --format markdown`],
+      flags: { '--paths': true, '--with-worktrees': false, '--alias': true, '--format': ['json', 'markdown'], '--cwd': true },
+    },
+    excerpt: {
+      usage: [`${RT} excerpt --project <path> --session <id> [--agent <id>] [--from <record>] [--count <N>] [--max-chars <N>]`],
+      notes: ['Prints a paged excerpt of one session (or of one of its agents), addressed by record ID.'],
+      examples: [`${RT} excerpt --project /path/to/project --session 0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d --count 20`],
+      flags: { '--project': true, '--session': true, '--agent': true, '--from': true, '--count': true, '--max-chars': true },
+      required: ['--project', '--session'],
+    },
+  },
+};
+
 function main(argv, env = process.env, loadSqlite = defaultLoadSqlite) {
+  const found = usageKit.preflight(USAGE, argv);
+  if (found && found.help) return { usage: found.usage, examples: found.examples };
+  if (found) throw Object.assign(new ToolError('USAGE', found.cause), { usage: found.usage, examples: found.examples });
   const [command, ...rest] = argv;
   if (command === 'index') return index(rest, env, loadSqlite);
   if (command === 'cost') return cost(rest, env, loadSqlite);
-  if (command === 'excerpt') return excerpt(rest, env, loadSqlite);
-  throw new ToolError('USAGE', 'Usage: retrospective.js index <target> [--paths "<p1>,<p2>"] [--with-worktrees] [--limit <N>] | cost [--paths "<p1>,<p2>"] [--with-worktrees] [--alias "<path>=<alias>"] [--format json|markdown] | excerpt --project <path> --session <id> [--agent <id>] [--from <record>] [--count <N>] [--max-chars <N>]');
+  return excerpt(rest, env, loadSqlite);
 }
 
 if (require.main === module) {
@@ -1275,9 +1305,12 @@ if (require.main === module) {
     process.stdout.write(typeof result === 'string' ? result : `${JSON.stringify(result)}\n`);
   } catch (error) {
     if (!(error instanceof ToolError)) throw error;
-    process.stdout.write(`${JSON.stringify({ error: { code: error.code, message: error.message } })}\n`);
+    // A usage error carries the usage block of its subcommand: the guard's own, or the one of the recognized subcommand.
+    const block = error.usage ? { usage: error.usage, examples: error.examples }
+      : error.code === 'USAGE' || error.code === 'MISSING_TARGET' ? usageKit.fields(USAGE, usageKit.recognized(USAGE, process.argv.slice(2))) : {};
+    process.stdout.write(`${JSON.stringify({ error: { code: error.code, message: error.message }, ...block })}\n`);
     process.exitCode = 2;
   }
 }
 
-module.exports = { main, index, cost, excerpt, splitPaths, changeNameFromArgs, expandProjects, classifyTarget, projectFolder, ToolError };
+module.exports = { USAGE, main, index, cost, excerpt, splitPaths, changeNameFromArgs, expandProjects, classifyTarget, projectFolder, ToolError };

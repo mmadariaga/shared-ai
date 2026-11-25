@@ -45,6 +45,7 @@
  */
 
 const path = require('path');
+const usageKit = require('./usage');
 const fs = require('fs');
 const { spawnSync } = require('child_process');
 const { makeTempDir, removeInside, TempRootError, harnessFromInstalledPath } = require('./temp-root');
@@ -186,23 +187,31 @@ function delta(from, to, cwd) {
   return { action: 'delta', verdict: 'changed', from: fromTree, to: toTree, paths, diff: diff.stdout, reason: null };
 }
 
+const RD = 'node sai/tools/review-delta.js';
+
+const USAGE = {
+  subcommands: {
+    snapshot: {
+      usage: [`${RD} snapshot [--cwd <dir>] [path ...]`],
+      notes: [
+        'Writes a Git tree of the working tree through a temporary index and reports its identifier. The real index, the staging, and the working tree',
+        'are never modified. Untracked files are included; each named path (an ignored path the loop changed) is force-added when it exists.',
+      ],
+      examples: [`${RD} snapshot --cwd /path/to/project`, `${RD} snapshot --cwd /path/to/project openspec/changes/my-change/design.md`],
+      flags: { '--cwd': true },
+      positionals: { max: null, names: ['path'] },
+    },
+    delta: {
+      usage: [`${RD} delta <from> <to> [--cwd <dir>]`],
+      notes: ['Reports the paths that differ between two tree-ish references and their diff. Verdict changed, empty, or n/a.'],
+      examples: [`${RD} delta 4b825dc642cb6eb9a060e54bf8d69288fbee4904 HEAD --cwd /path/to/project`],
+      flags: { '--cwd': true },
+      positionals: { min: 2, max: 2, names: ['from', 'to'] },
+    },
+  },
+};
 function usage() {
-  return [
-    'Usage:',
-    '  node sai/tools/review-delta.js snapshot [--cwd <dir>] [path ...]',
-    '  node sai/tools/review-delta.js delta <from> <to> [--cwd <dir>]',
-    '',
-    '  snapshot       Write a Git tree of the working tree through a temporary index and',
-    '                 report its identifier. The real index, the staging, and the working',
-    '                 tree are never modified. Untracked files are included; each named',
-    '                 path (an ignored path the loop changed) is force-added when it exists.',
-    '  delta          Report the paths that differ between two tree-ish references and',
-    '                 their diff. Verdict changed, empty, or n/a.',
-    '',
-    '  --cwd <dir>    Project root to check (default: cwd).',
-    '',
-    'Output is JSON. Exit codes: 0 = verdict reported (clean, changed, empty, n/a); 2 = usage or IO error.',
-  ].join('\n');
+  return usageKit.render(USAGE);
 }
 
 function parseArgs(argv) {
@@ -219,6 +228,8 @@ function parseArgs(argv) {
 }
 
 function main(argv) {
+  const guarded = usageKit.handle(USAGE, argv);
+  if (guarded !== null) return guarded;
   const parsed = parseArgs(argv);
   if (parsed.error) {
     process.stderr.write(`${parsed.error}\n${usage()}\n`);
@@ -263,4 +274,4 @@ if (require.main === module) {
   process.exitCode = main(process.argv.slice(2));
 }
 
-module.exports = { main, snapshot, delta, parseNameStatus, usage };
+module.exports = { main, snapshot, delta, parseNameStatus, usage, USAGE };

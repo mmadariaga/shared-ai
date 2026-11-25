@@ -188,7 +188,7 @@ test('the command line prints one JSON object and exits 0 for a composed set and
   const bad = spawnSync(process.execPath, [tool, 'compose', ...flags.slice(0, -2), '--document-hash', 'nope'], { encoding: 'utf8' });
   assert.equal(bad.status, 1);
   assert.equal(JSON.parse(bad.stdout).ok, false);
-  assert.equal(spawnSync(process.execPath, [tool, 'unknown'], { encoding: 'utf8' }).status, 1);
+  assert.equal(spawnSync(process.execPath, [tool, 'unknown'], { encoding: 'utf8' }).status, 2, 'an unknown sub-command is a usage error, which exits 2');
 });
 
 const cli = spawnSync('openspec', ['--version'], { encoding: 'utf8', shell: process.platform === 'win32' });

@@ -47,7 +47,31 @@ const HARNESSES = ['claude', 'opencode'];
 const SAI_DIR = 'sai';
 const DEFAULT_PREFIX = 'sai-';
 const PREFIX = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-const USAGE = 'Usage: temp-root.js resolve|mkdtemp|remove --harness claude|opencode [--prefix <prefix>] [--dir <path>]';
+const usageKit = require('./usage');
+
+const ONCE_HARNESS = { values: HARNESSES, once: true };
+const USAGE = {
+  subcommands: {
+    resolve: {
+      usage: ['temp-root.js resolve --harness <claude|opencode>'],
+      examples: ['node sai/tools/temp-root.js resolve --harness claude'],
+      flags: { '--harness': ONCE_HARNESS },
+      required: ['--harness'],
+    },
+    mkdtemp: {
+      usage: ['temp-root.js mkdtemp --harness <claude|opencode> [--prefix <prefix>]'],
+      examples: ['node sai/tools/temp-root.js mkdtemp --harness claude --prefix plan-my-change-'],
+      flags: { '--harness': ONCE_HARNESS, '--prefix': { once: true } },
+      required: ['--harness'],
+    },
+    remove: {
+      usage: ['temp-root.js remove --harness <claude|opencode> --dir <path>'],
+      examples: ['node sai/tools/temp-root.js remove --harness claude --dir /path/inside/the/sai/temp/root/plan-my-change-abc123'],
+      flags: { '--harness': ONCE_HARNESS, '--dir': { once: true } },
+      required: ['--harness', '--dir'],
+    },
+  },
+};
 
 /** Blocker raised when a root is missing or unsafe. Never repaired here. */
 class TempRootError extends Error {
@@ -303,7 +327,6 @@ function parseOptions(argv) {
 }
 
 function main(argv) {
-  if (argv.includes('--help')) return { ok: true, usage: USAGE };
   const [command, ...rest] = argv;
   const options = parseOptions(rest);
   assertHarness(options.harness);
@@ -314,12 +337,18 @@ function main(argv) {
       if (!options.dir) throw new TempRootError('remove requires --dir', 'USAGE');
       return { ok: true, removed: removeInside(options.harness, options.dir) };
     default:
-      throw new TempRootError(USAGE, 'USAGE');
+      throw new TempRootError(`unknown subcommand: ${command}`, 'USAGE');
   }
 }
 
+// A usage answer keeps the `ok`, `code`, and `error` keys of every temp-root answer and adds the usage block.
+const usageObject = info => (info.help ? { ok: true, usage: info.usage, examples: info.examples }
+  : { ok: false, code: 'USAGE', error: info.cause, usage: info.usage, examples: info.examples });
+
 if (require.main === module) {
-  try {
+  const guarded = usageKit.handle(USAGE, process.argv.slice(2), { json: usageObject });
+  if (guarded !== null) process.exitCode = guarded;
+  else try {
     process.stdout.write(`${JSON.stringify(main(process.argv.slice(2)))}\n`);
   } catch (error) {
     if (!(error instanceof TempRootError)) throw error;
@@ -328,4 +357,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { HARNESSES, SAI_DIR, TempRootError, harnessRoot, harnessFromInstalledPath, resolveTempRoot, makeTempDir, removeInside, realpathFor };
+module.exports = { USAGE, HARNESSES, SAI_DIR, TempRootError, harnessRoot, harnessFromInstalledPath, resolveTempRoot, makeTempDir, removeInside, realpathFor };

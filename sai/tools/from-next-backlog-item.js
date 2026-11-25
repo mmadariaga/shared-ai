@@ -6,6 +6,7 @@ const { run } = require('./from-backlog');
 const destination = require('./to-backlog');
 const projectSettings = require('./project-settings');
 const { extractInputFile, readInput } = require('./input-reader');
+const usageKit = require('./usage');
 const adapters = {
   github: require('./from-next-backlog-item-github'),
   gitlab: require('./from-next-backlog-item-gitlab'),
@@ -82,7 +83,23 @@ async function select(request, io = { run }) {
     return projectSettings.report(pending(error.reason || 'retrieval-failed', error.message), { warnings: report.warnings });
   }
 }
+const USAGE = {
+  subcommands: {
+    select: {
+      usage: ['node sai/tools/from-next-backlog-item.js select --input-file <path>'],
+      notes: ['The selection JSON is the input file (stdin is also accepted); the JSON result is printed on stdout.'],
+      examples: ['node sai/tools/from-next-backlog-item.js select --input-file selection.json'],
+      flags: { '--input-file': { once: true } },
+    },
+  },
+};
+
 async function main(rawArgv) {
+  const guarded = usageKit.handle(USAGE, rawArgv, {
+    json: info => (info.help ? { usage: info.usage, examples: info.examples }
+      : { ...pending('usage', info.cause), usage: info.usage, examples: info.examples }),
+  });
+  if (guarded !== null) return guarded;
   let argv = rawArgv;
   let inputFile = null;
   try { ({ argv, inputFile } = extractInputFile(rawArgv)); } catch (error) { argv = []; }
@@ -97,4 +114,4 @@ async function main(rawArgv) {
   return ['selected', 'candidates', 'empty', 'cancelled'].includes(result.status) ? 0 : 1;
 }
 if (require.main === module) main(process.argv.slice(2)).then(code => { process.exitCode = code; });
-module.exports = { select, main };
+module.exports = { select, main, USAGE };

@@ -53,6 +53,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { spawnSync } = require('child_process');
 const { makeTempDir, resolveTempRoot, harnessFromInstalledPath } = require('./temp-root');
+const usageKit = require('./usage');
 
 /** The literal reference recorded when no snapshot could be taken. */
 const N_A = 'n/a';
@@ -273,31 +274,36 @@ function verify(ref, stdinText, cwd) {
   return { ...base, verdict, reason: null, foreign, uncovered };
 }
 
+const SP = 'node sai/tools/slice-path-scope.js';
+
+const USAGE = {
+  notes: ['Exit codes: 0 = clean or n/a; 1 = mismatch; 2 = usage or IO error.'],
+  subcommands: {
+    snapshot: {
+      usage: [`${SP} snapshot [--targets] [--json] [--cwd <dir>]  (target paths on stdin with --targets)`],
+      notes: [
+        'Records the paths that are already modified and reports the snapshot reference. Verdict clean or n/a.',
+        '--targets reads target paths from stdin, one per line, and watches everything at or beneath each one whatever its ignore status;',
+        'verify then reports a created, modified, or removed target as a change.',
+        'Exit codes: 0 = clean or n/a; 1 = mismatch; 2 = usage or I/O error.',
+      ],
+      examples: [`${SP} snapshot --json --cwd /path/to/project`],
+      flags: { '--targets': false, '--json': false, '--cwd': true },
+    },
+    verify: {
+      usage: [`${SP} verify --snapshot <ref|n/a> [--json] [--cwd <dir>]  (slice paths on stdin)`],
+      notes: [
+        'Reads the slice paths from stdin, one per line; an optional --- line starts the covering list. Reports foreign (changed since the snapshot,',
+        'outside the slice paths) and uncovered (slice paths outside the covering list). Verdict clean, mismatch, or n/a.',
+      ],
+      examples: [`${SP} verify --snapshot slice-path-scope-AbC123 --json --cwd /path/to/project`],
+      flags: { '--snapshot': true, '--json': false, '--cwd': true },
+      required: ['--snapshot'],
+    },
+  },
+};
 function usage() {
-  return [
-    'Usage:',
-    '  node sai/tools/slice-path-scope.js snapshot [--targets] [--json] [--cwd <dir>] [< targets]',
-    '  node sai/tools/slice-path-scope.js verify --snapshot <ref|n/a> [--json] [--cwd <dir>] < paths',
-    '',
-    '  snapshot                  Record the paths that are already modified and',
-    '                            report the snapshot reference. Verdict clean or n/a.',
-    '',
-    '  verify                    Read the slice paths from stdin, one per line; an',
-    '                            optional --- line starts the covering list. Report',
-    '                            foreign (changed since the snapshot, outside the',
-    '                            slice paths) and uncovered (slice paths outside the',
-    '                            covering list). Verdict clean, mismatch, or n/a.',
-    '',
-    '  --targets                 snapshot only: read target paths from stdin, one per',
-    '                            line, and watch everything at or beneath each one',
-    '                            whatever its ignore status. verify then reports a',
-    '                            created, modified, or removed target as a change.',
-    '  --snapshot <ref|n/a>      Reference returned by snapshot, or the literal n/a.',
-    '  --json                    Emit the report as JSON on stdout.',
-    '  --cwd <dir>               Project root to check (default: cwd).',
-    '',
-    'Exit codes: 0 = clean or n/a; 1 = mismatch; 2 = usage or IO error.',
-  ].join('\n');
+  return usageKit.render(USAGE);
 }
 
 function parseArgs(argv) {
@@ -341,6 +347,8 @@ function readStdin() {
 }
 
 function main(argv, stdinText) {
+  const guarded = usageKit.handle(USAGE, argv);
+  if (guarded !== null) return guarded;
   const parsed = parseArgs(argv);
   if (parsed.error) {
     process.stderr.write(`${parsed.error}\n${usage()}\n`);
@@ -401,4 +409,4 @@ if (require.main === module) {
   process.exitCode = main(process.argv.slice(2));
 }
 
-module.exports = { main, snapshot, verify, parseLists, parseTargets, within, usage, N_A, REF_RE, SEPARATOR };
+module.exports = { main, snapshot, verify, parseLists, parseTargets, within, usage, USAGE, N_A, REF_RE, SEPARATOR };

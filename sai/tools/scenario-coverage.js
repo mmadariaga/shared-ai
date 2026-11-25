@@ -52,21 +52,27 @@ const path = require('path');
 const { InputFileError, extractInputFile, readInputFile } = require('./input-reader.js');
 const { collectScenarios, readSpec } = require('./spec-scenarios.js');
 const { UsageError, git, resolveChangeBase } = require('./change-base.js');
+const usageKit = require('./usage');
 
 const SKIP_SPECS_RE = /^skip_specs:[ \t]*true[ \t]*$/m;
 const DELTA_SECTIONS = new Set(['ADDED', 'MODIFIED', 'RENAMED']);
 
-function usage() {
-  return [
-    'Usage: node sai/tools/scenario-coverage.js step --input-file <path> [--parent-branch <branch>] [--cwd <project-root>]',
-    '       node sai/tools/scenario-coverage.js change <change-name> [--parent-branch <branch>] [--cwd <project-root>]',
-    '',
-    '  step             <path> holds a JSON list of scenario titles (the step brief).',
-    '  change           checks every scenario the change adds or modifies.',
-    '  --parent-branch  Branch the change base is taken against (default: origin/HEAD, master, main).',
-    '  --cwd            Project root (default: the working directory).',
-  ].join('\n');
-}
+const USAGE = {
+  subcommands: {
+    step: {
+      usage: ['node sai/tools/scenario-coverage.js step --input-file <path> [--parent-branch <branch>] [--cwd <project-root>]'],
+      examples: ['node sai/tools/scenario-coverage.js step --input-file scenarios.json --cwd /path/to/project'],
+      flags: { '--input-file': true, '--parent-branch': true, '--cwd': true },
+      required: ['--input-file'],
+    },
+    change: {
+      usage: ['node sai/tools/scenario-coverage.js change <change-name> [--parent-branch <branch>] [--cwd <project-root>]'],
+      examples: ['node sai/tools/scenario-coverage.js change my-change --parent-branch main --cwd /path/to/project'],
+      flags: { '--parent-branch': true, '--cwd': true },
+      positionals: { min: 1, max: 1, names: ['change-name'] },
+    },
+  },
+};
 
 function normalizeTitle(text) {
   return text.toLowerCase().replace(/[^\p{L}\p{N}\s]+/gu, ' ').replace(/\s+/g, ' ').trim();
@@ -218,10 +224,9 @@ function parse(argv) {
 }
 
 function main(argv) {
-  if (argv.includes('--help') || argv.includes('-h')) {
-    process.stdout.write(`${usage()}\n`);
-    return 0;
-  }
+  const guarded = usageKit.handle(USAGE, argv);
+  if (guarded !== null) return guarded;
+  const subcommand = usageKit.recognized(USAGE, argv);
   try {
     const { command, args, inputFile, cwd, parentBranch } = parse(argv);
     let result;
@@ -239,11 +244,11 @@ function main(argv) {
     return result.verdict === 'missing' ? 1 : 0;
   } catch (error) {
     if (!(error instanceof UsageError || error instanceof InputFileError)) throw error;
-    process.stderr.write(`${error.message}\n${usage()}\n`);
+    process.stderr.write(`${usageKit.error(USAGE, subcommand, error.message)}\n`);
     return 2;
   }
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
 
-module.exports = { normalizeTitle, main };
+module.exports = { normalizeTitle, main, USAGE };

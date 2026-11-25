@@ -6,7 +6,20 @@ const { runProcess, stepLabel } = require('./backlog-process');
 const { extractInputFile, readInput } = require('./input-reader');
 const { readRequest, normalizeRequestText } = require('./yaml-subset');
 const projectSettings = require('./project-settings');
+const usageKit = require('./usage');
 const OPERATIONS = ['resolve', 'resolve-origin', 'query', 'publish', 'recover', 'read-update', 'query-update', 'update', 'recover-update', 'query-set', 'publish-set', 'recover-set', 'continue-set', 'query-set-update', 'update-set', 'recover-set-update', 'continue-set-update', 'lookup-slice', 'inspect-assignment', 'propose-assignment', 'assign', 'verify-assignment'];
+
+const TB = 'node sai/tools/to-backlog.js';
+
+const USAGE = {
+  subcommands: Object.fromEntries(OPERATIONS.map(operation => [operation, {
+    usage: [`${TB} ${operation} <registry.json> --input-file <path>`],
+    notes: [`The JSON or YAML request of the \`${operation}\` operation is the input file (stdin is also accepted); the JSON result is printed on stdout.`],
+    examples: [`${TB} ${operation} providers/registry.json --input-file request.yaml`],
+    flags: { '--input-file': { once: true } },
+    positionals: { min: 1, max: 1, names: ['registry.json'] },
+  }])),
+};
 
 async function run(command, args, cwd, input) {
   if (command === 'azure-sdk') return await require('./from-backlog').runAzureSdk(input);
@@ -136,6 +149,11 @@ function withAutoApprove(io, cwd) {
 }
 
 async function main(rawArgv) {
+  const guarded = usageKit.handle(USAGE, rawArgv, {
+    json: info => (info.help ? { usage: info.usage, examples: info.examples }
+      : { status: 'failure_before_publication', message: info.cause, usage: info.usage, examples: info.examples }),
+  });
+  if (guarded !== null) return guarded;
   // Settings warnings stay visible when resolution fails after the read.
   let warnings = [];
   try {
@@ -185,4 +203,4 @@ async function main(rawArgv) {
 }
 
 if (require.main === module) main(process.argv.slice(2)).then(code => { process.exitCode = code; });
-module.exports = { run, address, detect, resolve, resolveDocuments, dispatch, withAutoApprove, main };
+module.exports = { run, address, detect, resolve, resolveDocuments, dispatch, withAutoApprove, main, USAGE };

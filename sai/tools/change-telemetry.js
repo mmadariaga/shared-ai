@@ -54,6 +54,7 @@ const { OpencodeUnavailable, defaultLoadSqlite, openOpencodeDatabase, directoryF
 const { ClaudeUnavailable, openClaudeSource } = require('./claude-transcripts');
 const { readOpenspecYaml, exploreOriginHarness, OPENCODE_SESSION, CLAUDE_SESSION } = require('./openspec-yaml');
 const { PRICES, PER_MILLION, findPrice, priceFromTable } = require('./model-prices');
+const usageKit = require('./usage');
 
 const OPEN_END = Number.MAX_SAFE_INTEGER;
 const UNAVAILABLE = 'unavailable';
@@ -974,6 +975,31 @@ function exploreOrigin({ harness, session }, { env = process.env, loadSqlite = d
   } finally { db.close(); }
 }
 
+const CT = 'node sai/tools/change-telemetry.js';
+
+const USAGE = {
+  messages: { unknownFlag: flag => `Unknown or incomplete option ${flag}` },
+  subcommands: {
+    collect: {
+      usage: [`${CT} collect --harness <claude|opencode> --command <name> --change <change-name> --cwd <project-root> --status <status> [--run-dir <dir>]`],
+      notes: [
+        `--command is one of: ${Object.keys(COMMANDS).join(', ')}. --status is one of: ${STATUSES.join(', ')}.`,
+        'It always prints one JSON line (`written` or `skipped`) and exits 2 only for a usage error.',
+      ],
+      examples: [`${CT} collect --harness claude --command sai-build --change my-change --cwd /path/to/project --status completed`],
+      flags: { '--harness': HARNESSES, '--command': Object.keys(COMMANDS), '--change': { pattern: /^[a-z0-9][a-z0-9-]*$/, expect: 'a kebab-case change name' }, '--cwd': true, '--status': STATUSES, '--run-dir': true },
+      required: ['--harness', '--command', '--change', '--cwd', '--status'],
+    },
+    'explore-origin': {
+      usage: [`${CT} explore-origin --harness <claude|opencode> --session <session-id>`],
+      notes: ['Prints {"outcome": "found", "session": ...} or {"outcome": "skipped", "reason": ...}.'],
+      examples: [`${CT} explore-origin --harness opencode --session ses_0123456789abcdef`],
+      flags: { '--harness': HARNESSES, '--session': true },
+      required: ['--harness', '--session'],
+    },
+  },
+};
+
 function parseOptions(argv) {
   const [subcommand, ...rest] = argv;
   if (!['collect', 'explore-origin'].includes(subcommand)) throw new UsageError('The sub-commands are collect and explore-origin');
@@ -999,6 +1025,11 @@ function parseOptions(argv) {
 }
 
 function main(argv, deps) {
+  const found = usageKit.preflight(USAGE, argv);
+  if (found) {
+    const { cause, ...block } = found;
+    return { status: found.help ? 0 : 2, payload: found.help ? { usage: block.usage, examples: block.examples } : { error: { code: 'USAGE', message: cause }, usage: block.usage, examples: block.examples } };
+  }
   let options;
   try { options = parseOptions(argv); } catch (error) {
     if (!(error instanceof UsageError)) throw error;
@@ -1019,4 +1050,4 @@ if (require.main === module) {
   process.exitCode = status;
 }
 
-module.exports = { collect, exploreOrigin, main };
+module.exports = { collect, exploreOrigin, main, USAGE };

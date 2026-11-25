@@ -47,6 +47,7 @@
 const path = require('path');
 const fs = require('fs');
 const { spawnSync } = require('child_process');
+const usageKit = require('./usage');
 
 /** The literal baseline recorded when HEAD cannot be resolved. */
 const N_A = 'n/a';
@@ -180,27 +181,31 @@ function verify(base, allowCommit, cwd) {
   };
 }
 
+const NG = 'node sai/tools/no-commit-guard.js';
+
+const USAGE = {
+  notes: ['Exit codes: 0 = clean, allowed, or n/a; 1 = violation; 2 = usage or IO error.'],
+  subcommands: {
+    snapshot: {
+      usage: [`${NG} snapshot [--json] [--cwd <dir>]`],
+      notes: ['Resolves HEAD and reports it as the dispatch-window baseline (`guard_base`). Verdict clean or n/a.'],
+      examples: [`${NG} snapshot --json --cwd /path/to/project`],
+      flags: { '--json': false, '--cwd': true },
+    },
+    verify: {
+      usage: [`${NG} verify --base <sha|n/a> [--allow-commit] [--json] [--cwd <dir>]`],
+      notes: [
+        'Compares the current HEAD against the --base baseline. Verdict clean (unchanged), allowed (moved with --allow-commit), violation (moved without it),',
+        'or n/a (no check possible). Exit codes: 0 = clean, allowed, or n/a; 1 = violation; 2 = usage or I/O error.',
+      ],
+      examples: [`${NG} verify --base 0123456789abcdef0123456789abcdef01234567 --json --cwd /path/to/project`],
+      flags: { '--base': true, '--allow-commit': false, '--json': false, '--cwd': true },
+      required: ['--base'],
+    },
+  },
+};
 function usage() {
-  return [
-    'Usage:',
-    '  node sai/tools/no-commit-guard.js snapshot [--json] [--cwd <dir>]',
-    '  node sai/tools/no-commit-guard.js verify --base <sha|n/a> [--allow-commit] [--json] [--cwd <dir>]',
-    '',
-    '  snapshot                  Resolve HEAD and report it as the dispatch-window',
-    '                            baseline (`guard_base`). Verdict clean or n/a.',
-    '',
-    '  verify                    Compare current HEAD against the --base baseline.',
-    '                            Verdict clean (unchanged), allowed (moved with',
-    '                            --allow-commit), violation (moved without it),',
-    '                            or n/a (no check possible).',
-    '',
-    '  --base <sha|n/a>          Baseline captured by snapshot, or the literal n/a.',
-    '  --allow-commit            Lax authorization: any HEAD movement passes.',
-    '  --json                    Emit the report as JSON on stdout.',
-    '  --cwd <dir>               Project root to check (default: cwd).',
-    '',
-    'Exit codes: 0 = clean, allowed, or n/a; 1 = violation; 2 = usage or IO error.',
-  ].join('\n');
+  return usageKit.render(USAGE);
 }
 
 function parseArgs(argv) {
@@ -250,6 +255,8 @@ function render(payload, json) {
 }
 
 function main(argv) {
+  const guarded = usageKit.handle(USAGE, argv);
+  if (guarded !== null) return guarded;
   const parsed = parseArgs(argv);
   if (parsed.error) {
     process.stderr.write(`${parsed.error}\n${usage()}\n`);
@@ -309,4 +316,4 @@ if (require.main === module) {
   process.exitCode = main(process.argv.slice(2));
 }
 
-module.exports = { main, snapshot, verify, repoState, collectCommits, usage, N_A, SHA_RE };
+module.exports = { main, snapshot, verify, repoState, collectCommits, usage, USAGE, N_A, SHA_RE };
