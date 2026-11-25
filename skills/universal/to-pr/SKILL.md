@@ -22,8 +22,8 @@ This skill's directory is the one holding this `SKILL.md`. Locate
 copies, read from the harness root that holds this skill's `skills/` directory.
 Use `providers/registry.json` from this skill's directory; quote paths
 separately. Run the tool in the target Git repository.
-Every operation takes `<operation> <registry-path>` and one JSON object in `--input-file <path>`,
-and returns JSON. Write each input file as UTF-8 with the native file-write tool in a directory from `transfer.js open --harness <claude|opencode>`, one unique file per call, per `sai/policies/tool-resolution.md` § Invocation (structured input is an input file); never use a stdin pipe or heredoc. A `ready` result's `confirmation` field is a token: `query` yields
+Every operation takes `<operation> <registry-path>` and one request in `--input-file <path>`,
+and returns JSON. A request that carries a `title` and a `description` (`query` and `publish`) is written as YAML in a `.yaml` file, with the title quoted and `description: |` as a block scalar, so the Markdown stays readable and needs no escaping (the format of `description-format.md`); every other request is a short JSON object. Write each input file as UTF-8 with the native file-write tool in a directory from `transfer.js open --harness <claude|opencode>`, one unique file per call, per `sai/policies/tool-resolution.md` § Invocation (structured input is an input file); never use a stdin pipe or heredoc. A `ready` result's `confirmation` field is a token: `query` yields
 the `publish token`, `push-query` the `push token`. Never interpolate draft text
 into executable shell text.
 
@@ -81,9 +81,25 @@ On GitLab, supply the Conventional Commits title without a `Draft:` prefix: the 
 adds that prefix to the approved wire title. The current draft state and conversion
 of any ready request are part of the exact publication approval, never implicit consent.
 
-Run `query` with `{provider,repository,remote,base,title,description}` plus the
-risk allocation fields from `description-format.md`, any explicit `draft:true`, and the
-`allow_attribution` exception only as `description-format.md` authorizes. It validates
+Run `query` with a YAML request holding `provider`, `repository`, `remote`, `base`, `title`, and
+`description`, plus the risk allocation fields from `description-format.md`, any explicit
+`draft:true`, and the `allow_attribution` exception only as `description-format.md` authorizes:
+
+```yaml
+provider: github
+repository: owner/name
+remote: origin
+base: main
+title: "feat(scope): imperative subject"
+description: |
+  ## Summary
+  - Markdown goes here as written; no escaping, and `key: value` lines or `#` headings are text.
+```
+
+Indent every line of the block scalar by the same two spaces: a line indented less than the
+first one is rejected with its line number, and a title that YAML would read as a number or a
+boolean must stay quoted. The tool drops the trailing line breaks of `title` and `description`.
+A JSON request is still accepted. `query` validates
 the title and final description and finds an open request for this exact source and target.
 An existing match selects update, never duplicate creation; multiple matches stop
 for clarification. For update, retain unrelated description content unless the user

@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { extractInputFile, readInput } = require('./input-reader');
+const { readRequest, normalizeRequestText } = require('./yaml-subset');
 const backlog = require('./to-backlog');
 const { makeTempDir } = require('./temp-root');
 const { receiptPath: backlogReceiptPath } = require('./to-backlog-github');
@@ -444,8 +445,8 @@ async function main(rawArgv) {
       return await planPublication.commit(planRequest, planIo);
     };
     const operations = { prepare, collect, destination, query, 'push-query': pushQuery, push, publish, recover, resume, 'plan-query': planPublication.query, 'plan-commit': planCommit };
-    if (argv.length !== 2 || (!operations[operation] && operation !== 'resolve')) throw new Error('Usage: node to-pr.js prepare|collect|resolve|destination|query|push-query|push|publish|recover|resume|plan-query|plan-commit [--unattended: plan-commit, push and publish only] <registry.json>; JSON in --input-file <path> (stdin also accepted)');
-    request = JSON.parse(readInput(inputFile));
+    if (argv.length !== 2 || (!operations[operation] && operation !== 'resolve')) throw new Error('Usage: node to-pr.js prepare|collect|resolve|destination|query|push-query|push|publish|recover|resume|plan-query|plan-commit [--unattended: plan-commit, push and publish only] <registry.json>; JSON or YAML in --input-file <path> (stdin also accepted)');
+    request = normalizeRequestText(readRequest(readInput(inputFile)));
     // Only the flag enables unattended mode, never a field of the request.
     if (unattended) request.unattended = true; else delete request.unattended;
     const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));

@@ -10,7 +10,8 @@ replacement creations.
 
 `read-update` takes `reference` and returns canonical issue, project, visibility,
 actor and `baseline:{rev,title,description}`. `query-update` takes `reference`,
-unchanged baseline, proposed `title`, and optional Markdown `description`.
+unchanged baseline, proposed `title`, and optional Markdown `description`,
+written as YAML in a `.yaml` file with a quoted `title` and `description: |` as a block scalar holding the Markdown, indented consistently (JSON is still accepted).
 Omit description for a title-only change. The read also exposes `planning_state`
 (parent relation, native iteration path and assignee identity). Ordinary updates
 accept the `parent`, `iteration`, `team` and `assignToMe` inputs documented in

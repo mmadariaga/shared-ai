@@ -15,7 +15,7 @@ then remotes. Ask only for missing fields reported by `needs_input`; incompatibl
 data stops. Here Project means Azure team project, not a GitHub Project insertion.
 
 `query` takes canonical project `repository`, optional `project`, `type`, `title`
-and Markdown `description`. Ask for the exact work-item `type` when absent; it
+and Markdown `description`, written as YAML in a `.yaml` file with a quoted `title` and `description: |` as a block scalar (JSON is still accepted). Ask for the exact work-item `type` when absent; it
 belongs to this invocation only, never a persistent default. Invalid types stop.
 For ordinary publication, pass the intended parent PBI known in context as
 `parent` (native work-item ID or full URL). Pass `iteration` (native iteration

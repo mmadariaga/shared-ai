@@ -19,8 +19,10 @@ common tool. Project input is its full URL:
 `https://github.com/orgs/OWNER/projects/N`. The Project owner is independent
 of the repository owner. Other GitHub hosts are not implemented.
 
-Run `node <tool> query <registry>`; the input file is JSON with `provider: "github"`,
-`repository`, optional `project`, `title`, and `description`. This checks gh
+Run `node <tool> query <registry>`; the input file is YAML (a `.yaml` file; JSON is still accepted) with `provider: github`,
+`repository`, optional `project`, a quoted `title`, and `description: |` as a block scalar
+holding the Markdown, indented consistently under it (a less-indented line is rejected with
+its line number). This checks gh
 availability and authentication, reads repository visibility and issue support,
 and resolves the selected Project. Without a selected Project it exhausts all
 linked Project pages, excludes closed or non-writable Projects, and returns
@@ -34,7 +36,7 @@ and add it to this Project?"**
 ## Publication operation
 
 After the common skill's confirmation, run
-`node <tool> publish <registry>` with the same JSON fields, the returned
+`node <tool> publish <registry>` with the same fields, the returned
 `confirmation` token, and `receipt`: a new unique absolute path in an existing
 private local temporary directory. Use the common skill's prepared directory and
 receipt path. Keep this receipt path in conversation state and show it if recovery is needed. Receipts
