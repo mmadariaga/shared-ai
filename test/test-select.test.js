@@ -87,7 +87,7 @@ function selectFixture(t, { indexed = true, installed = true } = {}) {
   };
   const calls = () => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n').filter(Boolean).map((line) => JSON.parse(line)) : []);
   const spans = () => (fs.existsSync(times) ? fs.readFileSync(times, 'utf8').trim().split('\n').filter(Boolean).map((line) => JSON.parse(line)) : []);
-  return { select, calls, spans };
+  return { select, calls, spans, project };
 }
 
 test('E1: a trusted index selects the tests codegraph affected reports, sorted and without duplicates', (t) => {
@@ -129,6 +129,8 @@ test('E2: pending changes after the sync run the full suite with stale-index', (
 
 test('E3: a changed file of an indexed type that the index lacks runs the full suite and names it', (t) => {
   const f = selectFixture(t);
+  write(f.project, 'src/new.js', '');
+  write(f.project, 'test/new.test.js', '');
   const { report } = f.select(['src/a.js', 'src/new.js', 'test/new.test.js']);
   assert.equal(report.verdict, 'full');
   assert.equal(report.reason, 'unindexed-file');
@@ -153,9 +155,20 @@ test('E4 I4: a change of documentation and configuration alone selects no test',
   assert.equal(f.calls().some((call) => call.args[0] === 'affected'), false);
 });
 
-test('E3: a deleted file is not in the index and runs the full suite', (t) => {
+test('E3: a deleted file, gone from the working tree and the index, stays out of the selection', (t) => {
   const f = selectFixture(t);
-  assert.equal(f.select(['src/gone.js']).report.reason, 'unindexed-file');
+  assert.deepEqual(f.select(['src/gone.js']).report, { verdict: 'selected', tests: [], reason: null });
+  const withDeletion = f.select(['src/a.js', 'src/gone.js']);
+  assert.deepEqual([withDeletion.report.verdict, withDeletion.report.tests], ['selected', ['test/a.test.js', 'test/b.test.js']]);
+  const affected = f.calls().filter((call) => call.args[0] === 'affected');
+  assert.equal(affected.some((call) => call.stdin.trim() === 'src/gone.js'), false, 'the deleted file is never asked about');
+});
+
+test('E3: a file present in the working tree that the index lacks is unindexed even when a deleted file sits beside it', (t) => {
+  const f = selectFixture(t);
+  write(f.project, 'src/new.js', '');
+  const { report } = f.select(['src/gone.js', 'src/new.js']);
+  assert.deepEqual([report.verdict, report.reason, report.files], ['full', 'unindexed-file', ['src/new.js']]);
 });
 
 test('E4: a missing codegraph binary runs the full suite with no-binary', (t) => {
@@ -344,6 +357,7 @@ test('E8: the earlier reasons keep priority over no-dependents', (t) => {
   const base = { ...HAPPY, perFile };
   assert.equal(f.select(['src/a.js'], { ...base, sync: { exit: 1 } }).report.reason, 'sync-failed');
   assert.equal(f.select(['src/a.js'], { ...base, ...statusWith({ ...INDEX, reindexRecommended: true }) }).report.reason, 'stale-index');
+  write(f.project, 'src/new.js', '');
   const unindexed = f.select(['src/a.js', 'src/new.js'], base).report;
   assert.deepEqual([unindexed.reason, unindexed.files], ['unindexed-file', ['src/new.js']]);
   assert.equal(f.select(['src/a.js', 'src/b.js'], { ...base, perFile: { ...perFile, 'src/b.js': { exit: 2 } } }).report.reason, 'codegraph-error');
@@ -703,7 +717,7 @@ test('I1 E5: the command comes from tasks.md first, with the scoping idiom in it
   const found = f.run('--change', 'demo').report;
   assert.deepEqual(found, {
     verdict: 'found',
-    command: 'dotnet test tests/Api --filter FullyQualifiedName~<TestName>',
+    command: 'dotnet test tests/Api',
     scoping_idiom: 'dotnet test tests/Api --filter FullyQualifiedName~<TestName>',
     source: 'tasks.md',
   });
@@ -713,7 +727,7 @@ test('I1 E5: the command comes from tasks.md first, with the scoping idiom in it
 test('I1 E5: a tasks.md value on the next line, in a fence or not, is read, and the no-runner sentinel is none', (t) => {
   const f = commandFixture(t);
   write(f.root, 'openspec/changes/demo/tasks.md', tasksWith('**Test Command**:\n\n```\npytest tests/<file>\n```'));
-  assert.equal(f.run('--change', 'demo').report.command, 'pytest tests/<file>');
+  assert.deepEqual([f.run('--change', 'demo').report.command, f.run('--change', 'demo').report.scoping_idiom], ['pytest', 'pytest tests/<file>']);
   write(f.root, 'openspec/changes/demo/tasks.md', tasksWith('**Test Command**: None — no test runner in this project'));
   const none = f.run('--change', 'demo').report;
   assert.deepEqual([none.verdict, none.command, none.source], ['none', null, 'tasks.md']);
@@ -758,6 +772,44 @@ test('I1: the project markers give the command and the idiom that merge.js used 
   const dotnet = f.run().report;
   assert.equal(dotnet.verdict, 'ambiguous');
   assert.deepEqual(dotnet.candidates, ['dotnet test One.sln', 'dotnet test Two.sln']);
+});
+
+test('E5: the command is always runnable: a placeholder never reaches it, and a field may name the command beside its idiom', (t) => {
+  const f = commandFixture(t);
+  const field = (value) => write(f.root, 'openspec/changes/demo/tasks.md', tasksWith(`**Test Command**: ${value}`));
+  field('`dotnet test App.sln`; scoped: `dotnet test App.sln --filter FullyQualifiedName~<TestName>`');
+  assert.deepEqual(f.run('--change', 'demo').report, {
+    verdict: 'found', command: 'dotnet test App.sln', scoping_idiom: 'dotnet test App.sln --filter FullyQualifiedName~<TestName>', source: 'tasks.md',
+  });
+  field('`npm test -- <test files>`');
+  assert.deepEqual([f.run('--change', 'demo').report.command, f.run('--change', 'demo').report.scoping_idiom], ['npm test', 'npm test -- <test files>']);
+  field('`go test -run <TestName> ./...`');
+  assert.equal(f.run('--change', 'demo').report.command, 'go test ./...');
+  field('`npx vitest run --testNamePattern=<name>`');
+  assert.equal(f.run('--change', 'demo').report.command, 'npx vitest run');
+  field('`<runner> <files>`');
+  const unusable = f.run('--change', 'demo').report;
+  assert.deepEqual([unusable.verdict, unusable.command, unusable.candidates], ['ambiguous', null, ['<runner> <files>']]);
+  fs.rmSync(path.join(f.root, 'openspec'), { recursive: true });
+  write(f.root, 'README.md', 'Run `pytest` or one file with `pytest <path>`.\n');
+  assert.deepEqual(f.run().report, { verdict: 'found', command: 'pytest', scoping_idiom: 'pytest <path>', source: 'README.md' });
+});
+
+test('E5: a bun project runs its test script, and a test script under an unknown manager is ambiguous, never none', (t) => {
+  const f = commandFixture(t);
+  write(f.root, 'package.json', JSON.stringify({ scripts: { test: 'bun test' }, packageManager: 'bun@1.1.0' }));
+  assert.deepEqual(f.run().report, { verdict: 'found', command: 'bun run test', scoping_idiom: 'append the test files as path arguments', source: 'marker:package.json' });
+  write(f.root, 'package.json', JSON.stringify({ scripts: { test: 'vitest run' } }));
+  write(f.root, 'bun.lock', '');
+  assert.equal(f.run().report.command, 'bun run test', 'bun.lock alone selects bun');
+  write(f.root, 'package.json', JSON.stringify({ scripts: { test: 'tsc && vitest run' }, packageManager: 'bun@1.1.0' }));
+  assert.deepEqual(f.run().report.scoping_idiom, null, 'a compound script takes no list of files');
+  write(f.root, 'package.json', JSON.stringify({ scripts: { test: 'jest' }, packageManager: 'deno@2.0.0' }));
+  const unknown = f.run().report;
+  assert.deepEqual([unknown.verdict, unknown.command, unknown.candidates], ['ambiguous', null, ['deno run test']]);
+  fs.rmSync(path.join(f.root, 'package.json'));
+  write(f.root, 'AGENTS.md', 'Run `bun test` for the unit tests.\n');
+  assert.deepEqual(f.run().report, { verdict: 'found', command: 'bun test', scoping_idiom: 'append the test files as path arguments', source: 'AGENTS.md' });
 });
 
 test('I1: command is read-only and takes no input file', (t) => {
