@@ -36,7 +36,7 @@ const args = process.argv.slice(2);
 const name = args[0];
 let stdin = '';
 if (!process.stdin.isTTY) { try { stdin = fs.readFileSync(0, 'utf8'); } catch (error) { stdin = ''; } }
-if (process.env.FAKE_CODEGRAPH_LOG) fs.appendFileSync(process.env.FAKE_CODEGRAPH_LOG, JSON.stringify({ args, stdin }) + '\\n');
+if (process.env.FAKE_CODEGRAPH_LOG) fs.appendFileSync(process.env.FAKE_CODEGRAPH_LOG, JSON.stringify({ args, stdin, cwd: process.cwd() }) + '\\n');
 // An affected call answers per file (config.perFile, keyed by the file on stdin) before it falls back to config.affected.
 const answer = (name === 'affected' && config.perFile && config.perFile[stdin.trim()]) || config[name] || {};
 const started = Date.now();
@@ -59,12 +59,25 @@ const INDEX = { builtWithVersion: '1.6.4', builtWithExtractionVersion: 29, curre
 const statusWith = (index, extra = {}) => ({ status: { json: { initialized: true, pendingChanges: { added: 0, modified: 0, removed: 0 }, rebuildInProgress: false, ...extra, ...(index ? { index } : {}) } } });
 const answerFor = (tests, dependents, extra = {}) => ({ json: { changedFiles: [], affectedTests: tests, totalDependentsTraversed: dependents }, ...extra });
 
+// The real git, which the fixture's PATH (the fake codegraph's directory alone) offers beside the fake.
+const realGit = (() => {
+  const names = process.platform === 'win32' ? ['git.exe'] : ['git'];
+  for (const dir of (process.env.PATH || '').split(path.delimiter).filter(Boolean)) {
+    for (const name of names) if (fs.existsSync(path.join(dir, name))) return path.join(dir, name);
+  }
+  return null;
+})();
+
 function selectFixture(t, { indexed = true, installed = true } = {}) {
   const root = scratch(t, 'sai-test-select-');
   const bin = path.join(root, 'bin');
   const project = path.join(root, 'project');
   fs.mkdirSync(bin);
   fs.mkdirSync(project);
+  // A symbolic link keeps the fixture's PATH to one directory; Windows takes git.exe's own directory instead, which
+  // holds no codegraph, because a link to git.exe loses the files it loads beside itself.
+  if (realGit && process.platform !== 'win32') fs.symlinkSync(realGit, path.join(bin, 'git'));
+  const searchPath = realGit && process.platform === 'win32' ? `${bin}${path.delimiter}${path.dirname(realGit)}` : bin;
   if (indexed) fs.mkdirSync(path.join(project, '.codegraph'));
   if (installed) {
     write(bin, 'fake-codegraph.js', FAKE);
@@ -81,13 +94,29 @@ function selectFixture(t, { indexed = true, installed = true } = {}) {
     const input = write(root, 'files.json', JSON.stringify(files));
     const result = spawnSync(process.execPath, [tool, 'select', '--input-file', input, '--cwd', project, ...extra], {
       encoding: 'utf8',
-      env: { ...process.env, PATH: bin, FAKE_CODEGRAPH: JSON.stringify(config), FAKE_CODEGRAPH_LOG: log, FAKE_CODEGRAPH_TIMES: times },
+      env: { ...process.env, PATH: searchPath, FAKE_CODEGRAPH: JSON.stringify(config), FAKE_CODEGRAPH_LOG: log, FAKE_CODEGRAPH_TIMES: times },
     });
     return { ...result, report: result.stdout ? JSON.parse(result.stdout) : null };
   };
   const calls = () => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n').filter(Boolean).map((line) => JSON.parse(line)) : []);
   const spans = () => (fs.existsSync(times) ? fs.readFileSync(times, 'utf8').trim().split('\n').filter(Boolean).map((line) => JSON.parse(line)) : []);
   return { select, calls, spans, project };
+}
+
+// The fixture's project as a git repository whose one commit holds `files`; returns that commit.
+function commitBase(f, files) {
+  const git = (...args) => {
+    const result = spawnSync('git', args, { cwd: f.project, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout.trim();
+  };
+  git('init', '-q');
+  git('config', 'user.email', 't@example.com');
+  git('config', 'user.name', 't');
+  for (const [file, content] of Object.entries(files)) write(f.project, file, content);
+  git('add', '-A');
+  git('commit', '-q', '-m', 'base');
+  return git('rev-parse', 'HEAD');
 }
 
 test('E1: a trusted index selects the tests codegraph affected reports, sorted and without duplicates', (t) => {
@@ -155,13 +184,65 @@ test('E4 I4: a change of documentation and configuration alone selects no test',
   assert.equal(f.calls().some((call) => call.args[0] === 'affected'), false);
 });
 
-test('E3: a deleted file, gone from the working tree and the index, stays out of the selection', (t) => {
+test('E3: a deleted file without --base runs the full suite with deleted-file and names it', (t) => {
   const f = selectFixture(t);
-  assert.deepEqual(f.select(['src/gone.js']).report, { verdict: 'selected', tests: [], reason: null });
-  const withDeletion = f.select(['src/a.js', 'src/gone.js']);
-  assert.deepEqual([withDeletion.report.verdict, withDeletion.report.tests], ['selected', ['test/a.test.js', 'test/b.test.js']]);
-  const affected = f.calls().filter((call) => call.args[0] === 'affected');
-  assert.equal(affected.some((call) => call.stdin.trim() === 'src/gone.js'), false, 'the deleted file is never asked about');
+  const { status, report } = f.select(['src/a.js', 'src/gone.js']);
+  assert.equal(status, 0);
+  assert.deepEqual(report, { verdict: 'full', tests: [], reason: 'deleted-file', files: ['src/gone.js'] });
+});
+
+test('E3: with --base, the tests of a deleted file come from the graph of the base, written outside the project and removed', (t) => {
+  const f = selectFixture(t);
+  const base = commitBase(f, { 'src/a.js': 'a', 'src/gone.js': 'gone', 'test/a.test.js': 'test', 'test/gone.test.js': 'test' });
+  fs.rmSync(path.join(f.project, 'src/gone.js'));
+  fs.rmSync(path.join(f.project, 'test/gone.test.js'));
+  write(f.project, 'test/b.test.js', 'test');
+  const config = {
+    ...HAPPY,
+    files: { json: [{ path: 'src/a.js' }, { path: 'test/a.test.js' }] },
+    perFile: {
+      'src/a.js': answerFor(['test/b.test.js'], 1),
+      'src/gone.js': answerFor(['test/a.test.js', 'test/gone.test.js'], 2),
+      'test/gone.test.js': answerFor(['test/gone.test.js'], 0),
+    },
+  };
+  const { status, report } = f.select(['src/a.js', 'src/gone.js', 'test/gone.test.js'], config, ['--base', base]);
+  assert.equal(status, 0);
+  assert.deepEqual(report, { verdict: 'selected', tests: ['test/a.test.js', 'test/b.test.js'], reason: null }, 'a deleted test is no longer run');
+  const calls = f.calls();
+  const init = calls.find((call) => call.args[0] === 'init');
+  assert.ok(init, 'the base is indexed');
+  assert.notEqual(init.cwd, f.project);
+  assert.equal(fs.existsSync(init.cwd), false, 'the base directory is removed');
+  const atBase = calls.filter((call) => call.args[0] === 'affected' && call.cwd === init.cwd).map((call) => call.stdin.trim()).sort();
+  assert.deepEqual(atBase, ['src/gone.js', 'test/gone.test.js']);
+  const porcelain = spawnSync('git', ['status', '--porcelain'], { cwd: f.project, encoding: 'utf8' }).stdout.split('\n').filter(Boolean).sort();
+  assert.deepEqual(porcelain, [' D src/gone.js', ' D test/gone.test.js', '?? test/b.test.js'], 'the project index and working tree stay as they were');
+});
+
+test('E3: a deleted file the base does not hold was created inside the run and indexes nothing', (t) => {
+  const f = selectFixture(t);
+  const base = commitBase(f, { 'src/a.js': 'a' });
+  const { report } = f.select(['src/a.js', 'src/temporary.js'], HAPPY, ['--base', base]);
+  assert.deepEqual([report.verdict, report.reason], ['selected', null]);
+  assert.equal(f.calls().some((call) => call.args[0] === 'init'), false);
+});
+
+test('E3: a base that cannot be indexed is base-index-failed, and a deleted file without dependents at the base is no-dependents', (t) => {
+  const f = selectFixture(t);
+  const base = commitBase(f, { 'src/a.js': 'a', 'src/gone.js': 'gone' });
+  fs.rmSync(path.join(f.project, 'src/gone.js'));
+  const failing = f.select(['src/gone.js'], { ...HAPPY, init: { exit: 1 } }, ['--base', base]).report;
+  assert.deepEqual([failing.verdict, failing.reason], ['full', 'base-index-failed']);
+  const bare = f.select(['src/gone.js'], { ...HAPPY, perFile: { 'src/gone.js': answerFor([], 0) } }, ['--base', base]).report;
+  assert.deepEqual([bare.verdict, bare.reason, bare.files], ['full', 'no-dependents', ['src/gone.js']]);
+});
+
+test('select takes a --base that resolves to a commit, and none of the swap options', (t) => {
+  const f = selectFixture(t);
+  commitBase(f, { 'src/a.js': 'a' });
+  assert.equal(f.select(['src/a.js'], HAPPY, ['--base', 'no-such-revision']).status, 2);
+  assert.equal(f.select(['src/a.js'], HAPPY, ['--parent-branch', 'main']).status, 2);
 });
 
 test('E3: a file present in the working tree that the index lacks is unindexed even when a deleted file sits beside it', (t) => {
