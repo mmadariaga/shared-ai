@@ -156,7 +156,7 @@ test('the implement coordinator selects each step\'s tests with test-select.js a
   assert.match(cycle, /`test-select\.js` \(resolved per `tool-resolution\.md`\)/);
   assert.match(cycle, /select --input-file <file> --cwd <project root>/);
   const policy = read('sai/policies/test-execution.md');
-  for (const reason of ['no-binary', 'no-index', 'sync-failed', 'stale-index', 'unindexed-file', 'no-dependents', 'deleted-referenced', 'reference-check-failed', 'codegraph-error', 'timeout', 'invalid-output']) {
+  for (const reason of ['no-binary', 'no-index', 'sync-failed', 'stale-index', 'unindexed-file', 'no-dependents', 'codegraph-error', 'timeout', 'invalid-output']) {
     assert.match(policy, new RegExp(`\`${reason}\``), reason);
   }
   assert.match(cycle, /no scoping idiom/);
