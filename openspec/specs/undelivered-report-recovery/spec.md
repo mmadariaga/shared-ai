@@ -5,20 +5,6 @@ TBD - created by archiving change recover-undelivered-worker-reports. Update Pur
 
 ## Requirements
 
-### Requirement: Single source of undelivered-report reception
-
-`sai/policies/worker-report-transport.md` SHALL hold a `## Undelivered reports` section that is the single source of how a coordinator recovers a worker report that is saved in the report directory while its reference never reached the coordinator. The rules SHALL apply to every worker that reports through that policy, on Claude Code and opencode alike, whether cache warming is on or off. The `budget-*` helpers, which reply in text, and the `--no-specs` POC, which keeps its own transport, SHALL stay outside it. Each coordinator that receives reports through the policy (implement, review, audit, deep-review, the plan cycle, commit, archive, backfill, merge, and Direct Build) SHALL point to that section and SHALL NOT restate it; archive and backfill apply it on their ordinary route.
-
-#### Scenario: Every receiving coordinator points to the section
-
-- **WHEN** a coordinator card that receives worker reports through the transport policy is read
-- **THEN** it names `worker-report-transport.md` § Undelivered reports
-
-#### Scenario: Helpers stay outside the recovery
-
-- **WHEN** a coordinator waits for a `budget-*` helper or for the `--no-specs` POC
-- **THEN** the undelivered-report rules do not apply
-
 ### Requirement: Accepted references are recorded and duplicates ignored
 
 After a coordinator has processed a report reference, it SHALL record it with `transfer.js accept` in the ledger of the report directory. A report that fails validation SHALL be recorded after it is returned to its author as invalid. For every reference, from a worker message or from the watch, the coordinator SHALL look it up with `transfer.js accept --check`: for a terminal report inside the paired check of § Receiver boundary, which issues the validation in the same turn, and for a progress report before its emit. A reference already in the ledger (same `path` and `sha256`) SHALL be treated like a wake acknowledgement (`sai/policies/cache-warming.md` § Wake acknowledgement): no validation result acted on, no event emitted, no attempt spent, and no continuation sent. One exception: a repeated reference that answers a message the coordinator sent is a rejected continuation, handled under `sai/policies/worker-lifecycle.md` § Continuation timing, not a duplicate. Because the ledger lives in the report directory that the run state keeps, a reference accepted before a context compaction or a resumed run SHALL NOT be processed again.
@@ -205,3 +191,22 @@ A worker message that carries no report reference and is not a protocol literal 
 
 - **WHEN** the same worker again replies without a reference and the scan again finds no report
 - **THEN** the coordinator replaces the worker with a hand-over it writes and counts a second obstacle attempt, without waiting for a `silent` watch end
+
+### Requirement: Single source of undelivered-report reception for workers and budget agents
+
+`sai/policies/worker-report-transport.md` SHALL hold a `## Undelivered reports` section that is the single source of how a dispatcher recovers a report that is saved in a report directory while its reference never reached the dispatcher. The rules SHALL apply to every worker that reports through that policy and to the three budget agents (`budget-explorer`, `budget-subagent`, `budget-executor`), whose dispatchers apply them to their helper report directory as § Budget agents says, on Claude Code and opencode alike, whether cache warming is on or off. Only the `--no-specs` POC, which keeps its own transport, SHALL stay outside it. Each coordinator that receives reports through the policy (implement, review, audit, deep-review, the plan cycle, commit, archive, backfill, merge, and Direct Build) SHALL point to that section and SHALL NOT restate it; archive and backfill apply it on their ordinary route.
+
+#### Scenario: Every receiving coordinator points to the section
+
+- **WHEN** a coordinator card that receives worker reports through the transport policy is read
+- **THEN** it names `worker-report-transport.md` § Undelivered reports
+
+#### Scenario: Budget agents are inside the recovery
+
+- **WHEN** a dispatcher waits for a `budget-*` agent whose message carries no valid reference
+- **THEN** it scans its helper report directory and accepts a saved report absent from the `.sai-accepted` ledger before asking the agent again
+
+#### Scenario: Only the POC stays outside the recovery
+
+- **WHEN** a coordinator waits for the `--no-specs` POC
+- **THEN** the undelivered-report rules do not apply

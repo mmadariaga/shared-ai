@@ -34,6 +34,12 @@ Give the executor the exact command(s) to run, in order, and the output you need
 
 A report without a final result for a requested command (`pending`, `running`, or no entry) is an obstacle under `sai/policies/obstacle-escalation.md`: read the result from the evidence the report names, such as its output log, or dispatch again, and do not wait for a later message from that executor.
 
+## Report delivery
+
+Every spawn prompt opens with the line `--report-dir <dir>`, the helper report directory the dispatcher opened with `transfer.js open`; the agent saves its report there and replies with its `{path, sha256}` reference only, and there is no text reply. A Claude Code dispatcher that dispatches this agent routed to opencode (`harness: opencode`, `@sai/policies/opencode-dispatch.md`) adds `--harness claude` as the second line. Creating the directory, accepting the reference before reading the report, recovering an undelivered report, and closing the directory follow `@sai/policies/worker-report-transport.md` § Budget agents, dispatcher side.
+
+Fetch `@sai/policies/worker-report-transport.md`
+
 ## Warming and dispose
 
 Fetch `@sai/policies/cache-warming.md`

@@ -23,6 +23,12 @@ Give the executor the exact command(s) to run, in order, and the output you need
 
 A report without a final result for a requested command (`pending`, `running`, or no entry) is an obstacle under `sai/policies/obstacle-escalation.md`: read the result from the evidence the report names, such as its output log, or dispatch again, and do not wait for a later message from that executor.
 
+## Report delivery
+
+Every spawn prompt opens with the line `--report-dir <dir>`, the helper report directory the dispatcher opened with `transfer.js open`; the agent saves its report there and replies with its `{path, sha256}` reference only, and there is no text reply. The line goes at the top of the `subagent` prompt, before the task. Creating the directory, accepting the reference before reading the report, recovering an undelivered report, and closing the directory follow `@sai/policies/worker-report-transport.md` § Budget agents, dispatcher side.
+
+Fetch `@sai/policies/worker-report-transport.md`
+
 ## Dispatch mode
 
 Dispatch in the background only from a main agent, routed SAI coordinator, or routed SAI worker whose lifetime outlives the child: `subagent(agent: "budget-executor", description: "budget-executor", prompt: <prompt>, background: true)`. Capture the returned `sessionID` and await the completion notification on the dispatcher's own turn, matching each notification to its subagent by `sessionID` when several run at once; never sleep or poll. A continuation passes the same `agent` plus the captured `sessionID` and `background: true`, and only after the previous notification has arrived.

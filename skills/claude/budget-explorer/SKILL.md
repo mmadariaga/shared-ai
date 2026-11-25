@@ -36,7 +36,9 @@ Use this agent for bounded read-only lookup, research, and documentation reads. 
 
 Every spawn prompt states the **goal** and the **output contract**: exact response fields, a hard word-or-line length cap, and the raw-content rule (`no raw file contents`, or bounded verbatim excerpts when an audit needs them). State what to find, not how: a spawn prompt MUST NOT prescribe a research tool, a procedure, a numbered sequence of steps, or a method, because the tool-preference ladder in `@sai/policies/explore-agent.md` governs tool choice whatever the prompt says.
 
-A caller that wants the report as a file starts the spawn prompt with `--report-dir <dir>`, a directory it opened with `transfer.js open`. The explorer then saves its complete response there and replies with the `{path, sha256}` reference only, as `@sai/policies/explore-agent.md` § Saved report says; without the line it replies in text. A Claude Code dispatcher that dispatches an explorer routed to opencode (`harness: opencode`, `@sai/policies/opencode-dispatch.md`) adds `--harness claude` right after the `--report-dir` line, so the report lands in the SAI temp root of the main harness.
+Every spawn prompt opens with the line `--report-dir <dir>`, the helper report directory the dispatcher opened with `transfer.js open`; the explorer saves its complete response there and replies with its `{path, sha256}` reference only, and there is no text reply. A Claude Code dispatcher that dispatches an explorer routed to opencode (`harness: opencode`, `@sai/policies/opencode-dispatch.md`) adds `--harness claude` as the second line. Creating the directory, accepting the reference before reading the report, recovering an undelivered report, and closing the directory follow `@sai/policies/worker-report-transport.md` § Budget agents, dispatcher side.
+
+Fetch `@sai/policies/worker-report-transport.md`
 
 ## Warming and dispose
 

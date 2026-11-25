@@ -26,6 +26,13 @@ Helper models come from the configured agent files, not each skill. Claude Code
 and opencode both use `budget-explorer`, `budget-executor`, and `budget-subagent`.
 Customize them through project `setup` or the corresponding agent overrides.
 
+The three helpers always deliver their result as a saved report file and return only its path and
+hash, never the report as text. The dispatcher (an SAI command, a worker, or your own session in
+budget mode) creates the report directory, checks the reference before it reads the report, finds a
+saved report whose message got lost, and closes the directory when it no longer needs it.
+`budget-explorer` and `budget-executor` have native write access only inside the SAI temp root, not in your
+repository. The rules are in `sai/policies/worker-report-transport.md` § Budget agents.
+
 ### Migrating existing opencode agents
 
 Installation deletes the retired `explore.md`, `executor.md`, and `budget.md`

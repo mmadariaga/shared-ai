@@ -162,7 +162,7 @@ Every capability profile assigned to an agent through `capabilities.assignments.
 
 #### Scenario: Other grants of the widened profiles stay unchanged
 - **WHEN** the `research` and `executor` profiles are resolved
-- **THEN** `research` keeps its shell limited to `git grep *`, `codegraph explore *`, and `node {skills}/sai-cache-warmer/wait.js *`, and neither profile gains `delegate`, `write`, or `message`
+- **THEN** `research` keeps its shell limited to `git grep *`, `codegraph explore *`, `node {skills}/sai-cache-warmer/wait.js *`, and `node {sai}/tools/transfer.js put *`, both profiles carry the write grant `"temp"` and no repository write, and neither profile gains `delegate` or `message`
 
 #### Scenario: Command profiles keep explicit skills lists
 - **WHEN** command profiles such as `implement-command`, `to-backlog-command`, and `to-pr-command` are resolved

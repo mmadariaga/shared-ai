@@ -36,9 +36,9 @@ When the task defines no result shape, the subagent SHALL return:
       - <one line per action>
     failures:
       - <what failed>: <why, in one line>
-    output: <key result, when small enough to inline>
+    output: <key result, when small enough to put in the report>
 
-`failures` is omitted when nothing failed, and `output` when there is no result or it is too large to inline. `success` means the result is achieved; `partial` means the call cap arrived with part of the result achieved, and `failures` lists the remaining work; `failed` means the call cap arrived with nothing achieved, or a permission block stopped the task. `actions_taken` and `failures` together SHALL report what was tried: every approach, and how each one ended.
+`failures` is omitted when nothing failed, and `output` when there is no result or it is too large to put in the report. `success` means the result is achieved; `partial` means the call cap arrived with part of the result achieved, and `failures` lists the remaining work; `failed` means the call cap arrived with nothing achieved, or a permission block stopped the task. `actions_taken` and `failures` together SHALL report what was tried: every approach, and how each one ended. The result SHALL be the content of a report file saved as `sai/policies/worker-report-transport.md` § Budget agents says, and the subagent's final message SHALL carry its reference with the `warming: true` or `warming: false` line beside it.
 
 #### Scenario: success report
 - **WHEN** the result is achieved

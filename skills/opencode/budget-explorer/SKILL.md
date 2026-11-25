@@ -20,7 +20,9 @@ Fetch `@sai/policies/explore-agent.md`
 
 Every spawn prompt states the **goal** and the **output contract**: exact response fields, a hard word-or-line length cap, and the raw-content rule (`no raw file contents`, or bounded verbatim excerpts when an audit needs them). State what to find, not how: a spawn prompt MUST NOT prescribe a research tool, a procedure, a numbered sequence of steps, or a method, because the tool-preference ladder in `@sai/policies/explore-agent.md` governs tool choice whatever the prompt says.
 
-A caller that wants the report as a file starts the spawn prompt with `--report-dir <dir>`, a directory it opened with `transfer.js open`. The explorer then saves its complete response there and replies with the `{path, sha256}` reference only, as `@sai/policies/explore-agent.md` § Saved report says; without the line it replies in text. The line goes at the top of the `subagent` prompt, before the goal.
+Every spawn prompt opens with the line `--report-dir <dir>`, the helper report directory the dispatcher opened with `transfer.js open`; the explorer saves its complete response there and replies with its `{path, sha256}` reference only, and there is no text reply. The line goes at the top of the `subagent` prompt, before the goal. Creating the directory, accepting the reference before reading the report, recovering an undelivered report, and closing the directory follow `@sai/policies/worker-report-transport.md` § Budget agents, dispatcher side.
+
+Fetch `@sai/policies/worker-report-transport.md`
 
 ## Dispatch mode
 

@@ -8,7 +8,7 @@ const path = require('node:path');
 const read = file => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
 const POLICY = 'sai/policies/worker-report-transport.md';
 
-// Every coordinator that receives reports through the transport policy (E14 leaves out the budget helpers and the POC).
+// Every coordinator that receives reports through the transport policy (E14 leaves out the POC).
 const COORDINATORS = [
   'sai/commands/implement/coordinator.md',
   'sai/commands/review/coordinator.md',
@@ -33,7 +33,7 @@ test('the transport policy owns the reception rules in one section', () => {
   const text = section(read(POLICY), 'Undelivered reports');
   assert.match(text, /single source of how; a coordinator points here and does not restate it/);
   assert.match(text, /on Claude Code and opencode alike, whether cache warming is on or off/);
-  assert.match(text, /does not cover the `budget-\*` helpers[\s\S]{0,80}`--no-specs` POC/);
+  assert.match(text, /covers the budget agents too[\s\S]{0,80}does not cover the `--no-specs` POC/);
   assert.match(text, /\*\*Ledger\*\*: the reserved file `\.sai-accepted` in the report directory, the only memory of accepted references/);
   assert.match(text, /accept --dir <report-dir> --path <path> --sha256 <sha256>/);
   assert.match(text, /a reference in the ledger is not processed again/);

@@ -22,6 +22,12 @@ Fetch `@sai/policies/budget-agent.md`
 
 Give one task per spawn: what to do, the files or area it covers, and, when you need a specific result, the exact shape to return. Without a shape the subagent returns its structured completion report. Split independent tasks into separate spawns.
 
+## Report delivery
+
+Every spawn prompt opens with the line `--report-dir <dir>`, the helper report directory the dispatcher opened with `transfer.js open`; the agent saves its report there and replies with its `{path, sha256}` reference only, and there is no text reply. The line goes at the top of the `subagent` prompt, before the task. Creating the directory, accepting the reference before reading the report, recovering an undelivered report, and closing the directory follow `@sai/policies/worker-report-transport.md` § Budget agents, dispatcher side.
+
+Fetch `@sai/policies/worker-report-transport.md`
+
 ## Dispatch mode
 
 Dispatch in the background only from a main agent, routed SAI coordinator, or routed SAI worker whose lifetime outlives the child: `subagent(agent: "budget-subagent", description: "budget-subagent", prompt: <prompt>, background: true)`. Capture the returned `sessionID` and await the completion notification on the dispatcher's own turn, matching each notification to its subagent by `sessionID` when several run at once; never sleep or poll. A continuation passes the same `agent` plus the captured `sessionID` and `background: true`, and only after the previous notification has arrived.

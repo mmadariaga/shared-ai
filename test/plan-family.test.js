@@ -371,7 +371,7 @@ test('plan-run@1 records the research directory of the research hand-over, and t
   assert.match(specWorker, /`--report-dir <research_dir>`/);
   assert.match(specWorker, /transfer\.js put --dir <research_dir> --path spec-annotations\.md --exclusive/);
   for (const kind of ['corrected', 'rejected', 'own-read', 'gap']) assert.match(specWorker, new RegExp(`\`${kind}\``));
-  assert.match(read('sai/commands/spec/steps/common.md'), /open each explorer task with the line\s+`--report-dir <research_dir>`/);
+  assert.match(read('sai/commands/spec/steps/common.md'), /Open each explorer task with the\s+line `--report-dir <dir>`[\s\S]{0,260}`<dir>`\s+is `research_dir` when your brief names it/);
   assert.match(read('sai/commands/design/coordinator.md'), /`inherited research:`/);
   const research = read('sai/commands/design/steps/research.md');
   assert.match(research, /Read `spec-annotations\.md` first/);

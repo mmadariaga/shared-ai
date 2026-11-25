@@ -25,6 +25,8 @@ Launch `budget-explorer` with this goal and output contract:
 
 > Read the proposal and specs for change `{resolved_change_name}`, then verify only these gaps: `{gaps}`. Choose search tools by your research ladder. Return structured data with exactly `files` and `unresolved` (plus the explorer's mandatory `ladder_discards` and `out_of_root_requests`). `files` contains at most 12 entries, each with `filePath`, `keyExports`, `isReusableForThisChange` (boolean), and `notes` (at most 20 words, citing source lines for claims that determine the design). `unresolved` lists relevant files or claims not yet verified, with a reason. Limit the entire response to 350 words; no raw file contents or narrative.
 
+Every explorer task opens with `--report-dir <dir>`, a helper directory you open and close yourself, and you accept each returned reference before you read the report (`@sai/policies/worker-report-transport.md` § Budget agents).
+
 Use the report to make design decisions. If directly affected callers, tests, or claims remain unverified, continue with a targeted `budget-explorer` request before closing this step. Research is done when every file the design changes, its callers, and its tests are verified, inherited research counting as verified. Carry unresolved design decisions into `design.md` for the tasks-step gate.
 
 When consuming `ladder_discards`, Fetch `@sai/policies/explore-agent.md` and apply
