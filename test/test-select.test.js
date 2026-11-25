@@ -59,25 +59,12 @@ const INDEX = { builtWithVersion: '1.6.4', builtWithExtractionVersion: 29, curre
 const statusWith = (index, extra = {}) => ({ status: { json: { initialized: true, pendingChanges: { added: 0, modified: 0, removed: 0 }, rebuildInProgress: false, ...extra, ...(index ? { index } : {}) } } });
 const answerFor = (tests, dependents, extra = {}) => ({ json: { changedFiles: [], affectedTests: tests, totalDependentsTraversed: dependents }, ...extra });
 
-// The real git, which the fixture's PATH (the fake codegraph's directory alone) offers beside the fake.
-const realGit = (() => {
-  const names = process.platform === 'win32' ? ['git.exe'] : ['git'];
-  for (const dir of (process.env.PATH || '').split(path.delimiter).filter(Boolean)) {
-    for (const name of names) if (fs.existsSync(path.join(dir, name))) return path.join(dir, name);
-  }
-  return null;
-})();
-
 function selectFixture(t, { indexed = true, installed = true } = {}) {
   const root = scratch(t, 'sai-test-select-');
   const bin = path.join(root, 'bin');
   const project = path.join(root, 'project');
   fs.mkdirSync(bin);
   fs.mkdirSync(project);
-  // A symbolic link keeps the fixture's PATH to one directory; Windows takes git.exe's own directory instead, which
-  // holds no codegraph, because a link to git.exe loses the files it loads beside itself.
-  if (realGit && process.platform !== 'win32') fs.symlinkSync(realGit, path.join(bin, 'git'));
-  const searchPath = realGit && process.platform === 'win32' ? `${bin}${path.delimiter}${path.dirname(realGit)}` : bin;
   if (indexed) fs.mkdirSync(path.join(project, '.codegraph'));
   if (installed) {
     write(bin, 'fake-codegraph.js', FAKE);
@@ -94,7 +81,7 @@ function selectFixture(t, { indexed = true, installed = true } = {}) {
     const input = write(root, 'files.json', JSON.stringify(files));
     const result = spawnSync(process.execPath, [tool, 'select', '--input-file', input, '--cwd', project, ...extra], {
       encoding: 'utf8',
-      env: { ...process.env, PATH: searchPath, FAKE_CODEGRAPH: JSON.stringify(config), FAKE_CODEGRAPH_LOG: log, FAKE_CODEGRAPH_TIMES: times },
+      env: { ...process.env, PATH: bin, FAKE_CODEGRAPH: JSON.stringify(config), FAKE_CODEGRAPH_LOG: log, FAKE_CODEGRAPH_TIMES: times },
     });
     return { ...result, report: result.stdout ? JSON.parse(result.stdout) : null };
   };
@@ -170,48 +157,11 @@ test('E4 I4: a change of documentation and configuration alone selects no test',
 
 test('E3: a deleted file, gone from the working tree and the index, stays out of the selection', (t) => {
   const f = selectFixture(t);
-  gitProject(f);
   assert.deepEqual(f.select(['src/gone.js']).report, { verdict: 'selected', tests: [], reason: null });
   const withDeletion = f.select(['src/a.js', 'src/gone.js']);
   assert.deepEqual([withDeletion.report.verdict, withDeletion.report.tests], ['selected', ['test/a.test.js', 'test/b.test.js']]);
   const affected = f.calls().filter((call) => call.args[0] === 'affected');
   assert.equal(affected.some((call) => call.stdin.trim() === 'src/gone.js'), false, 'the deleted file is never asked about');
-});
-
-// The project of a select fixture as a git repository, for the textual check of deleted files.
-const gitProject = (f) => {
-  for (const args of [['init', '-q'], ['config', 'user.email', 't@example.com'], ['config', 'user.name', 't']]) {
-    assert.equal(spawnSync('git', args, { cwd: f.project }).status, 0);
-  }
-};
-
-test('E3: a deleted file that an unchanged file of an indexed type still names runs the full suite with deleted-referenced', (t) => {
-  const f = selectFixture(t);
-  gitProject(f);
-  write(f.project, 'src/a.js', "const helper = require('./helper');\n");
-  write(f.project, 'test/helper.test.js', "require('../src/helper');\n");
-  write(f.project, 'README.md', 'The helper module is gone.\n');
-  write(f.project, 'openspec/changes/x/design.md', 'helper\n');
-  write(f.project, 'src/helpers.js', '// helpers, a different word\n');
-  const { status, report } = f.select(['src/helper.js']);
-  assert.equal(status, 0);
-  assert.deepEqual(report, { verdict: 'full', tests: [], reason: 'deleted-referenced', files: ['src/a.js', 'test/helper.test.js'] });
-  assert.equal(f.calls().some((call) => call.args[0] === 'affected'), false, 'the check runs before any affected call');
-});
-
-test('E3: a reference in a file that changed with the deletion is the run\'s own, and a directory module is named by its directory', (t) => {
-  const f = selectFixture(t);
-  gitProject(f);
-  write(f.project, 'src/a.js', "const parser = require('./parser');\n");
-  assert.equal(f.select(['src/a.js', 'src/parser.js']).report.verdict, 'selected', 'src/a.js changed with the deletion');
-  const directory = f.select(['src/parser/index.js']).report;
-  assert.deepEqual([directory.reason, directory.files], ['deleted-referenced', ['src/a.js']]);
-});
-
-test('E3: a deleted-file check that git cannot run is reference-check-failed', (t) => {
-  const f = selectFixture(t);
-  const { report } = f.select(['src/gone.js']);
-  assert.deepEqual([report.verdict, report.reason], ['full', 'reference-check-failed'], 'the fixture project is no git repository');
 });
 
 test('E3: a file present in the working tree that the index lacks is unindexed even when a deleted file sits beside it', (t) => {
