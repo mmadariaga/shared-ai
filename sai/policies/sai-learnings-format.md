@@ -48,7 +48,7 @@ The file contains exactly four content sections, in this order. No fifth section
 
 ## Test Command
 
-{the directly-executable command, including the parameterised scoping idiom}
+`{the directly-executable command}` `{the same command with its parameterised scoping idiom}`
 *Observed:* {change-name}
 ```
 
@@ -58,7 +58,7 @@ The file contains exactly four content sections, in this order. No fifth section
 - **State a fact about the repository, not a story about a run.** An entry whose content is only meaningful in the context of one change is not written.
 - **Cite the run.** The `*Observed:*` line names the change that surfaced the fact, so a reader can trace the entry back to the `## Appendix: Plan vs Final Implementation` it was promoted from.
 - **Carry what works instead.** An entry states the durable fact and the working alternative, not merely that something failed.
-- **Test Command is single-valued and keyless.** The `## Test Command` section holds at most one entry: a single directly-executable command string carrying the project's parameterised scoping idiom where its runner supports one. It is never written as a keyed bullet, never carries a `**{key}**:` prefix, and never places provenance on the same line as the command. Provenance sits on its own line beneath the command, so the command line can be lifted verbatim without stripping syntax. When the project has no test runner, the section carries the explicit sentinel `None — no test runner in this project` rather than being left empty.
+- **Test Command is single-valued and keyless.** The `## Test Command` section holds at most one entry: the directly-executable command as one code span and, where the project's runner supports scoping, the same command with its parameterised scoping idiom (a placeholder such as `<TestName>` or `<test files>`) as a second code span on the same line. The first span never holds a placeholder, because `test-select.js command` runs it as the full suite. It is never written as a keyed bullet, never carries a `**{key}**:` prefix, and never places provenance on the same line as the command. Provenance sits on its own line beneath the command, so the command line can be lifted verbatim without stripping syntax. When the project has no test runner, the section carries the explicit sentinel `None — no test runner in this project` rather than being left empty.
 - **A fact that fits no section is not recorded.** When a candidate matches none of Stack, Conventions, Avoid, or Test Command, it is not promoted and no new section is created to hold it.
 
 ## Append and supersede rules

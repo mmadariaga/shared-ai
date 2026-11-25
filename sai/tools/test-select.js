@@ -45,22 +45,30 @@
  * a reindex), `unindexed-file` (a changed file of an indexed type is not in `codegraph files --json`;
  * `files` lists them), `codegraph-error` (a call failed), `timeout` (the calls
  * exceeded `--timeout-ms`, 60000 by default), `invalid-output` (a call printed
- * JSON the tool cannot read), or `no-dependents` (a changed non-test file has no
- * dependents in the graph, here or at the base; `files` lists them), `deleted-file`
- * (a deletion without `--base`; `files` lists them), or `base-index-failed`. The per-file calls run in
- * parallel, at most 4 at a time, under one shared `--timeout-ms` deadline. It
- * uses only the public codegraph CLI and never opens
- * `.codegraph/codegraph.db`. Paths under `openspec/` are plan artifacts, not
- * code, and are left out of the list. A file the run deleted (absent from the
- * working tree and from the index) lost its place in the graph at the sync, so
- * its tests come from the graph of `--base <sha>`, the revision before the
- * deletion: the tool writes that revision to a private directory under the SAI
- * temp root through a temporary git index, runs `codegraph init` there, asks
- * `affected` per deleted file, keeps the tests that still exist, and removes the
- * directory. Without `--base` a deletion is `deleted-file`; a failed export or
- * index is `base-index-failed`; a deleted file the base does not hold is left
- * out, since it was created inside the run.
+ * JSON the tool cannot read), `no-dependents` (a changed non-test file has no
+ * dependents in the graph, here or at the base; `files` lists them),
+ * `deleted-file` (a deletion without `--base`; `files` lists them), or
+ * `base-index-failed` (the base could not be written or indexed). `sync`,
+ * `status`, and `files` each get `--timeout-ms`; the work after them (the base's
+ * export, index, and calls, then the per-file calls, at most 4 at a time) shares
+ * one more `--timeout-ms` deadline. It uses only the public codegraph CLI and
+ * never opens `.codegraph/codegraph.db`. Paths under `openspec/` are plan
+ * artifacts, not code, and are left out of the list.
  *
+ * A file the run deleted (absent from the working tree and from the codegraph
+ * index) lost its place in the graph at the sync, so its tests come from the
+ * graph of `--base <sha>`, the revision before the deletion: the tool writes the
+ * project's files at that revision to a private directory under the SAI temp root
+ * through a temporary git index (no worktree, no smudge filter, the project's
+ * working tree, git index, and refs untouched), runs `codegraph init` there, asks
+ * `affected` per deleted file of a type the base indexes, keeps the tests that
+ * still exist, and removes the directory. A deleted file whose type is gone from
+ * the current listing is still a candidate unless its type is never code
+ * (documentation, configuration, images). Without `--base` a deletion is
+ * `deleted-file`; a failed export or index is `base-index-failed`, and running
+ * out of time is `timeout`; a deleted file the base does not hold is left out,
+ * since it was created inside the run.
+
  * `swap` restores to the change base, in the working tree only, the files the
  * change modified or deleted, and removes the files it added, so the coordinator
  * can run a failing test against the base with the installed dependencies. It
@@ -311,11 +319,11 @@ function readAffected(text) {
 }
 
 /**
- * One `affected --depth` call per file, each file alone on stdin, at most AFFECTED_CONCURRENCY at a time under one
- * shared deadline. Every call runs to its end, so the results, kept in file order, do not depend on which call finishes first.
+ * One `affected --depth` call per file, each file alone on stdin, at most AFFECTED_CONCURRENCY at a time, ended at
+ * `deadline` (a time in ms) that the caller shares with its other work. Every call runs to its end, so the results,
+ * kept in file order, do not depend on which call finishes first.
  */
-async function affectedPerFile(files, { cwd, timeoutMs }) {
-  const deadline = Date.now() + timeoutMs;
+async function affectedPerFile(files, { cwd, deadline }) {
   const results = new Array(files.length);
   let next = 0;
   const lane = async () => {
@@ -343,23 +351,43 @@ const extensionOf = (file) => path.extname(file).toLowerCase();
 /** Whether the working tree holds `file` (a symbolic link counts, even a dangling one). */
 const present = (cwd, file) => fs.lstatSync(path.join(cwd, file), { throwIfNoEntry: false }) !== undefined;
 
-/** Run git for the base index; any failure is the fallback `base-index-failed`. */
-function baseGit(args, cwd, env) {
-  const result = spawnSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, ...env }, maxBuffer: 64 * 1024 * 1024 });
+// The types that are never code, so a deleted file of one of them never asks for the graph of the base.
+const NEVER_CODE = new Set(['', '.md', '.markdown', '.mdx', '.txt', '.rst', '.adoc', '.json', '.jsonc', '.yaml', '.yml', '.toml',
+  '.ini', '.cfg', '.lock', '.log', '.csv', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp', '.pdf']);
+
+// The export never runs a smudge filter: a Git LFS checkout would fetch objects over the network, and the graph needs
+// no object content, only the pointers' paths.
+const NO_SMUDGE = ['-c', 'filter.lfs.smudge=', '-c', 'filter.lfs.process=', '-c', 'filter.lfs.required=false'];
+
+/** The time left before `deadline`, or the fallback `timeout` once it has passed. */
+function remaining(deadline) {
+  const left = deadline - Date.now();
+  if (left <= 0) throw new Fallback('timeout');
+  return left;
+}
+
+/** Run git for the base index before `deadline`; a timeout is `timeout`, any other failure `base-index-failed`. */
+function baseGit(args, { cwd, env = {}, input, deadline }) {
+  const result = spawnSync('git', args, {
+    cwd, encoding: 'utf8', input, env: { ...process.env, ...env }, maxBuffer: 256 * 1024 * 1024, timeout: remaining(deadline),
+  });
+  if (result.error && result.error.code === 'ETIMEDOUT') throw new Fallback('timeout');
   if (result.error || result.status !== 0) throw new Fallback('base-index-failed');
   return result.stdout;
 }
 
 /**
  * The tests that depended on the files the run deleted, read from the graph of `base` (the revision before the
- * deletion), because the current graph lost those files at the sync. The base is written to a private directory under
- * the SAI temp root through a temporary git index (`read-tree`, then `checkout-index`), so the project's working tree,
- * index, and refs stay untouched, and indexed there with `codegraph init`; the directory is removed whatever happens.
- * A deleted file the base does not hold was created and deleted inside the run: whatever used it changed with it. A
- * deleted file whose base call finds no dependents, and is no test itself, cannot be vouched for, as a present one.
- * Only tests that still exist are returned.
+ * deletion), because the current graph lost those files at the sync. The project's files at the base are written to a
+ * private directory under the SAI temp root through a temporary git index (`read-tree`, `ls-files`, then
+ * `checkout-index` of the project's paths alone, with no smudge filter), so the project's working tree, git index, and
+ * refs stay untouched, and indexed there with `codegraph init`; the directory is removed whatever happens. A deleted
+ * file the base does not hold was created and deleted inside the run: whatever used it changed with it. A deleted file
+ * of a type the base's graph does not index is no code. A deleted file whose base call finds no dependents, and is no
+ * test itself, cannot be vouched for, as a present one. Only tests that still exist are returned. Everything here runs
+ * before `deadline`.
  */
-async function deletedFileTests(deleted, { cwd, base, timeoutMs }) {
+async function deletedFileTests(deleted, { cwd, base, deadline }) {
   if (!base) throw new Fallback('deleted-file', { files: deleted });
   const atBase = deleted.filter((file) => inBase(cwd, base, file));
   if (atBase.length === 0) return [];
@@ -374,12 +402,19 @@ async function deletedFileTests(deleted, { cwd, base, timeoutMs }) {
   try {
     const tree = path.join(dir, 'tree');
     const env = { GIT_INDEX_FILE: path.join(dir, 'index') };
-    baseGit(['read-tree', base], cwd, env);
-    // checkout-index writes the whole repository; the project root sits at its own prefix inside it.
-    baseGit(['checkout-index', '-a', '-f', `--prefix=${tree.split(path.sep).join('/')}/`], cwd, env);
-    const project = path.join(tree, baseGit(['rev-parse', '--show-prefix'], cwd, {}).trim());
-    codegraph(['init', '-y'], { cwd: project, timeoutMs, failure: 'base-index-failed' });
-    const results = await affectedPerFile(atBase, { cwd: project, timeoutMs });
+    baseGit(['read-tree', base], { cwd, env, deadline });
+    // Only the project's own paths: `ls-files` from the project root lists them, and `checkout-index` writes each one
+    // at its repository path below the prefix, so the project root sits at its own prefix inside the tree.
+    const paths = baseGit(['ls-files', '-z'], { cwd, env, deadline });
+    baseGit([...NO_SMUDGE, 'checkout-index', '-f', '-z', '--stdin', `--prefix=${tree.split(path.sep).join('/')}/`], { cwd, env, input: paths, deadline });
+    const project = path.join(tree, baseGit(['rev-parse', '--show-prefix'], { cwd, deadline }).trim());
+    fs.mkdirSync(project, { recursive: true });
+    codegraph(['init', '-y'], { cwd: project, timeoutMs: remaining(deadline), failure: 'base-index-failed' });
+    const listing = codegraphJson(['files', '--json'], { cwd: project, timeoutMs: remaining(deadline) });
+    if (!Array.isArray(listing) || listing.some((entry) => !entry || typeof entry.path !== 'string')) throw new Fallback('invalid-output');
+    const baseIndexed = new Set(listing.map((entry) => normalizePath(entry.path)));
+    const code = atBase.filter((file) => baseIndexed.has(file));
+    const results = await affectedPerFile(code, { cwd: project, deadline });
     const failed = results.find((result) => result.error);
     if (failed) throw failed.error;
     const bare = results.filter((result) => result.noDependents && !result.tests.includes(result.file)).map((result) => result.file);
@@ -418,18 +453,21 @@ async function selectTests(allFiles, cwd, timeoutMs, base = null) {
     // (documentation, configuration, assets) and stays out of the selection; only a file of an indexed type that the
     // listing lacks cannot be trusted.
     const indexedTypes = new Set([...indexed].map(extensionOf));
-    // A file the run deleted is gone from the working tree and, after `sync`, from the graph: there is nothing left to
-    // ask about it, and the files that used it changed with it, so it is left out instead of making the selection
-    // untrustworthy. Only a file that exists and that the listing lacks is unindexed.
-    // Its former dependents come from the graph of the base (`deletedFileTests`).
-    const deleted = allFiles.filter((file) => indexedTypes.has(extensionOf(file)) && !indexed.has(file) && !present(cwd, file));
+    // A file the run deleted is gone from the working tree and, after `sync`, from the codegraph index, so its former
+    // dependents come from the graph of the base (`deletedFileTests`). Its type may be gone from the listing with it
+    // (the project's only `.ts` file), so any deleted file whose type can be code is a candidate; the base's own
+    // listing then tells. Only a file that exists and that the listing lacks is unindexed.
+    const deleted = allFiles.filter((file) => !indexed.has(file) && !present(cwd, file)
+      && (indexedTypes.has(extensionOf(file)) || !NEVER_CODE.has(extensionOf(file))));
     files = allFiles.filter((file) => indexedTypes.has(extensionOf(file)) && (indexed.has(file) || present(cwd, file)));
     const unindexed = files.filter((file) => /[\r\n]/.test(file) || !indexed.has(file));
     if (unindexed.length) throw new Fallback('unindexed-file', { files: unindexed });
-    const fromBase = deleted.length ? await deletedFileTests(deleted, { cwd, base, timeoutMs }) : [];
+    // One deadline for the work that follows: the base's export, index, and calls, then the per-file calls here.
+    const deadline = Date.now() + timeoutMs;
+    const fromBase = deleted.length ? await deletedFileTests(deleted, { cwd, base, deadline }) : [];
     if (files.length === 0) return { verdict: 'selected', tests: [...new Set(fromBase)].sort(), reason: null };
 
-    const results = await affectedPerFile(files, options);
+    const results = await affectedPerFile(files, { cwd, deadline });
     const failed = results.find((result) => result.error);
     if (failed) throw failed.error;
     // A test file is one whose own call lists it; every other file, fixtures and mocks included, is code.
@@ -586,7 +624,7 @@ function runSnapshotSwap({ record, dirtyBaseline, base, pathsFile, cwd }) {
     if (!stat && !tracked) continue;
     const bytes = stat ? fs.readFileSync(path.join(cwd, file)) : null;
     if (stat && tracked) {
-      const atBase = spawnSync('git', ['show', `${baseSha}:${file}`], { cwd, maxBuffer: 256 * 1024 * 1024 });
+      const atBase = spawnSync('git', ['show', `${baseSha}:./${file}`], { cwd, maxBuffer: 256 * 1024 * 1024 });
       if (atBase.status === 0 && Buffer.compare(atBase.stdout, bytes) === 0) continue;
     }
     entries.push({ path: file, status: !stat ? 'D' : tracked ? 'M' : 'A', sha256: bytes ? sha256(bytes) : null, mode: stat ? stat.mode & 0o777 : null });
@@ -694,10 +732,16 @@ function runRestore({ record, cwd }) {
 
 const NO_RUNNER = /^none\b.*\bno test runner\b/i;
 // A test invocation written literally. A `test:<suffix>` script is a narrower run, never the general command.
-const RUNNER = /^(?:(?:npm|pnpm|yarn|bun)(?:\s+run)?\s+test|npx\s+(?:jest|vitest|mocha|ava)|node\s+(?:--\S+\s+)*--test|(?:python3?\s+-m\s+)?pytest|go\s+test|cargo\s+test|dotnet\s+test|mvn\s+(?:-\S+\s+)*test|(?:\.\/)?gradlew?\s+test|make\s+test|mix\s+test|bundle\s+exec\s+rspec|rspec|phpunit|composer\s+test|deno\s+test)(?![\w:-])/;
-// A substitutable part of a parameterised command: `<TestName>`, `<test files>`, `{file}`, or `$TEST`.
-const PLACEHOLDER = /<[A-Za-z][^<>\n]*>|\{[A-Za-z_][\w-]*\}|\$\{?[A-Z_][A-Z0-9_]*\}?/;
-const PLACEHOLDERS = new RegExp(PLACEHOLDER.source, 'g');
+// A node option before `--test` may carry its value (`node --import ./setup.js --test`).
+const RUNNER = /^(?:(?:npm|pnpm|yarn|bun)(?:\s+run)?\s+test|npx\s+(?:jest|vitest|mocha|ava)|node\s+(?:--(?!test\b)\S+(?:\s+(?!-)\S+)?\s+)*--test|(?:python3?\s+-m\s+)?pytest|go\s+test|cargo\s+test|dotnet\s+test|mvn\s+(?:-\S+\s+)*test|(?:\.\/)?gradlew?\s+test|make\s+test|mix\s+test|bundle\s+exec\s+rspec|rspec|phpunit|composer\s+test|deno\s+test)(?![\w:-])/;
+// A substitutable part of a parameterised command: `<TestName>`, `<test files>`, `<test-file>`, or `{file}`. Words,
+// spaces, and hyphens only, so a shell redirection (`<in.txt >out.txt`) is no placeholder; an environment variable
+// (`$NODE_OPTIONS`) is part of a runnable command, never a placeholder.
+const PLACEHOLDER = /<[A-Za-z][\w -]*>|\{[A-Za-z_][\w-]*\}/;
+// The flags that take the next argument as their value, so a placeholder value takes its flag with it. A flag that
+// takes no value (`--test`, `-x`, `--release`) stays, since it shapes the run.
+const VALUE_FLAGS = new Set(['--filter', '-k', '-t', '-m', '-run', '--run', '--tests', '--testNamePattern', '--testPathPattern',
+  '--test-name-pattern', '--grep', '-g', '--spec', '--match', '--only', '-p', '--project']);
 const PATH_ARGUMENTS = 'append the test files as path arguments';
 // `bun test` is bun's own runner; only `bun run test` runs the package script.
 const PACKAGE_MANAGER_TEST = /^(?:(npm|pnpm|yarn)\s+(?:run\s+)?test|(bun)\s+run\s+test)$/;
@@ -762,23 +806,31 @@ function fromLearnings(cwd) {
 }
 
 /**
- * The runnable form of a parameterised command: each argument that holds a placeholder is dropped, with the flag
- * before it when that flag takes it as its value (`--filter <x>`, `-k <x>`, `-- <files>`), and a trailing `--` with
- * it. `npm test -- <test files>` runs as `npm test`; `dotnet test App.Tests --filter FullyQualifiedName~<TestName>`
- * runs as `dotnet test App.Tests`.
+ * The shell arguments of a command line, quotes kept: `-k "<name> and not slow"` is two arguments, and a placeholder
+ * that holds spaces (`<test files>`) is one.
+ */
+const shellArguments = (command) => command.match(/(?:"(?:\\.|[^"\\])*"|'[^']*'|<[A-Za-z][\w -]*>|[^\s"']+)+/g) || [];
+
+/**
+ * The runnable form of a parameterised command, or null when none can be told apart. Each argument that holds a
+ * placeholder is dropped whole (quoted text included), with the flag before it when that flag takes a value
+ * (`VALUE_FLAGS`; an `--option=<x>` argument is dropped alone), and a trailing `--` goes with them. What remains must
+ * still be a test invocation (`RUNNER`). `npm test -- <test files>` runs as `npm test`, `node --test <test files>` as
+ * `node --test`, `pytest -x -k "<name> and not slow"` as `pytest -x`, and `dotnet test App.Tests --filter
+ * FullyQualifiedName~<TestName>` as `dotnet test App.Tests`.
  */
 function withoutPlaceholders(command) {
   const kept = [];
-  // A placeholder may hold spaces (`<test files>`): each one becomes one NUL-marked part of a token first.
-  for (const token of command.replace(PLACEHOLDERS, '\0').split(/\s+/).filter(Boolean)) {
-    if (!token.includes('\0')) {
-      kept.push(token);
-    } else if (kept.length > 1 && kept[kept.length - 1].startsWith('-')) {
+  for (const argument of shellArguments(command)) {
+    if (!PLACEHOLDER.test(argument)) {
+      kept.push(argument);
+    } else if (!/^-[^=]*=/.test(argument) && kept.length > 1 && VALUE_FLAGS.has(kept[kept.length - 1])) {
       kept.pop();
     }
   }
   while (kept.length > 1 && kept[kept.length - 1] === '--') kept.pop();
-  return kept.join(' ');
+  const runnable = kept.join(' ');
+  return RUNNER.test(runnable) ? runnable : null;
 }
 
 /** The test invocations a Markdown document writes literally, in order, without duplicates. */
