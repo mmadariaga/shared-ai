@@ -174,6 +174,19 @@ test('the implement coordinator selects each step\'s tests with test-select.js a
   assert.doesNotMatch(source, /baseline-failures\.txt/);
 });
 
+test('a failing test of a step that is not one of its own Tests is classified against HEAD before it counts', () => {
+  const source = read(COORDINATORS[0]);
+  const cycle = source.slice(source.indexOf('## The step cycle'), source.indexOf('## Audit findings'));
+  const failures = cycle.slice(cycle.indexOf('**Step failures.**'));
+  assert.ok(cycle.includes('**Step failures.**'));
+  assert.match(failures, /The step's own `\*\*Tests\*\*` must pass and are never classified/);
+  assert.match(failures, /swap --record <run directory>\/swap\.json --dirty-baseline <run directory>\/baseline-dirty\.txt --base HEAD --paths-file <run directory>\/step-paths\.json/);
+  assert.match(failures, /`restore` whatever the outcome/);
+  assert.match(failures, /pre-existing for this step/);
+  assert.match(failures, /refused` or a tool error makes the failures new/);
+  assert.match(cycle, /counts only after \*\*Step failures\*\* below finds it new/);
+});
+
 test('the implement coordinator reuses the design context and promotes learnings at run close', () => {
   const source = read(COORDINATORS[0]);
   const start = source.slice(source.indexOf('## Start'), source.indexOf('## The step cycle'));

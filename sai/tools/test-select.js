@@ -50,7 +50,8 @@
  * parallel, at most 4 at a time, under one shared `--timeout-ms` deadline. It
  * uses only the public codegraph CLI and never opens
  * `.codegraph/codegraph.db`. Paths under `openspec/` are plan artifacts, not
- * code, and are left out of the list.
+ * code, and are left out of the list, and so is a file the run deleted (absent
+ * from the working tree and from the index): the files that used it changed with it.
  *
  * `swap` restores to the change base, in the working tree only, the files the
  * change modified or deleted, and removes the files it added, so the coordinator
@@ -79,7 +80,13 @@
  * of `SAI_LEARNINGS.md`, `AGENTS.md`, `README.md`, then the project markers. A
  * source at one level that names several commands, none of which is a prefix of all
  * the others, is `ambiguous`; the sentinel `None — no test runner in this project`
- * is `none`.
+ * is `none`. `command` is always runnable: a source that gives a parameterised
+ * form (`<TestName>`, `<test files>`, `{file}`, `$TEST`) gives it as
+ * `scoping_idiom`, and `command` is the runnable command the source names beside
+ * it, else that form with each placeholder argument (and the flag that takes it)
+ * dropped. A `package.json` test script runs through its package manager, bun
+ * included (`bun run test`); a manager the tool does not know is `ambiguous`,
+ * never `none`.
  *
  * Exit codes: 0 = a verdict (`selected`, `full`, `swapped`, `restored`,
  * `clean`); 1 = `refused` or a `failed` restore; 2 = usage or I/O error (a
@@ -323,6 +330,9 @@ async function affectedPerFile(files, { cwd, timeoutMs }) {
 /** The lower-cased extension of a path, with its dot, or the empty string when it has none. */
 const extensionOf = (file) => path.extname(file).toLowerCase();
 
+/** Whether the working tree holds `file` (a symbolic link counts, even a dangling one). */
+const present = (cwd, file) => fs.lstatSync(path.join(cwd, file), { throwIfNoEntry: false }) !== undefined;
+
 async function selectTests(allFiles, cwd, timeoutMs) {
   if (allFiles.length === 0) return { verdict: 'selected', tests: [], reason: null };
   const options = { cwd, timeoutMs };
@@ -347,7 +357,10 @@ async function selectTests(allFiles, cwd, timeoutMs) {
     // (documentation, configuration, assets) and stays out of the selection; only a file of an indexed type that the
     // listing lacks cannot be trusted.
     const indexedTypes = new Set([...indexed].map(extensionOf));
-    files = allFiles.filter((file) => indexedTypes.has(extensionOf(file)));
+    // A file the run deleted is gone from the working tree and, after `sync`, from the graph: there is nothing left to
+    // ask about it, and the files that used it changed with it, so it is left out instead of making the selection
+    // untrustworthy. Only a file that exists and that the listing lacks is unindexed.
+    files = allFiles.filter((file) => indexedTypes.has(extensionOf(file)) && (indexed.has(file) || present(cwd, file)));
     const unindexed = files.filter((file) => /[\r\n]/.test(file) || !indexed.has(file));
     if (unindexed.length) throw new Fallback('unindexed-file', { files: unindexed });
     if (files.length === 0) return { verdict: 'selected', tests: [], reason: null };
@@ -617,10 +630,13 @@ function runRestore({ record, cwd }) {
 const NO_RUNNER = /^none\b.*\bno test runner\b/i;
 // A test invocation written literally. A `test:<suffix>` script is a narrower run, never the general command.
 const RUNNER = /^(?:(?:npm|pnpm|yarn|bun)(?:\s+run)?\s+test|npx\s+(?:jest|vitest|mocha|ava)|node\s+(?:--\S+\s+)*--test|(?:python3?\s+-m\s+)?pytest|go\s+test|cargo\s+test|dotnet\s+test|mvn\s+(?:-\S+\s+)*test|(?:\.\/)?gradlew?\s+test|make\s+test|mix\s+test|bundle\s+exec\s+rspec|rspec|phpunit|composer\s+test|deno\s+test)(?![\w:-])/;
-const PLACEHOLDER = /<[A-Za-z][\w.-]*>|\{[A-Za-z_][\w-]*\}|\$\{?[A-Z_][A-Z0-9_]*\}?/;
+// A substitutable part of a parameterised command: `<TestName>`, `<test files>`, `{file}`, or `$TEST`.
+const PLACEHOLDER = /<[A-Za-z][^<>\n]*>|\{[A-Za-z_][\w-]*\}|\$\{?[A-Z_][A-Z0-9_]*\}?/;
+const PLACEHOLDERS = new RegExp(PLACEHOLDER.source, 'g');
 const PATH_ARGUMENTS = 'append the test files as path arguments';
-const PACKAGE_MANAGER_TEST = /^(npm|pnpm|yarn)\s+(?:run\s+)?test$/;
-const PATH_ARGUMENT_RUNNER = /^(?:npx\s+(?:jest|vitest|mocha|ava)|node\s+(?:--\S+\s+)*--test|(?:python3?\s+-m\s+)?pytest|mix\s+test|deno\s+test)\b/;
+// `bun test` is bun's own runner; only `bun run test` runs the package script.
+const PACKAGE_MANAGER_TEST = /^(?:(npm|pnpm|yarn)\s+(?:run\s+)?test|(bun)\s+run\s+test)$/;
+const PATH_ARGUMENT_RUNNER = /^(?:npx\s+(?:jest|vitest|mocha|ava)|node\s+(?:--\S+\s+)*--test|(?:python3?\s+-m\s+)?pytest|mix\s+test|deno\s+test|bun\s+test)\b/;
 
 const readIfFile = (file) => {
   try {
@@ -649,6 +665,16 @@ function commandOf(text) {
   return command;
 }
 
+/**
+ * The commands a documented field holds: every code span of the text, else the text itself as `commandOf` reads it.
+ * A field may carry the runnable command and, beside it, the parameterised scoping idiom (`dotnet test App.Tests` and
+ * `dotnet test App.Tests --filter FullyQualifiedName~<TestName>`).
+ */
+function commandsOf(text) {
+  const spans = [...text.matchAll(/`([^`]+)`/g)].map((match) => match[1].replace(/^\s*\$\s+/, '').trim()).filter(Boolean);
+  return spans.length ? spans : [commandOf(text)].filter(Boolean);
+}
+
 function fromTasks(cwd, change) {
   if (!change) return null;
   const text = readIfFile(path.join(cwd, 'openspec', 'changes', change, 'tasks.md'));
@@ -657,9 +683,9 @@ function fromTasks(cwd, change) {
   const at = lines.findIndex((line) => /^\s*(?:[-*]\s+)?\*\*Test Command\*\*/.test(line));
   if (at === -1) return null;
   const inline = lines[at].replace(/^\s*(?:[-*]\s+)?\*\*Test Command\*\*\s*:?\s*/, '').trim();
-  if (inline) return commandOf(inline);
+  if (inline) return commandsOf(inline);
   const rest = lines.slice(at + 1).filter((line) => line.trim() && !/^\s*```/.test(line));
-  return rest.length ? commandOf(rest[0]) : null;
+  return rest.length ? commandsOf(rest[0]) : null;
 }
 
 function fromLearnings(cwd) {
@@ -667,7 +693,27 @@ function fromLearnings(cwd) {
   const lines = text && sectionLines(text, 'Test Command');
   if (!lines) return null;
   const first = lines.filter((line) => line.trim() && !/^\s*```/.test(line) && !/^\s*\*Observed:\*/.test(line))[0];
-  return first ? commandOf(first) : null;
+  return first ? commandsOf(first) : null;
+}
+
+/**
+ * The runnable form of a parameterised command: each argument that holds a placeholder is dropped, with the flag
+ * before it when that flag takes it as its value (`--filter <x>`, `-k <x>`, `-- <files>`), and a trailing `--` with
+ * it. `npm test -- <test files>` runs as `npm test`; `dotnet test App.Tests --filter FullyQualifiedName~<TestName>`
+ * runs as `dotnet test App.Tests`.
+ */
+function withoutPlaceholders(command) {
+  const kept = [];
+  // A placeholder may hold spaces (`<test files>`): each one becomes one NUL-marked part of a token first.
+  for (const token of command.replace(PLACEHOLDERS, '\0').split(/\s+/).filter(Boolean)) {
+    if (!token.includes('\0')) {
+      kept.push(token);
+    } else if (kept.length > 1 && kept[kept.length - 1].startsWith('-')) {
+      kept.pop();
+    }
+  }
+  while (kept.length > 1 && kept[kept.length - 1] === '--') kept.pop();
+  return kept.join(' ');
 }
 
 /** The test invocations a Markdown document writes literally, in order, without duplicates. */
@@ -705,7 +751,7 @@ function packageJson(cwd) {
 function packageManager(cwd, pkg) {
   const exists = (name) => fs.existsSync(path.join(cwd, name));
   const declared = typeof pkg.packageManager === 'string' ? pkg.packageManager.split('@')[0] : '';
-  return declared || (exists('pnpm-lock.yaml') ? 'pnpm' : exists('yarn.lock') ? 'yarn' : 'npm');
+  return declared || (exists('pnpm-lock.yaml') ? 'pnpm' : exists('yarn.lock') ? 'yarn' : exists('bun.lock') || exists('bun.lockb') ? 'bun' : 'npm');
 }
 
 /** How a package-manager `test` script takes files: only a script that is one known runner takes them as path arguments. */
@@ -719,7 +765,7 @@ function packageIdiom(cwd, manager) {
 function idiomOf(command, cwd) {
   if (PLACEHOLDER.test(command)) return command;
   const manager = PACKAGE_MANAGER_TEST.exec(command);
-  if (manager) return packageIdiom(cwd, manager[1]);
+  if (manager) return packageIdiom(cwd, manager[1] || manager[2]);
   return PATH_ARGUMENT_RUNNER.test(command) ? PATH_ARGUMENTS : null;
 }
 
@@ -756,7 +802,9 @@ function fromMarkers(cwd) {
   const pkg = packageJson(cwd);
   if (pkg?.scripts?.test) {
     const manager = packageManager(cwd, pkg);
-    if (!['npm', 'pnpm', 'yarn'].includes(manager)) return { verdict: 'none', command: null, scoping_idiom: null, source: 'marker:package.json', reason: `unsupported package manager: ${manager}` };
+    if (manager === 'bun') return { verdict: 'found', command: 'bun run test', scoping_idiom: packageIdiom(cwd, manager), source: 'marker:package.json' };
+    // A test script that an unknown manager runs is still a test suite: never `none`, which would run no test.
+    if (!['npm', 'pnpm', 'yarn'].includes(manager)) return { verdict: 'ambiguous', command: null, scoping_idiom: null, source: 'marker:package.json', candidates: [`${manager} run test`], reason: `unsupported package manager: ${manager}` };
     return { verdict: 'found', command: `${manager} test`, scoping_idiom: packageIdiom(cwd, manager), source: 'marker:package.json' };
   }
   const listed = MARKERS.find(([file]) => fs.existsSync(path.join(cwd, file)));
@@ -769,10 +817,18 @@ function fromMarkers(cwd) {
 
 /** One source of the command: a found command, the no-runner sentinel, an ambiguous list, or null to go on to the next source. */
 function resolveCommand(cwd, change) {
-  const named = (source, value) => {
-    if (!value) return null;
-    if (NO_RUNNER.test(value)) return { verdict: 'none', command: null, scoping_idiom: null, source };
-    return { verdict: 'found', command: value, scoping_idiom: idiomOf(value, cwd), source };
+  // `values` are the commands one source names: the runnable command, and the parameterised idiom when the source
+  // carries one. `command` is always runnable: a placeholder never reaches it.
+  const named = (source, values) => {
+    if (!values || values.length === 0) return null;
+    if (values.some((value) => NO_RUNNER.test(value))) return { verdict: 'none', command: null, scoping_idiom: null, source };
+    const runnable = values.find((value) => !PLACEHOLDER.test(value));
+    const parameterised = values.find((value) => PLACEHOLDER.test(value));
+    const command = runnable || withoutPlaceholders(parameterised);
+    if (!command) {
+      return { verdict: 'ambiguous', command: null, scoping_idiom: null, source, candidates: values };
+    }
+    return { verdict: 'found', command, scoping_idiom: parameterised || idiomOf(command, cwd), source };
   };
   const tasks = named('tasks.md', fromTasks(cwd, change));
   if (tasks) return tasks;
@@ -782,8 +838,10 @@ function resolveCommand(cwd, change) {
     const text = readIfFile(path.join(cwd, name));
     const commands = text ? documentedCommands(text) : [];
     if (!commands.length) continue;
-    const general = generalCommand(commands);
-    if (general) return named(name, general);
+    const runnable = commands.filter((command) => !PLACEHOLDER.test(command));
+    if (!runnable.length) return named(name, commands.slice(0, 1));
+    const general = generalCommand(runnable);
+    if (general) return named(name, [general, ...commands.filter((command) => PLACEHOLDER.test(command) && command.startsWith(`${general} `)).slice(0, 1)]);
     return { verdict: 'ambiguous', command: null, scoping_idiom: null, source: name, candidates: commands };
   }
   return fromMarkers(cwd);

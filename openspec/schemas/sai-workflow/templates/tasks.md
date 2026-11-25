@@ -23,6 +23,6 @@
 ## Implementation Context
 
 **Test Command**:
-<!-- suite command + parameterised scoping idiom, or None — no test runner in this project -->
+<!-- `runnable suite command` then `parameterised scoping idiom` (two code spans), or None — no test runner in this project -->
 
 <!-- Write-time authority: sai/commands/design/steps/tasks.md ## Generate tasks.md -->
