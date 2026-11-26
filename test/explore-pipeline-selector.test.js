@@ -91,7 +91,7 @@ test('Direct Build resumption separates immutable slice references from window-l
 
 test('format and commit recovery preserve work and the original single-commit grant', () => {
   const { resume } = directBuildCard();
-  assert.match(resume, /every report to the validator exactly as received/);
+  assert.match(resume, /every report to `receive` exactly as received/);
   assert.match(resume, /invalid report, preserve existing changes, keep the step pending/);
   assert.match(resume, /fresh valid report as an obstacle of that step/);
   assert.match(resume, /resume choice alone does not reopen any budget/);

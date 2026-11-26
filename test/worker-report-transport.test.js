@@ -184,7 +184,7 @@ test('the policy defines the closed schema, the file-plus-hash return, and the i
   assert.match(policy, /A message that carries its result inline is an invalid report/);
   assert.match(policy, /`event: ready` handshake reply, the wake and stop literals of `@sai\/policies\/cache-warming\.md`, and the `warming:` line beside the reference\./);
   assert.match(policy, /`implement-run@1` for `\/sai-3-implement`/);
-  assert.match(policy, /The coordinator validates every report before it reads any field/);
+  assert.match(policy, /The coordinator receives every report before it reads any field/);
   assert.match(policy, /never interprets a report by reading it/);
   const invalid = policy.slice(policy.indexOf('## Invalid reports'), policy.indexOf('## Recovery and lifetime'));
   assert.match(invalid, /first invalid report goes back to the same worker with the validator's errors/);
@@ -232,7 +232,7 @@ test('the implement coordinator opens the report directory, validates every repo
   assert.match(card, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its receiver side/);
   assert.match(card, /`transfer\.js`, resolved per `tool-resolution\.md`\) and emit `record` \(`report-dir`\)/);
   assert.match(card, /opens with the line `--report-dir <report directory>`/);
-  assert.match(card, /validate --kind terminal --command implement --json --report-dir <report directory> --report-file <path> --report-hash <sha256>/);
+  assert.match(card, /`transfer\.js receive --kind terminal --command implement` on its reference/);
   assert.match(card, /before you read any field/);
   assert.match(card, /you never interpret a report by reading it/);
   assert.match(card, /second consecutive invalid report from that worker replaces it/);
@@ -329,7 +329,7 @@ test('the plan cycle opens and records the report directory, validates every rep
   assert.match(cycle, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its receiver side/);
   assert.match(cycle, /`transfer\.js open --harness <claude\|opencode>`[^\n]*emits `record` \(`report-dir`\)/);
   assert.match(cycle, /opens with the line `--report-dir <report directory>`/);
-  assert.match(cycle, /validate --kind terminal --command <spec\|design> --json --report-dir <report directory> --report-file <path> --report-hash <sha256>/);
+  assert.match(cycle, /`transfer\.js receive --kind terminal --command <spec\|design>` on its reference/);
   assert.match(cycle, /before you read any field/);
   assert.match(cycle, /you never interpret a report by reading it/);
   assert.match(cycle, /second consecutive invalid report from that worker replaces it/);
@@ -372,8 +372,8 @@ test('the review coordinator validates every report and feeds progress reports t
   assert.match(card, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its receiver side/);
   assert.match(card, /Open the report directory of the run with `transfer\.js open --harness <claude\|opencode>`/);
   assert.match(card, /opens with the line `--report-dir <report directory>`/);
-  assert.match(card, /a name that starts with `progress-` is a progress report, which the machine emit below verifies and validates itself, so you run no `validate` call for it/);
-  assert.match(card, /validate --kind terminal --command review --json --report-dir <report directory> --report-file <path> --report-hash <sha256>/);
+  assert.match(card, /a name that starts with `progress-` is a progress report, received with `--kind progress` and then passed to the machine emit below, which verifies and validates it itself/);
+  assert.match(card, /any other report is terminal, received with `--kind terminal --command review`/);
   assert.match(card, /Before you read any field/);
   assert.match(card, /including the retired `event: step-done`, is an invalid report/);
   assert.match(card, /`sai-state emit <id> review-steps@1 --progress --report-dir <report directory> --report-file <path> --report-hash <sha256>`/);
@@ -438,8 +438,8 @@ test('the audit coordinator opens a report directory per cycle, validates every 
   assert.match(card, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its receiver side/);
   assert.match(card, /Open the report directory of the cycle with `transfer\.js open --harness <claude\|opencode>`/);
   assert.match(card, /opens with the line `--report-dir <report directory>`/);
-  assert.match(card, /a progress report, which the machine emit below verifies and validates itself, so you run no `validate` call for it/);
-  assert.match(card, /validate --kind terminal --command \{audit\} --json --report-dir <report directory> --report-file <path> --report-hash <sha256>/);
+  assert.match(card, /a progress report, received with `--kind progress` and then passed to the machine emit below, which verifies and validates it itself/);
+  assert.match(card, /any other report is terminal, received with `--kind terminal --command \{audit\}`/);
   assert.match(card, /including the retired `event: step-done` and `event: question`, is an invalid report/);
   assert.match(card, /`sai-state emit <id> \{audit\}-steps@1 --progress --report-dir <report directory> --report-file <path> --report-hash <sha256>`/);
   assert.match(card, /never rewriting the payload/);
@@ -516,7 +516,7 @@ test('the commit, archive, and backfill workers report as files and their coordi
     assert.doesNotMatch(worker, /final message, in the shape|The coordinator reads only your final message/, command);
     const coordinator = read(`sai/commands/${command}/coordinator.md`);
     assert.match(coordinator, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its receiver side/, command);
-    assert.match(coordinator, new RegExp(`validate --kind terminal --command ${commands[command]} --json --report-dir`), command);
+    assert.match(coordinator, new RegExp(`receive --kind terminal --command ${commands[command]}`), command);
     assert.match(coordinator, /transfer\.js (open|close)|`node <tool-path> open --harness|--report-dir <report directory>/, command);
     assert.match(coordinator, /second consecutive invalid report from that worker replaces it/, command);
   }
@@ -539,7 +539,7 @@ test('the merge worker reports failed instead of blocked and its coordinator val
     assert.doesNotMatch(text, /status: done|\| blocked|`blocked`/, step);
   }
   const coordinator = read('sai/commands/merge/coordinator.md');
-  assert.match(coordinator, /validate --kind terminal --command merge --json --report-dir/);
+  assert.match(coordinator, /`transfer\.js receive --kind terminal --command merge` on its reference/);
   assert.match(coordinator, /emit `record` \(`report-dir`\)/);
   assert.match(coordinator, /`--report-dir <report directory>`/);
   assert.doesNotMatch(coordinator, /reports\/stop-/);
@@ -576,22 +576,28 @@ test('the commit, archive, backfill, and merge workers and commands have the rep
   }
 });
 
-test('terminal reports get a paired same-turn duplicate check and validation, progress reports stay sequential', () => {
+test('every report is received in one call that checks the duplicate, validates, and records, and progress reports are received before the emit', () => {
   const policy = read('sai/policies/worker-report-transport.md').replace(/\s+/g, ' ');
   for (const text of [
-    'run the **paired check**',
-    'two independent calls issued together in one model response (a same-turn batch)',
-    'accept --check --dir <report-dir> --path <path> --sha256 <sha256>',
-    'validate --kind terminal --command <command> --json',
-    'Discard the validate result, spend no attempt, and send no continuation',
-    'is re-issued alone in the next turn. A cancellation is not an obstacle attempt',
-    'a validate result is never acted on without the `--check` answer of the same reference',
-    'The paired check covers terminal reports only.',
-    'keeps `accept --check` and `sai-state emit … --progress` in sequence',
+    'run `receive`: one call that checks the duplicate, validates a terminal report, and records the reference in the ledger',
+    'receive --dir <report-dir> --path <path> --sha256 <sha256> --kind terminal --command <command> --paths-file <paths-file> --cwd <project-root>',
+    'A `progress-` report runs the same call with `--kind progress` and no `--command`',
+    'The ledger holds the reference when the call returns, before the coordinator acts on it',
+    'so no second call follows it',
+    'The report is a repeat of one already dealt with: spend no attempt and send no continuation',
+    '`outcome: report-invalid` or `delivery-failed`',
+    'so the watch never offers it again',
+    'A call that comes back cancelled or without a result** is re-issued alone in the next turn',
+    'when the re-issue answers `already: true` for a reference you have not processed yet, validate it read-only',
+    'after `receive --kind progress` has recorded it, the coordinator passes its reference to `sai-state emit',
+    '`accept` stays for the budget agents',
   ]) {
     assert.ok(policy.includes(text), `the transport policy must state: ${text}`);
   }
+  assert.ok(!policy.includes('paired check'), 'the paired check is retired');
+  assert.ok(!policy.includes('accept --check'), 'the separate duplicate check is retired for workers');
   const receiver = policy.indexOf('## Receiver boundary');
   const undelivered = policy.indexOf('## Undelivered reports');
-  assert.ok(policy.indexOf('accept --check', receiver) < undelivered, 'the paired check sits in § Receiver boundary');
+  assert.ok(policy.indexOf('receive --dir <report-dir>', receiver) < undelivered, 'the receipt sits in § Receiver boundary');
+  assert.match(policy, /\*\*Record\.\*\* `receive` \(§ Receiver boundary\) records each reference it handles, in the same call that checks and validates it/);
 });

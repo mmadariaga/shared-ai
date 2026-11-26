@@ -254,3 +254,47 @@ Every worker report save SHALL use `transfer.js put --exclusive`: `sai/policies/
 #### Scenario: Put without a readable session
 - **WHEN** a caller whose session cannot be read runs `put` in a directory that records retired handles
 - **THEN** the write succeeds as before
+
+### Requirement: Receive checks, validates, and records a worker report in one call
+
+`sai/tools/transfer.js` SHALL provide `receive --dir <dir> --path <path> --sha256 <hex> --kind terminal|progress [--command <name>] [--paths-file <paths>] [--cwd <root>]`. A `--kind terminal` call without `--command`, a `--command` outside the commands `worker-report-validator.js` knows, or a `--kind` other than `terminal` or `progress` SHALL be a usage error. A relative `--path` SHALL resolve against `--dir` before the containment and hash checks. A reference already in the `.sai-accepted` ledger SHALL answer `already: true` and `outcome: duplicate`, and SHALL validate and record nothing. Otherwise a terminal report SHALL be verified and validated once, from the bytes read once, against the closed shape of `--command` by `worker-report-validator.js`, which `receive` loads relative to its own file; a progress report SHALL be verified and recorded without validation, because `sai-state emit --progress` validates it. The reference SHALL be recorded in the ledger before the call returns, for an accepted report, an invalid one, and a report whose claimed hash differs from its bytes (recorded under both the claimed and the actual hash, so the watch never offers it again); a reference that names no file inside the directory SHALL record nothing. The call SHALL print one JSON object with `already`, `recorded`, `outcome` (`duplicate`, `accepted`, `recorded`, `report-invalid`, or `delivery-failed`), `validation` (the validator's verdict of a terminal report with the parsed `payload` of an accepted one, `null` for a duplicate and a progress report), and `watch`, the exact `transfer.js watch` command of that directory, whose `--input-file` and `--cwd` values come from `--paths-file` and `--cwd` and stay placeholders without them. It SHALL exit 1 when the report is not usable. `accept` and `accept --check` SHALL stay unchanged for the budget agents.
+
+#### Scenario: A duplicate reference changes nothing
+- **WHEN** `receive` runs on a reference that the ledger already holds
+- **THEN** it answers `already: true` with `outcome: duplicate` and `validation: null`, and adds no ledger line
+
+#### Scenario: A valid terminal report is accepted and recorded
+- **WHEN** `receive --kind terminal --command <command>` runs on a new reference whose report fits that command's shape
+- **THEN** it answers `outcome: accepted` with the parsed `payload`, and the ledger holds the reference
+
+#### Scenario: An invalid report is recorded
+- **WHEN** `receive` runs on a new terminal report that breaks the closed schema or whose sha256 does not match its bytes
+- **THEN** it answers `report-invalid` or `delivery-failed` with the validator's errors, exits 1, and records the report so the watch does not offer it again
+
+#### Scenario: A progress report is recorded without validation
+- **WHEN** `receive --kind progress` runs on a new `progress-` report reference
+- **THEN** it verifies and records the reference and answers `outcome: recorded` with `validation: null`
+
+#### Scenario: The answer names the watch command
+- **WHEN** `receive` runs with `--paths-file` and `--cwd`
+- **THEN** its `watch` field is the `transfer.js watch` command of that report directory with those two values filled in
+
+### Requirement: Status reports the last activity of a waited-on worker
+
+`sai/tools/transfer.js` SHALL provide `status --dir <dir> --input-file <paths> [--cwd <root>] [--since <time>] [--handle <id>] [--role <name>]`, a one-shot foreground query that starts no background process. It SHALL report the newest file created or changed in the report directory or below the writable paths of `--input-file` (the measure `watch` uses) with its path and age, the reports of the directory that the ledger does not list, and the worker's `state`: `retired` when `--handle` is recorded as retired, `gone` when the directory no longer exists, and `live` otherwise. `--since`, an ISO 8601 date-time or epoch milliseconds, SHALL be the time the message was sent: older activity SHALL NOT count, and a worker with no activity since then SHALL report `active: false`. The answer SHALL carry `line`, the activity line to print, which names the worker by `--role`.
+
+#### Scenario: No activity since the message was sent
+- **WHEN** `status` runs with `--since` and nothing in the report directory or the writable paths changed after that time
+- **THEN** it reports `active: false` and a line saying there was no activity since the message was sent
+
+#### Scenario: An unledgered report is named
+- **WHEN** the report directory holds a saved report that the ledger does not list
+- **THEN** `status` lists it in `unledgered` and its line says a saved report is not yet received
+
+#### Scenario: Active worker
+- **WHEN** a writable path changed after `--since`
+- **THEN** `status` reports `active: true` and a line that names the role, the age of the last activity, and its path
+
+#### Scenario: Retired or gone worker
+- **WHEN** `--handle` is recorded as retired, or the report directory no longer exists
+- **THEN** `status` reports `state: retired` or `state: gone` with a matching line

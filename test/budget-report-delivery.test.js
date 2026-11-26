@@ -65,12 +65,12 @@ test('E2, E5-E10: the dispatcher opens, tags, accepts, recovers, and closes the 
   assert.match(dispatcher, /research directory of `\/sai-plan`[\s\S]{0,120}closed by the agent that created it, at the end of its run/);
 });
 
-test('the budget reports are not added to the validator, and transfer.js gains no sub-command', () => {
+test('the budget reports are not added to the validator, and transfer.js gains no sub-command for the budget agents', () => {
   const validator = read('sai/tools/worker-report-validator.js');
   assert.doesNotMatch(validator, /\bbudget\b\s*:/);
   const usage = spawnSync(process.execPath, [path.join(repoRoot, 'sai/tools/transfer.js'), '--help'], { encoding: 'utf8' });
   const commands = [...JSON.parse(usage.stdout).usage.matchAll(/node sai\/tools\/transfer\.js (\S+)/g)].map(match => match[1]);
-  assert.deepEqual(commands, ['open', 'put', 'verify', 'materialize', 'accept', 'watch', 'retire-handle', 'live', 'close']);
+  assert.deepEqual(commands, ['open', 'put', 'verify', 'materialize', 'accept', 'receive', 'status', 'watch', 'retire-handle', 'live', 'close']);
 });
 
 test('the three agent policies deliver through the transport and no longer describe a text reply', () => {

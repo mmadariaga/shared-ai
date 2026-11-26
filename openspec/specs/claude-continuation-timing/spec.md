@@ -27,7 +27,7 @@ When several Claude Code agents run at once, each rejected continuation SHALL wa
 
 ### Requirement: Stop calls and opencode dispatch keep their current rules
 
-A stop call at a dispose point (`TaskStop`) SHALL NOT be a continuation and SHALL NOT wait for a notification. opencode as the main harness, and agents routed through `opencode-dispatch.js`, SHALL keep their current rule of continuing a subagent only after its turn has ended, and the opencode dispatch sources (`sai/orchestration/workers/bindings/opencode/standalone-worker-template.md`, `skills/opencode/budget-*/SKILL.md`, and `sai/policies/opencode-dispatch.md`) SHALL stay unchanged. The worker contracts and the ready prompt SHALL stay unchanged.
+A stop call at a dispose point (`TaskStop`) SHALL NOT be a continuation and SHALL NOT wait for a notification. opencode as the main harness, and agents routed through `opencode-dispatch.js`, SHALL keep their rule of continuing a subagent only after its turn has ended. For agents routed through `opencode-dispatch.js`, that rule SHALL be enforced by the tool's per-session turn lock: a `continue` while an earlier turn of the same session still runs SHALL send nothing and answer `status: busy` at exit 3, and the coordinator SHALL resend the same message once after the earlier turn's completion notification, as `sai/policies/opencode-dispatch.md` § Continue states. The opencode dispatch sources `sai/orchestration/workers/bindings/opencode/standalone-worker-template.md` and `skills/opencode/budget-*/SKILL.md` SHALL stay unchanged. The worker contracts and the ready prompt SHALL stay unchanged.
 
 #### Scenario: Dispose without waiting
 - **WHEN** a Claude Code coordinator reaches a dispose point for a worker whose `completed` notification has not arrived
@@ -35,7 +35,7 @@ A stop call at a dispose point (`TaskStop`) SHALL NOT be a continuation and SHAL
 
 #### Scenario: opencode-routed agent
 - **WHEN** a Claude Code coordinator continues an agent whose route query answered `opencode`
-- **THEN** the continuation follows `sai/policies/opencode-dispatch.md` unchanged
+- **THEN** the continuation follows `sai/policies/opencode-dispatch.md` § Continue: a new `continue` turn started only after the earlier turn has ended, and a `busy` answer of the turn lock resent once after that turn's completion notification
 
 #### Scenario: opencode main harness
 - **WHEN** an opencode coordinator continues a worker it created

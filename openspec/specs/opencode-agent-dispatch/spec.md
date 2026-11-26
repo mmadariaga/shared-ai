@@ -31,7 +31,7 @@ TBD - created by archiving change opencode-worker-dispatch. Update Purpose after
 
 ### Requirement: One opencode run turn per message
 
-`opencode-dispatch.js start --agent <name> --input-file <path>` and `continue --session <sessionID> --input-file <path> [--agent <name>]` SHALL each run exactly one `opencode run --format json` process, launched as the command `sai/tools/opencode-launcher.js` resolves, never through a shell, never with `--auto`, and without input to wait on. The message SHALL reach opencode exactly as the input file holds it, as the single argument after `--`. Each command SHALL print one JSON object `{status, sessionID, text, tokens, cost, exit_code, error}`, where `sessionID` is the one of the first output event, `text` is the text of the turn's last message, and `tokens` and `cost` sum the turn's steps. A turn SHALL be `failed` on a non-zero exit, an `error` event, a launcher that resolves no command, or, for `start`, no `sessionID`. The tool SHALL exit 0 for `ok`, 1 for `failed`, and 2 for a usage error, and stopping the tool SHALL stop its `opencode run` process.
+`opencode-dispatch.js start --agent <name> --input-file <path>` and `continue --session <sessionID> --input-file <path> [--agent <name>]` SHALL each run exactly one `opencode run --format json` process, launched as the command `sai/tools/opencode-launcher.js` resolves, never through a shell, never with `--auto`, and without input to wait on. The message SHALL reach opencode exactly as the input file holds it, as the single argument after `--`. Each command SHALL print one JSON object `{status, sessionID, text, tokens, cost, exit_code, error}`, where `sessionID` is the one of the first output event, `text` is the text of the turn's last message, and `tokens` and `cost` sum the turn's steps. A turn SHALL be `failed` on a non-zero exit, an `error` event, a launcher that resolves no command, or, for `start`, no `sessionID`. A `continue` refused by the turn lock SHALL be `busy` and run no process. The tool SHALL exit 0 for `ok`, 1 for `failed`, 2 for a usage error, and 3 for `busy`, and stopping the tool SHALL stop its `opencode run` process.
 
 #### Scenario: Message starting with double dash passes intact
 - **WHEN** the input file holds a message whose first line starts with `--`
@@ -164,3 +164,23 @@ The `coordinator` capability profile of `sai/install-manifest.json` SHALL allow 
 #### Scenario: Guard against a direct opencode spawn
 - **WHEN** a file under `sai/tools/` or `bin/` other than the launcher calls `spawn`, `spawnSync`, `execFile`, or `execFileSync` with the literal `'opencode'` as its first argument
 - **THEN** the guard test fails
+
+### Requirement: Continue holds a per-session turn lock
+
+`opencode-dispatch.js continue` SHALL hold a turn lock for its `sessionID` while its turn runs: the file `<Claude Code SAI temp root>/opencode-turns/<sessionID>.lock`, which holds the PID of the tool process and is removed when the turn ends, a signal that stops the tool included. A `continue` whose lock belongs to a live process SHALL send nothing to opencode, SHALL print `status: busy` with `busy_pid`, and SHALL exit 3. A lock whose process no longer exists SHALL be ignored and replaced by exactly one contender: the contender that holds an exclusive replacement claim SHALL remove the lock only while it still holds the stale PID it read, so two contenders over one stale lock never both acquire it. A `start` SHALL take no lock, and a temp root that cannot be resolved SHALL leave the turn unguarded. The coordinator SHALL treat `busy` as neither a failed turn nor an obstacle attempt: it SHALL wait for the completion notification of the earlier turn and resend the same message once from the same file, and a second `busy` after that notification SHALL be a failed turn of the step. The lock SHALL guard only the Claude Code dispatch of an opencode-routed agent; with opencode as the main harness, the existing rejected-continuation recovery stays in force.
+
+#### Scenario: Continue to a running turn is refused
+- **WHEN** `continue` runs for a session whose turn lock belongs to a live process
+- **THEN** it sends nothing to opencode, prints `status: busy` with the PID of the running turn, and exits 3
+
+#### Scenario: Stale lock is replaced
+- **WHEN** `continue` runs for a session whose lock holds the PID of a process that no longer exists
+- **THEN** the turn proceeds and the lock holds the new process's PID
+
+#### Scenario: Two contenders over one stale lock
+- **WHEN** two `continue` processes find the same stale lock at once
+- **THEN** exactly one acquires the lock and the other is refused as busy
+
+#### Scenario: Busy is resent once after the notification
+- **WHEN** a coordinator's `continue` answers `busy`
+- **THEN** it waits for the completion notification of the earlier turn and resends the same message once, without counting an obstacle attempt
