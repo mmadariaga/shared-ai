@@ -79,9 +79,10 @@ test('I3: the setting is documented in the catalogue table and its own section',
   assert.match(docs, /## Change telemetry/);
 });
 
-test('the tool resolution policy lists the collector and its invocation', () => {
+test('the tool resolution policy keeps what the collector prints and leaves its invocation form to --help', () => {
   const resolution = read('sai/policies/tool-resolution.md');
-  assert.match(resolution, /`change-telemetry\.js`: `node <tool-path> collect --harness/);
+  assert.match(resolution, /`change-telemetry\.js` always prints one JSON line \(`written` or `skipped`\)/);
+  assert.doesNotMatch(resolution, /`node <tool-path> collect --harness/);
 });
 
 test('Explore origin: the document key, its persistence, and the exploration section are documented where each owner reads them', () => {
@@ -100,6 +101,6 @@ test('Explore origin: the document key, its persistence, and the exploration sec
   assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /`Backlog origin:` and `Explore origin:` lines unchanged to backfill/);
   assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /`backlog_origin` and `explore_origin` of section 6a/);
   assert.match(read('sai/policies/change-telemetry.md'), /## Exploration[\s\S]*recorded once per change/);
-  assert.match(read('sai/policies/tool-resolution.md'), /explore-origin --harness <claude\|opencode> --session <sessionID>/);
+  assert.match(read('sai/policies/change-telemetry.md'), /explore-origin --harness <claude\|opencode> --session <sessionID>/);
   assert.match(read('openspec/schemas/sai-workflow/templates/telemetry.md'), /## Exploration/);
 });

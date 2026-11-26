@@ -26,12 +26,12 @@ For change document registration, amendment, and every `change-document.js check
 
 ### Requirement: Prescribed block checks pass the block as a file
 
-Every `change-document.js check` call that the instructions prescribe for a change document SHALL pass the document with `--document-file <path>` and SHALL add `--verdicts-file <path>` when judgment verdicts exist. This SHALL hold for the `change-document.js` entry of `sai/policies/tool-resolution.md`, the verdict delivery of `sai/policies/block-hygiene-judgment.md`, the crystallization close, and the `/sai-1-spec` intake. A whole slice set SHALL be checked with `change-document.js check-set` and one `--document-file <path>` per document.
+Every `change-document.js check` call that the instructions prescribe for a change document SHALL pass the document with `--document-file <path>` and SHALL add `--verdicts-file <path>` when judgment verdicts exist. This SHALL hold for the verdict delivery of `sai/policies/block-hygiene-judgment.md`, the crystallization close, and the `/sai-1-spec` intake. `sai/policies/tool-resolution.md` SHALL carry no `change-document.js` invocation form of its own. A whole slice set SHALL be checked with `change-document.js check-set` and one `--document-file <path>` per document.
 
 #### Scenario: Tool resolution names the file form of check
 
-- **WHEN** a reader consults the `change-document.js` entry of `sai/policies/tool-resolution.md`
-- **THEN** it shows `check --document-file <path>` with `--verdicts-file <path>` when verdicts exist, `check-set` with one `--document-file` per document, and no stdin text for `check`
+- **WHEN** a reader consults `sai/policies/tool-resolution.md` for `change-document.js`
+- **THEN** it carries no `change-document.js` invocation form and states that the tool always prints one JSON verdict and takes no `--cwd`
 
 ### Requirement: Explore writes block files only outside the repository
 
