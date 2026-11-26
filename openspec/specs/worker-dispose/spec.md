@@ -99,7 +99,7 @@ Coordinators SHALL dispose every worker they create, under `sai/policies/worker-
 
 ### Requirement: opencode shell removal tool
 
-`sai/tools/dispose-shells.js` SHALL take one or more `--session <sessionID>` flags and one `--cwd <project-root>`, list the shells of the project directory with `opencode api GET "/api/shell?location[directory]=<URL-encoded project root>"`, keep the running shells whose `metadata.sessionID` equals a given session, remove each with `opencode api DELETE "/api/shell/<id>?location[directory]=<URL-encoded project root>"`, and list again. It SHALL always use the raw method-and-path form with the directory in the query, never the `--param` form, which the server ignores. A shell SHALL count as removed only when the second listing no longer shows it. It SHALL remove no shell of any session it was not given. A per-session `status` SHALL be `removed` when every running shell of the session was removed, `none` when the session had no running shell, `failed` when a shell is still listed after its removal or its removal was refused, and `unavailable` when the `opencode` CLI is absent or the server did not answer a listing.
+`sai/tools/dispose-shells.js` SHALL take one or more `--session <sessionID>` flags and one `--cwd <project-root>`, list the shells of the project directory with `opencode api GET "/api/shell?location[directory]=<URL-encoded project root>"`, keep the running shells whose `metadata.sessionID` equals a given session, remove each with `opencode api DELETE "/api/shell/<id>?location[directory]=<URL-encoded project root>"`, and list again. It SHALL always use the raw method-and-path form with the directory in the query, never the `--param` form, which the server ignores. A shell SHALL count as removed only when the second listing no longer shows it. It SHALL remove no shell of any session it was not given, except the running shells of their descendant sessions that the descendant cascade removes. A per-session `status` SHALL be `removed` when every running shell of the session was removed, `none` when the session had no running shell, `failed` when a shell is still listed after its removal or its removal was refused, and `unavailable` when the `opencode` CLI is absent or the server did not answer a listing.
 
 With one `--session` the tool SHALL print one JSON object `{status, removed, failed, closed, close_failed}` and SHALL exit 0 for `removed` and `none` and 1 for `failed` and `unavailable`. With two or more `--session` flags it SHALL read the listing once to find the running shells, partition them by `metadata.sessionID` in the client, remove every target shell, verify with one more listing, and print the envelope `{status, results}`, where `results` holds one entry `{session, status, removed, failed, closed, close_failed}` per distinct session in the order given; the output shape SHALL follow the number of `--session` flags, so a session named twice yields one entry inside the envelope. The top `status` SHALL be the worst entry, in the order `unavailable` > `failed` > `removed` > `none`, and SHALL set the exit code as for a single session. A refused removal in one session SHALL NOT stop the removals of the other sessions, and each entry SHALL carry its own status.
 
@@ -124,7 +124,7 @@ It SHALL validate every argument before any removal and SHALL exit 2 with a usag
 - **THEN** the tool prints `unavailable` and exits 1
 
 #### Scenario: Shell of another session
-- **WHEN** the listing holds running shells of other sessions
+- **WHEN** the listing holds running shells of other sessions that are not descendants of a named session
 - **THEN** the tool leaves them running
 
 #### Scenario: Several sessions share two listings
@@ -242,3 +242,37 @@ It SHALL validate every argument before any removal and SHALL exit 2 with a usag
 #### Scenario: Guard failure does not stop the run
 - **WHEN** the `live` call cannot run, or the worker holds no report directory
 - **THEN** the worker goes on unchanged
+
+### Requirement: opencode dispose cascades to descendant sessions
+
+On opencode, `sai/tools/dispose-shells.js` SHALL also end the helpers of a disposed worker. When the first shell listing holds a running shell of a session other than the named ones, the tool SHALL read the session tree of `opencode.db` read-only through `sai/tools/opencode-db.js` (`parent_id` of `session_v2`), SHALL remove, from that same listing, the running shells of every descendant session of each named session (children, grandchildren, and so on), and SHALL close the cache-warm chain of each `wait.js warm` shell it removes, as it does for a named session. The calling session (`OPENCODE_SESSION_ID`) and its ancestors SHALL never be reached by the cascade, so the main session's chain stays open. With no running shell outside the named sessions the tool SHALL NOT read the database, and its result SHALL carry no `cascade` field.
+
+When the cascade runs, each per-session result SHALL carry `cascade`: `{status, removed, failed, closed, close_failed}`, with `status` `ok`, or `unavailable` with a `reason` when the session tree cannot be read (no database, no `node:sqlite`, or an unsupported schema). The cascade SHALL NOT change a named session's `status` or the exit code: a descendant shell still listed after its removal SHALL be reported in `cascade.failed` only, and a descendant session with no running shell SHALL NOT be a failure. `sai/policies/worker-lifecycle.md` § Stop call SHALL be the single source of the cascade, and `sai/policies/cache-warming.md` § Dispose SHALL state that the descendants' shells and chains end too. Claude Code dispose SHALL be unchanged: it has no cascade.
+
+#### Scenario: Helper shells of a disposed worker
+- **WHEN** the tool disposes a worker session whose child session runs an armed `wait.js warm --chain <id>` shell
+- **THEN** it removes that shell from the same listing, closes chain `<id>`, and reports both in the worker's `cascade`
+
+#### Scenario: Calling session is never reached
+- **WHEN** the tool runs from a session that is a descendant of, or an ancestor of, the named worker
+- **THEN** it removes no shell of the calling session or its ancestors and closes no chain of theirs
+
+#### Scenario: Session tree cannot be read
+- **WHEN** the listing holds a shell outside the named sessions and `opencode.db` or `node:sqlite` is unavailable
+- **THEN** the named session is disposed as before, its `cascade.status` is `unavailable` with a `reason`, and its `status` and the exit code do not change
+
+#### Scenario: Nothing to cascade
+- **WHEN** every running shell of the listing belongs to a named session
+- **THEN** the tool does not read the database and its result carries no `cascade` field
+
+#### Scenario: Descendant shell that survives the removal
+- **WHEN** a descendant shell is still listed after its removal
+- **THEN** it is listed in `cascade.failed`, and the named session's `status` and the exit code stay those of its own shells
+
+#### Scenario: Several workers in one call
+- **WHEN** the tool runs with several `--session` flags and their descendants have running shells
+- **THEN** each entry of `results` reports the descendant shells it removed and the chains it closed, with one shared listing
+
+#### Scenario: Claude Code has no cascade
+- **WHEN** a Claude Code coordinator disposes a worker with `TaskStop`
+- **THEN** no descendant cascade runs, and the worker's helpers arm no wait because the worker sent them no warming switch

@@ -6,10 +6,19 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { disposeShells, parseArguments, UsageError } = require('../sai/tools/dispose-shells');
+const dispose = require('../sai/tools/dispose-shells');
+const { parseArguments, UsageError } = dispose;
+
 
 const SCRIPT = path.resolve(__dirname, '../sai/tools/dispose-shells.js');
 const DIRECTORY = '/home/user/my project';
+const noDescendants = sessions => new Map(sessions.map(session => [session, []]));
+const withoutCascade = ({ cascade, ...entry }) => entry;
+/** The shell-removal tests below predate the cascade: they read the result without it, over a session tree with no children. */
+const disposeShells = (input, run, warmer, tree = noDescendants) => {
+  const result = dispose.disposeShells(input, run, warmer, tree);
+  return result.results ? { ...result, results: result.results.map(withoutCascade) } : withoutCascade(result);
+};
 const shell = (id, session, status = 'running') => ({ id, status, metadata: { sessionID: session } });
 
 /** A stubbed `opencode api`: shells that vanish when deleted, and a record of every call. */
@@ -82,7 +91,7 @@ let shells = fs.existsSync(state) ? JSON.parse(fs.readFileSync(state, 'utf8')) :
 if (method === 'DELETE') { shells = []; fs.writeFileSync(state, JSON.stringify(shells)); process.exit(0); }
 console.log(JSON.stringify({ location: { directory: '/tmp' }, data: shells }));
 `, { mode: 0o755 });
-  const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}` };
+  const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, XDG_DATA_HOME: path.join(bin, 'no-data') };
   const run = args => spawnSync(process.execPath, [SCRIPT, ...args], { encoding: 'utf8', env });
   const removed = run(['--session', 'ses_1', '--cwd', '/tmp']);
   assert.equal(removed.status, 0);
@@ -166,7 +175,7 @@ let shells = fs.existsSync(state) ? JSON.parse(fs.readFileSync(state, 'utf8')) :
 if (method === 'DELETE') { shells = []; fs.writeFileSync(state, JSON.stringify(shells)); process.exit(0); }
 console.log(JSON.stringify({ location: { directory: '/tmp' }, data: shells }));
 `, { mode: 0o755 });
-  const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}` };
+  const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, XDG_DATA_HOME: path.join(bin, 'no-data') };
   const run = args => spawnSync(process.execPath, [SCRIPT, ...args], { encoding: 'utf8', env });
   const refused = run(['--session', 'ses_1', '--session', 'bad id', '--cwd', '/tmp']);
   assert.equal(refused.status, 2);
@@ -307,4 +316,127 @@ test('E3 with no installed wait.js the default warmer reports the chain as faile
   const result = disposeShells({ session: 'ses_1', cwd: DIRECTORY }, run);
   assert.equal(result.status, 'removed');
   assert.deepEqual([result.closed, result.close_failed], [[], [CHAIN_A]]);
+});
+
+// ---- the cascade to the descendant sessions of a disposed worker ----
+const { DatabaseSync } = (() => { try { return require('node:sqlite'); } catch { return {}; } })();
+const sqliteTest = (name, fn) => test(name, { skip: !DatabaseSync && 'node:sqlite is not available in this runtime' }, fn);
+const warmLine = chain => `node /x/wait.js warm --chain ${chain}`;
+const emptyCascade = (status = 'ok') => ({ status, removed: [], failed: [], closed: [], close_failed: [] });
+const treeOf = children => sessions => new Map(sessions.map(session => [session, children[session] ?? []]));
+
+test('E3 E6 the running shells of every descendant are removed with the worker, and their warm chains close', () => {
+  const { run, calls } = server([
+    withCommand('sh_w', 'ses_w', warmLine(CHAIN_A)),
+    withCommand('sh_c', 'ses_child', warmLine(CHAIN_B)),
+    shell('sh_g', 'ses_grand'),
+    shell('sh_o', 'ses_other'),
+  ]);
+  const stub = warmer();
+  const result = dispose.disposeShells({ session: 'ses_w', cwd: DIRECTORY }, run, stub, treeOf({ ses_w: ['ses_child', 'ses_grand'] }));
+  assert.deepEqual(result, {
+    status: 'removed', removed: ['sh_w'], failed: [], closed: [CHAIN_A], close_failed: [],
+    cascade: { status: 'ok', removed: ['sh_c', 'sh_g'], failed: [], closed: [CHAIN_B], close_failed: [] },
+  });
+  assert.deepEqual([...stub.closes].sort(), [CHAIN_A, CHAIN_B].sort(), 'both chains close once');
+  assert.deepEqual(calls.filter(([method]) => method === 'DELETE').map(([, apiPath]) => /sh_[a-z]+/.exec(apiPath)[0]), ['sh_w', 'sh_c', 'sh_g']);
+  assert.equal(listings(calls), 2, 'the cascade shares the two listings');
+});
+
+test('E6 a descendant with no running shell is not a failure, and a worker with no shell still cascades', () => {
+  const { run } = server([shell('sh_c', 'ses_child'), shell('sh_o', 'ses_other')]);
+  const result = dispose.disposeShells({ session: 'ses_w', cwd: DIRECTORY }, run, warmer(), treeOf({ ses_w: ['ses_child', 'ses_idle'] }));
+  assert.equal(result.status, 'none');
+  assert.deepEqual(result.cascade, { ...emptyCascade(), removed: ['sh_c'] });
+  const idle = dispose.disposeShells({ session: 'ses_w', cwd: DIRECTORY }, server([shell('sh_o', 'ses_other')]).run, warmer(), treeOf({ ses_w: ['ses_idle'] }));
+  assert.deepEqual(idle, { status: 'none', removed: [], failed: [], closed: [], close_failed: [], cascade: emptyCascade() });
+});
+
+test('E6 each worker of a call reports its own descendants, and a named session is never a descendant of another', () => {
+  const { run } = server([shell('sh_1', 'ses_1'), shell('sh_a', 'ses_a'), shell('sh_b', 'ses_b'), shell('sh_2', 'ses_2')]);
+  const result = dispose.disposeShells({ sessions: ['ses_1', 'ses_2'], cwd: DIRECTORY }, run, warmer(), treeOf({ ses_1: ['ses_a', 'ses_2'], ses_2: ['ses_b'] }));
+  assert.equal(result.status, 'removed');
+  assert.deepEqual(result.results.map(entry => [entry.session, entry.removed, entry.cascade.removed]), [['ses_1', ['sh_1'], ['sh_a']], ['ses_2', ['sh_2'], ['sh_b']]]);
+});
+
+test('I3 a descendant shell that cannot be removed is reported in the cascade and changes no status', () => {
+  const { run } = server([shell('sh_w', 'ses_w'), shell('sh_c', 'ses_child')], { refuseDelete: ['sh_c'] });
+  const result = dispose.disposeShells({ session: 'ses_w', cwd: DIRECTORY }, run, warmer(), treeOf({ ses_w: ['ses_child'] }));
+  assert.equal(result.status, 'removed');
+  assert.deepEqual(result.cascade, { ...emptyCascade(), failed: ['sh_c'] });
+  const after = dispose.disposeShells({ session: 'ses_w', cwd: DIRECTORY }, server([shell('sh_w', 'ses_w'), shell('sh_c', 'ses_child')], { failAfterDelete: true }).run, warmer(), treeOf({ ses_w: ['ses_child'] }));
+  assert.equal(after.status, 'unavailable');
+  assert.deepEqual(after.cascade, { ...emptyCascade(), failed: ['sh_c'] });
+});
+
+test('E5 an unreadable session tree is reported as unavailable and the named session is disposed as before', () => {
+  const { run } = server([withCommand('sh_w', 'ses_w', warmLine(CHAIN_A)), shell('sh_c', 'ses_child')]);
+  const unreadable = () => { throw new Error('No opencode database was found'); };
+  const result = dispose.disposeShells({ session: 'ses_w', cwd: DIRECTORY }, run, warmer(), unreadable);
+  assert.deepEqual(result, {
+    status: 'removed', removed: ['sh_w'], failed: [], closed: [CHAIN_A], close_failed: [],
+    cascade: { ...emptyCascade('unavailable'), reason: 'No opencode database was found' },
+  });
+});
+
+test('with no running shell outside the named sessions there is nothing to cascade and the tree is not read', () => {
+  const { run } = server([shell('sh_w', 'ses_w'), shell('sh_x', 'ses_w', 'exited')]);
+  const unreadable = () => { throw new Error('must not be read'); };
+  assert.deepEqual(dispose.disposeShells({ session: 'ses_w', cwd: DIRECTORY }, run, warmer(), unreadable), { status: 'removed', removed: ['sh_w'], failed: [], closed: [], close_failed: [] });
+});
+
+/** An opencode.db with the sessions of `parents` (id to parent id), and the data directory that holds it. */
+function opencodeData(t, parents) {
+  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'dispose-db-'));
+  t.after(() => fs.rmSync(data, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(data, 'opencode'));
+  const db = new DatabaseSync(path.join(data, 'opencode', 'opencode.db'));
+  db.exec('CREATE TABLE session_v2 (id TEXT, parent_id TEXT, agent TEXT, title TEXT, directory TEXT, time_created INTEGER); CREATE TABLE session_message (id TEXT, session_id TEXT, type TEXT, seq INTEGER, time_created INTEGER, data TEXT);');
+  const insert = db.prepare('INSERT INTO session_v2 (id, parent_id, agent, title, directory, time_created) VALUES (?, ?, ?, ?, ?, ?)');
+  Object.entries(parents).forEach(([id, parent], index) => insert.run(id, parent, 'agent', id, DIRECTORY, index));
+  db.close();
+  return data;
+}
+
+sqliteTest('E3 the default reader follows parent_id through children and grandchildren', t => {
+  const data = opencodeData(t, { ses_main: null, ses_w: 'ses_main', ses_c1: 'ses_w', ses_c2: 'ses_w', ses_g: 'ses_c1', ses_x: 'ses_main' });
+  const { run } = server([shell('sh_w', 'ses_w'), shell('sh_c1', 'ses_c1'), shell('sh_g', 'ses_g'), shell('sh_x', 'ses_x')]);
+  const tree = dispose.defaultTree({ XDG_DATA_HOME: data });
+  const result = dispose.disposeShells({ session: 'ses_w', cwd: DIRECTORY }, run, warmer(), tree);
+  assert.deepEqual([result.removed, result.cascade.status, result.cascade.removed], [['sh_w'], 'ok', ['sh_c1', 'sh_g']]);
+});
+
+sqliteTest('E4 the calling session and its ancestors are never reached, and the main session chain stays open', t => {
+  const data = opencodeData(t, { ses_main: null, ses_mid: 'ses_main', ses_caller: 'ses_mid', ses_c: 'ses_mid' });
+  const { run } = server([
+    shell('sh_mid', 'ses_mid'),
+    withCommand('sh_caller', 'ses_caller', warmLine(CHAIN_A)),
+    withCommand('sh_main', 'ses_main', warmLine(CHAIN_B)),
+    shell('sh_c', 'ses_c'),
+  ]);
+  const stub = warmer();
+  const tree = dispose.defaultTree({ XDG_DATA_HOME: data, OPENCODE_SESSION_ID: 'ses_caller' });
+  const result = dispose.disposeShells({ session: 'ses_mid', cwd: DIRECTORY }, run, stub, tree);
+  assert.equal(result.status, 'removed');
+  assert.deepEqual(result.cascade, { ...emptyCascade(), removed: ['sh_c'] });
+  assert.deepEqual(stub.closes, [], 'no chain of the caller or the main session closes');
+});
+
+sqliteTest('E4 a caller below the worker keeps itself and its ancestors out of the cascade', t => {
+  const data = opencodeData(t, { ses_w: null, ses_a: 'ses_w', ses_caller: 'ses_a', ses_sib: 'ses_w' });
+  const guarded = dispose.defaultTree({ XDG_DATA_HOME: data, OPENCODE_SESSION_ID: 'ses_caller' });
+  assert.deepEqual(guarded(['ses_w']).get('ses_w'), ['ses_sib']);
+  assert.deepEqual([...dispose.defaultTree({ XDG_DATA_HOME: data })(['ses_w']).get('ses_w')].sort(), ['ses_a', 'ses_caller', 'ses_sib']);
+});
+
+test('E5 the default reader throws when the database or the runtime is missing, which the cascade reports as unavailable', t => {
+  const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'dispose-nodb-'));
+  t.after(() => fs.rmSync(empty, { recursive: true, force: true }));
+  assert.throws(() => dispose.defaultTree({ XDG_DATA_HOME: empty })(['ses_w']), /No opencode database/);
+  assert.throws(() => dispose.defaultTree({ XDG_DATA_HOME: empty }, () => { throw new Error('no sqlite'); })(['ses_w']), /node:sqlite is not available/);
+  const { run } = server([shell('sh_w', 'ses_w'), shell('sh_c', 'ses_c')]);
+  const result = dispose.disposeShells({ session: 'ses_w', cwd: DIRECTORY }, run, warmer(), dispose.defaultTree({ XDG_DATA_HOME: empty }));
+  assert.equal(result.status, 'removed');
+  assert.equal(result.cascade.status, 'unavailable');
+  assert.match(result.cascade.reason, /No opencode database/);
 });

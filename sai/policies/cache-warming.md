@@ -10,7 +10,7 @@ A dispatcher that disposes an agent turns its warming on by ending the task mess
 
 `Warming: on, agent {agent}. Fetch @sai/policies/cache-warming.md and follow it as a subagent.`
 
-- Workers and `budget-explorer` receive it. `budget-subagent` receives it only on a continuation: its one-shot task message is followed by its dispose and carries none (`skills/{claude,opencode}/budget-subagent/SKILL.md` § Warming and dispose). `budget-executor` never does: it never arms.
+- Workers and `budget-explorer` receive it from a dispatcher that disposes them. A worker never sends it to the helpers it dispatches itself. `budget-subagent` receives it only on a continuation: its one-shot task message is followed by its dispose and carries none (`skills/{claude,opencode}/budget-subagent/SKILL.md` § Warming and dispose). `budget-executor` never does: it never arms.
 - The ready-only dispatch of the two-phase handshake carries no task content and therefore no switch.
 - An opencode-routed agent (`@sai/policies/opencode-dispatch.md`) receives no switch and declares `warming: false`.
 - A dispatcher that cannot dispose (a worker that dispatches its own helpers) sends no switch, so its helpers never arm. Only an agent that disposes another one enables its warming.
@@ -82,7 +82,7 @@ Cards and policies point here and never restate the rule.
 
 ## Dispose
 
-Ending a worker or helper does not depend on warming: `@sai/policies/worker-lifecycle.md` owns the dispose points, the stop call, and the already-ended and failure handling. On Claude Code a dispose ends the armed wait together with the agent. On opencode it removes the running shells of the agent's session, the armed wait included, and closes the chain of each `wait.js warm` shell it removes, so `wait.js` refuses every later wait of that chain; the main session's chain is never closed. No `dispose` message is sent first, and no second stop of the wait follows; the opencode `dispose` message that `worker-lifecycle.md` § Stop call sends after a `none` listing is a fallback after the stop call. The main session is never disposed: it retires its chain at its command's terminal output (§ Retire at terminal output), and a new command invocation in the same chat continues the same chain.
+Ending a worker or helper does not depend on warming: `@sai/policies/worker-lifecycle.md` owns the dispose points, the stop call, and the already-ended and failure handling. On Claude Code a dispose ends the armed wait together with the agent. On opencode it removes the running shells of the agent's session and of every descendant session of it, the armed waits included, and closes the chain of each `wait.js warm` shell it removes, so `wait.js` refuses every later wait of that chain; the main session's chain is never closed. No `dispose` message is sent first, and no second stop of the wait follows; the opencode `dispose` message that `worker-lifecycle.md` § Stop call sends after a `none` listing is a fallback after the stop call. The main session is never disposed: it retires its chain at its command's terminal output (§ Retire at terminal output), and a new command invocation in the same chat continues the same chain.
 
 ## Hand-off wait
 

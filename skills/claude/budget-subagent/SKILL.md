@@ -43,7 +43,7 @@ Fetch `@sai/policies/worker-report-transport.md`
 Fetch `@sai/policies/cache-warming.md`
 Fetch `@sai/policies/worker-lifecycle.md`
 
-A one-shot task message carries no warming switch, because the coordinator disposes the helper after its result, as `@sai/policies/worker-lifecycle.md` says, whatever its `warming` diagnostic. When the card you follow continues the subagent with further messages, end each message with the warming switch of `@sai/policies/cache-warming.md`.
+A one-shot task message carries no warming switch, because the coordinator disposes the helper after its result, as `@sai/policies/worker-lifecycle.md` says, whatever its `warming` diagnostic. When the card you follow continues the subagent with further messages, end each message with the warming switch of `@sai/policies/cache-warming.md` only when you dispose the subagent (a coordinator or the `/sai-explore` main session), per § The switch of that policy.
 
 ## Task contract
 
