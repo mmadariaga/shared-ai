@@ -347,3 +347,65 @@ Azure CLI and Azure SDK processes used by publication SHALL be bounded by the sh
 
 - **WHEN** the `az extension show` process runs longer than 120 s
 - **THEN** the request fails with reason `process-timeout` naming `az extension show`, not with `extension-unavailable`.
+
+### Requirement: Boards slice-set reads grow with the set, not the project
+
+An Azure DevOps slice-set publication SHALL take the baseline of each creation from the ID list of one WIQL query of the project's work items of the configured type, reading no work item to build it, and SHALL record that baseline in the receipt as a list of IDs, so a receipt written before this behavior recovers and continues without migration. `recover-set` SHALL read only the work items whose IDs the current WIQL query returns and the baseline lacks, and a new ID whose read answers 404 SHALL be skipped as no candidate while recovery goes on with the remaining IDs. `lookup-slice` SHALL read only the work items that a WIQL query narrowed by `[System.Description] CONTAINS '<change name>'` returns, plus the slice's parent read through the work item URL of its marker when the parent is not among them; when Azure refuses that query, `lookup-slice` SHALL fall back to reading the full inventory. Zero or several valid candidates SHALL still return `slice-identity-ambiguous`, and a parent that does not confirm the correspondence SHALL still be an error.
+
+#### Scenario: Publication reads no existing work item
+
+- **WHEN** a slice set is published into a project that already holds unrelated work items
+- **THEN** each creation runs one WIQL ID query, no unrelated work item is read, and each receipt baseline is a list of IDs.
+
+#### Scenario: Recovery reads only new IDs
+
+- **WHEN** a creation response is lost and `recover-set` runs on the receipt
+- **THEN** only the work items whose IDs are absent from the baseline are read, and the matching one is returned as a candidate.
+
+#### Scenario: A new ID vanished before its read
+
+- **WHEN** a new ID returned by the WIQL query answers 404 when it is read
+- **THEN** recovery skips it as no candidate and completes with the remaining IDs.
+
+#### Scenario: Lookup reads only matching Tasks and the parent
+
+- **WHEN** `lookup-slice` runs for a published change name
+- **THEN** the WIQL query carries the description filter on the change name, no unrelated work item is read, and the slice is returned with its parent confirmed.
+
+#### Scenario: The description filter is refused
+
+- **WHEN** Azure refuses the WIQL query with the description filter
+- **THEN** `lookup-slice` reads the full inventory, still returns the slice, and reports a `lookup-fallback` progress step.
+
+### Requirement: Boards slice-set steps report progress on stderr
+
+The Azure DevOps slice-set mechanics SHALL report each remote step (`ids`, `inventory`, `create`, `read`, `references`, `relation`, and `lookup-fallback`) through an optional `io.progress` with only the step, the item index, the work item number when known, and the elapsed milliseconds. `to-backlog.js` SHALL write each report to stderr as one line `to-backlog: <step>[ item=<index>][ number=<number>] elapsed=<ms>ms` and SHALL keep stdout to the one final JSON object, failures included. A progress line SHALL carry no title, description, or token. GitLab and GitHub slice-set publication SHALL report no progress step.
+
+#### Scenario: Progress lines and the final object are separated
+
+- **WHEN** the `to-backlog.js` CLI runs a set operation whose steps report progress
+- **THEN** stderr holds one line per step with its step, item, number, and elapsed time, and stdout parses as one JSON object.
+
+#### Scenario: Progress carries no content
+
+- **WHEN** an Azure DevOps slice set is published
+- **THEN** every progress report holds only `step`, `index`, `number`, and `ms`, and the reported steps include `ids`, `create`, `read`, `references`, and `relation`.
+
+#### Scenario: GitLab reports no progress
+
+- **WHEN** a GitLab slice set is published with a progress callback
+- **THEN** the callback receives no report.
+
+### Requirement: Raw HTML detection recognizes tag names with Unicode letters
+
+The raw-HTML check of an outgoing Markdown description SHALL recognize a tag whose name starts with a Unicode letter and continues with Unicode letters, digits, or hyphens, such as `<operación>`, and SHALL refuse it outside backtick code spans and fenced code blocks before any write, naming its line. The same tag inside a code span or a fenced code block, and a `<` that opens no tag such as `a < b` or `<3`, SHALL pass. The rule SHALL apply to set publication and to single-item publication and update alike.
+
+#### Scenario: A Unicode tag outside code is refused
+
+- **WHEN** a description holds `<operación>` on its third line outside code
+- **THEN** the check fails naming raw HTML on line 3, and a query for publication writes nothing.
+
+#### Scenario: Code and non-tag text pass
+
+- **WHEN** a description holds `a < b`, `<3`, `<operación>` inside a code span or a fenced code block, and an autolink
+- **THEN** the check returns the description unchanged.

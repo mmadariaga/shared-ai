@@ -759,6 +759,27 @@ test('E7 I5: raw HTML outside code is rejected before publication naming its lin
   assert.equal((await boards.query({ ...request, description: ok }, io)).status, 'ready');
   assert.equal(state.writes.length, 0);
 });
+test('E8 I6: a tag with a Unicode name outside code is refused naming its line, and text that opens no tag passes', async () => {
+  const { checkMarkdown } = require('../sai/tools/azure-markdown');
+  assert.throws(() => checkMarkdown('first\n\nescribe <operación> aquí'), /raw HTML.*line 3/);
+  assert.throws(() => checkMarkdown('<Überschrift>x</Überschrift>'), /raw HTML.*line 1/);
+  assert.throws(() => checkMarkdown('<日本語 class="a">'), /raw HTML.*line 1/);
+  const ok = 'a < b and <3 and `<operación>`\n\n```\n<operación>\n```\n\n<https://a.test>';
+  assert.equal(checkMarkdown(ok), ok);
+  const { io, state } = fixture(), request = { repository: `${organization}/${project}`, type: 'Task', title: 'Create' };
+  await assert.rejects(async () => await boards.query({ ...request, description: 'x <operación> y' }, io), /raw HTML.*line 1/);
+  assert.equal(state.writes.length, 0);
+});
+test('E7 I4: the CLI writes progress lines to stderr with the step, item, number and elapsed time, and one JSON object to stdout', () => {
+  const { spawnSync } = require('node:child_process');
+  const script = "const adapter=require('./sai/tools/azure-publication');const boards=require('./sai/tools/to-backlog-azuredevops');"
+    + "boards['query-set']=async (r,io)=>{io.progress({step:'create',index:1,number:42,ms:7});io.progress({step:'ids',ms:3});return {status:'ready'}};"
+    + "require('./sai/tools/to-backlog').main(['query-set','skills/universal/to-backlog/providers/registry.json']).then(code=>{process.exitCode=code});";
+  const result = spawnSync(process.execPath, ['-e', script], { input: JSON.stringify({ provider: 'azuredevops' }), encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), { status: 'ready' });
+  assert.deepEqual(result.stderr.trim().split('\n'), ['to-backlog: create item=1 number=42 elapsed=7ms', 'to-backlog: ids elapsed=3ms']);
+});
 test('I3: one entity decoder serves every reader and decodes in a single pass', () => {
   const { decodeEntities } = require('../sai/tools/azure-markdown');
   assert.equal(decodeEntities('&quot;a&quot; &amp; &lt;b&gt; &#128640; &#x1F680; &amp;quot; &unknown; &#99999999;'), '"a" & <b> \u{1F680} \u{1F680} &quot; &unknown; &#99999999;');

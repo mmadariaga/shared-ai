@@ -128,6 +128,18 @@ complete verified correspondence to `sai/policies/backlog-origin-transport.md`: 
 amends the stored documents with actual child origins and new hashes before cold
 planning dispatch. Conversation-only retention is not sufficient for that path.
 
+**Running and waiting.** `publish-set` and `continue-set` can take minutes, because
+each creation is several remote calls. Run each in the background with no shell
+timeout (Claude Code `Bash` with `run_in_background: true`, opencode shell with
+`background: true`), sending its output to a log file. The tool writes the one final
+JSON object to stdout: read the result from the last line of the log. A provider that
+reports its steps (the Azure DevOps provider does; GitHub and GitLab write none) also
+writes one progress line per remote step to stderr, naming the step, the item index,
+the work item number, and the elapsed time: read the progress of such a provider from
+the log, and for the others wait for the final object. Never interrupt the run, and never end it with
+a timeout of your own: after an interruption, call `recover-set` with the saved
+receipt first, then follow `publication-recovery.md`.
+
 On a partial or uncertain result, follow `publication-recovery.md` beside this
 file: warn, verify directly, and automatically retry verified pending work once
 within the original approval. Show `created`, `pending`, and the receipt.

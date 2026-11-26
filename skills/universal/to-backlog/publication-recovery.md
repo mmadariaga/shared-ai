@@ -27,5 +27,10 @@ retain `update.md` recovery; they receive no automatic mutation retry.
    to bypass this limit. Changed content, destination, visibility, or relationship
    representation requires renewed full review and approval, not this retry.
 
+Run `publish-set` and `continue-set` in the background with no shell timeout (Claude
+Code `Bash` with `run_in_background: true`, opencode shell with `background: true`),
+read their progress from the progress lines of the output log, and never interrupt
+them. After an interruption, `recover-set` runs first, before any other call.
+
 Complete when publication is verified or the user has the verified remaining
 state and a concrete decision. Verification itself consumes no retry allowance.
