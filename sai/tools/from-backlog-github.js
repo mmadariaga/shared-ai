@@ -165,4 +165,9 @@ async function readChildren(reference, io) {
   }
 }
 
-module.exports = { normalize, api, readIssue, read, readSet, readChildren, connection };
+// Pure route shape of a full issue URL: the same parsing as `normalize`, with no resolution.
+function issueRoute(value) {
+  try { normalize(value); return /^https:\/\//i.test(value); } catch { return false; }
+}
+
+module.exports = { normalize, issueRoute, api, readIssue, read, readSet, readChildren, connection };

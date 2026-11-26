@@ -24,6 +24,15 @@ and isolated positive IDs; GitHub paths and GitLab host fallback retain their
 existing selection. Azure DevOps resolves isolated IDs only with unambiguous
 existing organization context, otherwise returning `needs_input` for a full link.
 
+## Issue URL detection
+
+`from-backlog.js detect <registry> --input-file <path>` answers offline whether
+one complete `https://` URL has the issue route shape of the provider that
+selection would pick: `{verdict: "issue"|"none", provider}`. It uses the same
+selection tiers as above, then asks that adapter's pure `issueRoute(value)`,
+which inspects the URL only (no CLI, context lookup, or network). A new
+provider exports its own `issueRoute`; an adapter without one never detects.
+
 ## Context resolution
 
 Set `resolution` to `provider` to export `resolve(value, io)` instead.

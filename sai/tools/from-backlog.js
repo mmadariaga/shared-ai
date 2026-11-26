@@ -114,6 +114,28 @@ async function resolve(reference, registry, io = {}) {
   return { ...resolved, provider: entry.id, instructions: entry.instructions, adapter: entry.adapter, ...(settingApplied ? { settingApplied } : {}), ...(settingOverridden ? { settingOverridden } : {}) };
 }
 
+// Pure and offline: does one complete HTTPS URL have the issue route shape of the provider that `resolve` would
+// select for it? Selection mirrors `resolve` (a positive match wins, else the provider-owned fallbacks) and each
+// adapter's own `issueRoute` decides the shape; no adapter resolves or reads and no process starts.
+function detect(reference, registry, io = {}) {
+  if (typeof reference !== 'string' || !reference.trim()) throw fault('invalid-reference', 'Supply a complete issue URL');
+  const value = reference.trim();
+  const none = { verdict: 'none', provider: null };
+  let url;
+  try { url = new URL(value); } catch { return none; }
+  if (url.protocol !== 'https:' || /\s/.test(value)) return none;
+  const host = url.hostname.toLowerCase();
+  const candidates = registry.providers.filter(entry => entry.capabilities.includes('read')).map(entry => {
+    const adapter = (io.loadAdapter || loadAdapter)(entry);
+    if (entry.classification === 'provider') return { entry, adapter, classification: adapter.classify(value) };
+    return { entry, adapter, classification: entry.hosts?.includes(host) ? 'match' : entry.resolution === 'provider' ? 'fallback' : null };
+  });
+  const matched = candidates.filter(candidate => candidate.classification === 'match');
+  const tier = matched.length ? matched : candidates.filter(candidate => candidate.classification === 'fallback');
+  const issues = tier.filter(candidate => candidate.adapter.issueRoute?.(value));
+  return issues.length === 1 ? { verdict: 'issue', provider: issues[0].entry.id } : none;
+}
+
 // The Azure CLI runtime and the installed extension do not change during one invocation: resolve each once.
 // Only a successful lookup is kept, so a failure is looked up again.
 let runtimeMemory = null;
@@ -238,9 +260,13 @@ async function main(rawArgv) {
   try {
     const { argv, inputFile } = extractInputFile(rawArgv);
     const [operation, registryPath] = argv;
-    if (!['resolve', 'read'].includes(operation) || !registryPath || argv.length !== 2) throw fault('usage', 'Usage: node from-backlog.js resolve|read <registry.json>; JSON {reference} in the input file: --input-file <path> (stdin also accepted)');
+    if (!['resolve', 'read', 'detect'].includes(operation) || !registryPath || argv.length !== 2) throw fault('usage', 'Usage: node from-backlog.js resolve|read|detect <registry.json>; JSON {reference} in the input file: --input-file <path> (stdin also accepted)');
     const request = JSON.parse(readInput(inputFile));
     const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+    if (operation === 'detect') {
+      process.stdout.write(JSON.stringify(detect(request.reference, registry)) + '\n');
+      return 0;
+    }
     const settings = projectSettings.readBacklog({ cwd: process.cwd(), providerIds: registry.providers.filter(entry => entry.capabilities.includes('read')).map(entry => entry.id) });
     const { settingApplied, settingOverridden, ...resolved } = await resolve(request.reference, registry, { run, configuredProvider: settings.config.provider, configuredDestination: settings.config });
     const adapter = resolved.status === 'resolved' ? require(path.join(__dirname, resolved.adapter)) : null;
@@ -256,4 +282,4 @@ async function main(rawArgv) {
 }
 
 if (require.main === module) main(process.argv.slice(2)).then(code => { process.exitCode = code; });
-module.exports = { resolve, run, main, runAzureSdk, resetAzureMemory, SDK_SCRIPT, USAGE };
+module.exports = { resolve, detect, run, main, runAzureSdk, resetAzureMemory, SDK_SCRIPT, USAGE };

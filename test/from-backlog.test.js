@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { spawnSync } = require('node:child_process');
-const { resolve } = require('../sai/tools/from-backlog');
+const { resolve, detect } = require('../sai/tools/from-backlog');
 const github = require('../sai/tools/from-backlog-github');
 // Generic extension tests use a single original provider. The installed GitLab
 // registry is exercised separately in backlog-gitlab.test.js.
@@ -290,4 +290,54 @@ test('read CLI uses simulated gh with no local writes or executable source text'
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.equal(JSON.parse(result.stdout).item.description, body);
   assert.deepEqual(fs.readdirSync(directory), before);
+});
+
+test('detect classifies a complete issue URL offline, per provider, with the resolver precedence', () => {
+  const installed = require('../skills/universal/from-backlog/providers/registry.json');
+  const issue = provider => ({ verdict: 'issue', provider });
+  const none = { verdict: 'none', provider: null };
+  const cases = [
+    ['https://github.com/owner/repo/issues/123', issue('github')],
+    ['  https://github.com/owner/repo/issues/123?x=1#issuecomment-2  ', issue('github')],
+    ['https://gitlab.com/group/project/-/issues/7', issue('gitlab')],
+    ['https://git.example.org:8443/group/sub/project/-/issues/7?scope=all#note_1', issue('gitlab')],
+    ['https://dev.azure.com/org/project/_workitems/edit/55', issue('azuredevops')],
+    ['https://org.visualstudio.com/project/_workitems/edit/55?x=1', issue('azuredevops')],
+    ['https://github.com/owner/repo/pull/123', none],
+    ['https://github.com/owner/repo', none],
+    ['https://gitlab.com/group/project/-/merge_requests/7', none],
+    ['https://dev.azure.com/org/project/_git/repo', none],
+    ['https://example.com/docs/issues', none],
+    ['https://github.com/group/project/-/issues/7', none],
+    ['http://github.com/owner/repo/issues/123', none],
+    ['https://github.com/owner/repo/issues/123 and more', none],
+    ['https://github.com/owner/repo/issues/1 https://github.com/owner/repo/issues/2', none],
+    ['/owner/repo/issues/123', none],
+    ['#123', none],
+    ['123', none],
+    ['Implement https://github.com/owner/repo/issues/123', none],
+  ];
+  for (const [input, expected] of cases) assert.deepEqual(detect(input, installed), expected, input);
+  assert.throws(() => detect('', installed), { reason: 'invalid-reference' });
+  assert.throws(() => detect(undefined, installed), { reason: 'invalid-reference' });
+});
+
+test('detect starts no process and needs no provider CLI, credentials, or network', () => {
+  const invoke = reference => spawnSync(process.execPath, ['sai/tools/from-backlog.js', 'detect', 'skills/universal/from-backlog/providers/registry.json'], { cwd: root, input: JSON.stringify({ reference }), encoding: 'utf8', env: { PATH: '' } });
+  const found = invoke('https://github.com/owner/repo/issues/123');
+  assert.equal(found.status, 0, found.stderr);
+  assert.deepEqual(JSON.parse(found.stdout), { verdict: 'issue', provider: 'github' });
+  assert.deepEqual(JSON.parse(invoke('https://github.com/owner/repo/pull/123').stdout), { verdict: 'none', provider: null });
+  const failed = invoke('');
+  assert.equal(failed.status, 2);
+  assert.equal(JSON.parse(failed.stdout).reason, 'invalid-reference');
+});
+
+test('explore loads the issue URL import only on an invocation turn, after detect, with the work question and retry/stop failures', () => {
+  const body = fs.readFileSync(path.join(root, 'sai/commands/explore/body.md'), 'utf8');
+  const intake = fs.readFileSync(path.join(root, 'sai/commands/explore/steps/issue-intake.md'), 'utf8');
+  const step = body.slice(body.indexOf('Issue URL import:'));
+  assert.ok(body.indexOf('Chat language:') < body.indexOf('Issue URL import:'), 'runs after the resets and the chat language read');
+  for (const pattern of [/only on an invocation turn/, /a recovery load never runs it/, /exactly one `https:\/\/` URL/, /detect <registry> --input-file <path>/, /no network, provider CLI, or credentials/, /`verdict` alone decides/, /announces the import/, /@skills\/from-backlog\/SKILL\.md/, /`work`\/`context` question of `steps\/issue-intake\.md`/, /`retry` and `stop`/, /`continue without import`/, /starts no route/]) assert.match(step, pattern);
+  assert.match(intake, /issue URL that the load of `body\.md` imported/);
 });

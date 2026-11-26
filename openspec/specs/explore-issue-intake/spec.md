@@ -7,7 +7,7 @@ Give `/sai-explore` one defined, source-agnostic intake for any issue, bug, or t
 
 ### Requirement: Issue intake starts only on issue text or an explicit statement
 
-`/sai-explore` SHALL start the issue intake when text in issue format (a description carrying the headings `## Problem`, `## Goal`, `## Scope`, `## Non-goals`, `## Open questions`, and `## Maturity`) enters the conversation, or when the user explicitly states that the text is an issue, and SHALL apply the intake before the direct-looking request rule to that text. The intake SHALL behave the same for every source (imported, pasted, read from a file, or passed as the `/sai-explore` argument) and SHALL name no skill. A link SHALL be ordinary content that triggers nothing, any other text SHALL enter through the direct-looking request rule, and hidden markers or HTML comments in the issue SHALL NOT carry block content. Claude Code and opencode SHALL follow the same intake.
+`/sai-explore` SHALL start the issue intake when an issue URL that the `/sai-explore` load imported (the cleaned argument is exactly one URL that `from-backlog.js detect` classifies as an issue) brings its issue into the conversation, when text in issue format (a description carrying the headings `## Problem`, `## Goal`, `## Scope`, `## Non-goals`, `## Open questions`, and `## Maturity`) enters the conversation, or when the user explicitly states that the text is an issue, and SHALL apply the intake before the direct-looking request rule to that text. The intake SHALL behave the same for every source (imported, pasted, read from a file, or passed as the `/sai-explore` argument) and the intake step itself SHALL name no skill (the `/sai-explore` load that imports a whole-argument issue URL names the from-backlog skill before the intake starts). Any other link SHALL be ordinary content that triggers nothing, any other text SHALL enter through the direct-looking request rule, and hidden markers or HTML comments in the issue SHALL NOT carry block content. Claude Code and opencode SHALL follow the same intake.
 
 #### Scenario: Issue passed as the command argument
 
@@ -16,13 +16,18 @@ Give `/sai-explore` one defined, source-agnostic intake for any issue, bug, or t
 
 #### Scenario: A link alone triggers nothing
 
-- **WHEN** the user's message carries only a link to an issue and no issue text
+- **WHEN** the user's message carries only a link to an issue and no issue text, and the link is not the whole `/sai-explore` argument
 - **THEN** no intake starts and the message is classified as ordinary input
 
 #### Scenario: Explicit statement starts intake
 
 - **WHEN** the user states that a text without the issue-format headings is an issue
 - **THEN** Explore starts the issue intake for that text
+
+#### Scenario: Imported issue URL starts intake
+
+- **WHEN** the `/sai-explore` load imports the issue of a whole-argument issue URL
+- **THEN** Explore starts the issue intake for the imported issue and asks its work question
 
 ### Requirement: The work question decides whether the issue becomes the candidate idea
 
