@@ -31,6 +31,17 @@
  * chain ids closed, `already-closed` included) and `close_failed` (the ones whose close did not succeed); neither
  * changes `status` or the exit code.
  *
+ * Descendant sessions (opencode only). A worker's own helpers (the explorers a spec worker dispatches) are child sessions
+ * of the worker, and disposing the worker does not stop them. When the listing holds a running shell of a session other
+ * than the named ones, the tool reads the session tree (`parent_id` of `session_v2` in `opencode.db`, read-only,
+ * through `opencode-db.js`) and removes the running shells of every descendant of each named session from the same
+ * listing, closing the cache-warm chain of each `wait.js warm` shell it removes. The calling session
+ * (`OPENCODE_SESSION_ID`) and its ancestors are never touched, so the main session's chain stays open. Each entry then
+ * carries `cascade`: `{ status, removed, failed, closed, close_failed }`, with `status` `ok`, or `unavailable` and a
+ * `reason` when the session tree cannot be read (no database, no `node:sqlite`, an unsupported schema). The cascade
+ * never changes the `status` of a named session or the exit code. With no running shell outside the named sessions
+ * there is nothing to cascade, the database is not read, and `cascade` is absent.
+ *
  * The raw method-and-path form carries the directory in the query. The `--param` form is silently ignored by the
  * server, which would then act on its default directory.
  */
@@ -39,6 +50,7 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const { resolveOpencode } = require('./opencode-launcher');
+const { defaultLoadSqlite, openOpencodeDatabase, opencodeChildren } = require('./opencode-db');
 const usageKit = require('./usage');
 
 const CHAIN_ID = /^[0-9a-f]{16}$/;
@@ -58,6 +70,7 @@ const USAGE = {
 };
 const WORST_FIRST = ['unavailable', 'failed', 'removed', 'none'];
 const CALL_TIMEOUT_MS = 20000;
+const MAX_ANCESTORS = 16;
 
 /** A misuse of the command line (exit 2). */
 class UsageError extends Error {}
@@ -183,29 +196,89 @@ function closeChains(chains, outcomes, warmer) {
   return { closed: chains.filter(chain => outcomes.get(chain)), close_failed: chains.filter(chain => !outcomes.get(chain)) };
 }
 
+/** The session that runs the tool and its ancestors (`parent_id` upward), which a cascade never touches. */
+function protectedSessions(db, caller) {
+  const protectedIds = new Set();
+  const select = db.prepare('SELECT parent_id FROM session_v2 WHERE id = ?');
+  for (let id = caller, depth = 0; id && !protectedIds.has(id) && depth <= MAX_ANCESTORS; depth += 1) {
+    protectedIds.add(id);
+    id = select.get(id)?.parent_id;
+  }
+  return protectedIds;
+}
+
+/**
+ * The default session-tree reader: `sessions` to a Map of each session to the ids of its descendants, the calling
+ * session and its ancestors left out. It throws when the opencode database cannot be read.
+ */
+function defaultTree(env = process.env, loadSqlite = defaultLoadSqlite) {
+  return sessions => {
+    const db = openOpencodeDatabase(env, loadSqlite);
+    try {
+      const guarded = protectedSessions(db, env.OPENCODE_SESSION_ID);
+      return new Map(sessions.map(session => [session, opencodeChildren(db, session).map(child => child.id).filter(id => !guarded.has(id))]));
+    } finally {
+      db.close();
+    }
+  };
+}
+
+const cascadeEntry = (status, extra = {}) => ({ status, removed: [], failed: [], closed: [], close_failed: [], ...extra });
+
+/**
+ * The descendant shells of each named session: `null` when the listing holds no running shell outside the named
+ * sessions (nothing to cascade, no database read), otherwise a Map of each session to `{ status, reason?, shells }`.
+ */
+function planCascade(sessions, running, tree) {
+  const named = new Set(sessions);
+  if (![...running.keys()].some(session => !named.has(session))) return null;
+  let descendants;
+  try { descendants = tree(sessions); } catch (error) {
+    return new Map(sessions.map(session => [session, { status: 'unavailable', reason: error?.message ?? 'The session tree could not be read', shells: [] }]));
+  }
+  return new Map(sessions.map(session => {
+    const ids = (descendants.get(session) ?? []).filter(id => !named.has(id));
+    return [session, { status: 'ok', shells: ids.flatMap(id => running.get(id) ?? []) }];
+  }));
+}
+
 /**
  * One entry per session, from one running listing and one verifying listing whatever the number of sessions. The
  * chains of the removed `warm` shells close after the removal, whatever its outcome.
  */
-function disposeSessions(sessions, cwd, run, warmer) {
+function disposeSessions(sessions, cwd, run, warmer, tree) {
   const empty = session => ({ session, status: 'none', removed: [], failed: [], closed: [], close_failed: [] });
   const running = listShells(run, cwd, true);
   if (running === null) return sessions.map(session => ({ ...empty(session), status: 'unavailable' }));
   const found = new Map(sessions.map(session => [session, running.get(session) ?? []]));
-  const targets = [...found.values()].flat().map(shell => shell.id);
-  if (!targets.length) return sessions.map(empty);
+  const cascade = planCascade(sessions, running, tree);
+  const below = session => cascade?.get(session)?.shells ?? [];
+  const targets = [...new Set([...found.values(), ...sessions.map(below)].flat().map(shell => shell.id))];
+  const withCascade = (entry, outcome) => (cascade ? { ...entry, cascade: outcome } : entry);
+  if (!targets.length) return sessions.map(session => withCascade(empty(session), cascade && cascadeEntry(cascade.get(session).status, cascade.get(session).reason ? { reason: cascade.get(session).reason } : {})));
   for (const id of targets) run('DELETE', `/api/shell/${id}?${location(cwd)}`);
   const left = listShells(run, cwd, false);
+  const stillListed = new Set(left === null ? [] : [...left.values()].flat().map(shell => shell.id));
   const outcomes = new Map();
   return sessions.map(session => {
     const shells = found.get(session);
-    if (!shells.length) return empty(session);
+    const descendants = below(session);
+    const closingDescendants = closeChains(chainsOf(descendants, warmer.decode), outcomes, warmer);
+    const descendantIds = descendants.map(shell => shell.id);
+    const plan = cascade?.get(session);
+    const outcome = plan && cascadeEntry(plan.status, {
+      ...(plan.reason ? { reason: plan.reason } : {}),
+      removed: left === null ? [] : descendantIds.filter(id => !stillListed.has(id)),
+      failed: left === null ? descendantIds : descendantIds.filter(id => stillListed.has(id)),
+      ...closingDescendants,
+    });
+    if (!shells.length) return withCascade(empty(session), outcome);
     const ids = shells.map(shell => shell.id);
     const closing = closeChains(chainsOf(shells, warmer.decode), outcomes, warmer);
-    if (left === null) return { session, status: 'unavailable', removed: [], failed: ids, ...closing };
+    if (left === null) return withCascade({ session, status: 'unavailable', removed: [], failed: ids, ...closing }, outcome);
     const remaining = new Set((left.get(session) ?? []).map(shell => shell.id));
     const failed = ids.filter(id => remaining.has(id));
-    return { session, status: failed.length ? 'failed' : 'removed', removed: ids.filter(id => !remaining.has(id)), failed, ...closing };
+    return withCascade({ session, status: failed.length ? 'failed' : 'removed', removed: ids.filter(id => !remaining.has(id)), failed, ...closing }, outcome);
   });
 }
 
@@ -216,12 +289,15 @@ const worst = entries => WORST_FIRST.find(status => entries.some(entry => entry.
  * One `session` yields today's `{ status, removed, failed }`. `sessions` (the number of `--session` flags given is two
  * or more) yields `{ status, results }`, one entry per distinct session in the order given.
  */
-function disposeShells({ session, sessions, cwd }, run = defaultRun, warmer = defaultWarmer()) {
+function disposeShells({ session, sessions, cwd }, run = defaultRun, warmer = defaultWarmer(), tree = defaultTree()) {
   const single = sessions === undefined;
   const distinct = checkInput({ sessions: single ? [session] : sessions, cwd });
-  const entries = disposeSessions(distinct, cwd, run, warmer);
+  const entries = disposeSessions(distinct, cwd, run, warmer, tree);
   const [first] = entries;
-  if (single) return { status: first.status, removed: first.removed, failed: first.failed, closed: first.closed, close_failed: first.close_failed };
+  if (single) {
+    const { status, removed, failed, closed, close_failed: closeFailed, cascade } = first;
+    return { status, removed, failed, closed, close_failed: closeFailed, ...(cascade ? { cascade } : {}) };
+  }
   return { status: worst(entries), results: entries };
 }
 
@@ -255,4 +331,4 @@ function main(argv) {
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
 
-module.exports = { USAGE, UsageError, disposeShells, parseArguments, splitCommand, warmChain, main };
+module.exports = { USAGE, UsageError, defaultTree, protectedSessions, disposeShells, parseArguments, splitCommand, warmChain, main };

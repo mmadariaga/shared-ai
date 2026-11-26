@@ -891,7 +891,7 @@ test('helper contracts and budget skills send the switch only to agents their co
   assert.match(read('sai/policies/budget-agent.md'), /`warming: true` or `warming: false`/);
   for (const harness of ['claude', 'opencode']) {
     const explorer = read(`skills/${harness}/budget-explorer/SKILL.md`);
-    assert.match(explorer, /end with the warming switch of `@sai\/policies\/cache-warming\.md`/, `${harness} explorer sends the switch`);
+    assert.match(explorer, /warming switch of `@sai\/policies\/cache-warming\.md` § The switch is added[\s\S]*only by a dispatcher that disposes the explorer/, `${harness} explorer sends the switch only when its dispatcher disposes it`);
     assert.match(explorer, /whatever its `warming` diagnostic/, `${harness} explorer disposes whatever the diagnostic`);
     const subagent = read(`skills/${harness}/budget-subagent/SKILL.md`);
     assert.match(subagent, /A one-shot task message carries no warming switch/, `${harness} subagent one-shot`);

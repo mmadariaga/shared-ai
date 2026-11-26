@@ -48,7 +48,7 @@ This subagent runs on a commodity model. Its tier is controlled by the `model` f
 Fetch `@sai/policies/cache-warming.md`
 Fetch `@sai/policies/worker-lifecycle.md`
 
-A coordinator keeps one live explorer for its whole run and reuses it for its sequential searches, each later search being a continuation on the same handle; parallel searches start additional explorers. Its task message and every continuation end with the warming switch of `@sai/policies/cache-warming.md`, because its coordinator disposes it: the explorer arms after each result and stays warm between searches until then. The coordinator disposes the explorer as `@sai/policies/worker-lifecycle.md` says: not between searches, and at the route end, on abandon or stop, and at run close, whatever its `warming` diagnostic.
+A coordinator keeps one live explorer for its whole run and reuses it for its sequential searches, each later search being a continuation on the same handle; parallel searches start additional explorers. The warming switch of `@sai/policies/cache-warming.md` § The switch is added to the task message and every continuation only by a dispatcher that disposes the explorer (a coordinator or the `/sai-explore` main session): the explorer then arms after each result and stays warm between searches until it is disposed. The disposing dispatcher disposes the explorer as `@sai/policies/worker-lifecycle.md` says: not between searches, and at the route start or end, on abandon or stop, and at run close, whatever its `warming` diagnostic.
 
 ## Tool-call ceiling
 
