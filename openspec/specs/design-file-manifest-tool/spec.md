@@ -122,12 +122,12 @@ It SHALL fail the same way when `tasks.md` has no `## Step N` section and neithe
 
 ### Requirement: The tool is resolved and projected like every sai tool
 
-`sai/tools/file-manifest.js` SHALL be located through `sai/policies/tool-resolution.md` on both Claude Code and opencode and invoked as `node <tool-path> <fold|verify> <change-name> --json --cwd <project-root>`. `sai/policies/tool-resolution.md` SHALL list the tool name and this invocation form. The existing `sai-tools` projection SHALL install the tool for both harnesses without a per-tool `sai/install-manifest.json` entry.
+`sai/tools/file-manifest.js` SHALL be located through `sai/policies/tool-resolution.md` on both Claude Code and opencode and invoked as `node <tool-path> <fold|verify> <change-name> --json --cwd <project-root>`. `sai/policies/tool-resolution.md` SHALL list the tool name and SHALL leave this invocation form to the tool's `--help` and the cards that run it. The existing `sai-tools` projection SHALL install the tool for both harnesses without a per-tool `sai/install-manifest.json` entry.
 
 #### Scenario: the tool resolves from either harness root
 
 - **WHEN** a design step needs `file-manifest.js` on Claude Code or opencode
-- **THEN** it uses the copy the fetch tool returns in path mode for the subpath `sai/tools/file-manifest.js`, as `sai/policies/tool-resolution.md` states, and invokes it in the listed form
+- **THEN** it uses the copy the fetch tool returns in path mode for the subpath `sai/tools/file-manifest.js`, as `sai/policies/tool-resolution.md` states, and invokes it in the form above
 
 #### Scenario: projection needs no new manifest entry
 

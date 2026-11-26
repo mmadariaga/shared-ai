@@ -219,11 +219,11 @@ After a `written` outcome, the coordinator SHALL check the path with `git check-
 
 ### Requirement: The tool resolution policy lists the collector
 
-`sai/policies/tool-resolution.md` SHALL list `change-telemetry.js` among the resolvable tool names and SHALL give its `collect` invocation with the `sai-plan`, `sai-build`, `sai-explore-plan`, and `sai-explore-direct-build` commands.
+`sai/policies/tool-resolution.md` SHALL list `change-telemetry.js` among the resolvable tool names and SHALL state what it prints: one JSON line, `written` or `skipped`, with no `--json` flag and exit 2 only for a usage error. It SHALL NOT carry the collector's `collect` invocation form, which comes from the tool's `--help` and from the cards that run it with the `sai-plan`, `sai-build`, `sai-explore-plan`, and `sai-explore-direct-build` commands.
 
 #### Scenario: the collector invocation is documented
 - **WHEN** `sai/policies/tool-resolution.md` is read
-- **THEN** it names `change-telemetry.js` and its `collect --harness` invocation
+- **THEN** it names `change-telemetry.js` and states that it always prints one JSON line (`written` or `skipped`), and it carries no `collect --harness` invocation form
 
 ### Requirement: The /sai-explore in-session routes record one telemetry section per slice
 
@@ -351,7 +351,7 @@ When a listed session is not a root session in the local data of its harness (`o
 
 ### Requirement: The collector resolves the explore root session of a subagent
 
-`sai/tools/change-telemetry.js` SHALL offer the sub-command `explore-origin --harness <claude|opencode> --session <sessionID>`. On opencode it SHALL resolve the root session of the given session through `opencodeRoot` and print `{"outcome": "found", "session": <root sessionID>}` only when that root holds a `/sai-explore` invocation; otherwise, and with an unreadable database, it SHALL print `{"outcome": "skipped", "reason": ...}` and exit 0. On Claude Code it SHALL print `{"outcome": "found", "session": <sessionID>}` with the given session itself only when that session is a root session of the project's Claude Code transcripts and holds a `/sai-explore` invocation; otherwise, and with an unreadable transcript folder, it SHALL print `{"outcome": "skipped", "reason": ...}` and exit 0. A missing session, an opencode session that does not match `ses_...`, or a Claude Code session that is not a UUID SHALL be a usage error that exits 2. `sai/policies/tool-resolution.md` SHALL document this invocation beside `collect`.
+`sai/tools/change-telemetry.js` SHALL offer the sub-command `explore-origin --harness <claude|opencode> --session <sessionID>`. On opencode it SHALL resolve the root session of the given session through `opencodeRoot` and print `{"outcome": "found", "session": <root sessionID>}` only when that root holds a `/sai-explore` invocation; otherwise, and with an unreadable database, it SHALL print `{"outcome": "skipped", "reason": ...}` and exit 0. On Claude Code it SHALL print `{"outcome": "found", "session": <sessionID>}` with the given session itself only when that session is a root session of the project's Claude Code transcripts and holds a `/sai-explore` invocation; otherwise, and with an unreadable transcript folder, it SHALL print `{"outcome": "skipped", "reason": ...}` and exit 0. A missing session, an opencode session that does not match `ses_...`, or a Claude Code session that is not a UUID SHALL be a usage error that exits 2. `sai/policies/tool-resolution.md` SHALL state what `explore-origin` prints beside what `collect` prints, and `sai/policies/change-telemetry.md` SHALL carry its invocation form.
 
 #### Scenario: a subagent of an explore session
 - **WHEN** `explore-origin --harness opencode --session <explorer sessionID>` runs for an explorer dispatched by a `/sai-explore` root session

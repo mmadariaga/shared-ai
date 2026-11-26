@@ -61,17 +61,36 @@ These forms SHALL preserve existing per-harness copy resolution and one-JSON-obj
 
 ### Requirement: Decision-record inventory invocation form
 
-Shared tool-resolution instructions SHALL declare the `decision-records.js` invocation as `node <tool-path> inventory --family <adr|ddr> --json --cwd <project-root>`, printing one JSON object with `index_exists`, `records`, `next_number`, and `duplicates` read from `docs/<family>/` and its `archive/` on disk. The form SHALL be the same for Claude Code and opencode apart from the resolved tool path.
+Shared tool-resolution instructions SHALL declare that `decision-records.js` always prints one JSON object with `index_exists`, `records`, `next_number`, and `duplicates`, read from `docs/<family>/` and its `archive/` on disk, and SHALL leave its invocation form to the tool's `--help` and the consuming card. The invocation SHALL be the same for Claude Code and opencode apart from the resolved tool path.
 
 #### Scenario: Both harnesses invoke the inventory
 
 - **WHEN** Claude Code or opencode resolves the installed `decision-records.js` copy
-- **THEN** it invokes the same `inventory --family <adr|ddr> --json --cwd <project-root>` form apart from the resolved tool path
+- **THEN** it invokes the same form, given by the consuming card or `inventory --help`, apart from the resolved tool path, and reads the one JSON object the policy describes
 
 ### Requirement: Risk-signals invocation form
 
-Shared tool-resolution instructions SHALL declare the `risk-signals.js` invocation as `node <tool-path> compute --parent <branch> [--cwd <project-root>]`, printing one JSON object with `status: ok` and the merge-base, fingerprint, and floors, or `status: blocked` with a `message`. The form SHALL be the same for Claude Code and opencode apart from the resolved tool path.
+Shared tool-resolution instructions SHALL declare that `risk-signals.js` always prints one JSON object: `status: ok` with the merge-base, fingerprint, and floors, or with the stored block's `state`; or `status: blocked` with a `message`. They SHALL leave its invocation form to the tool's `--help` and the consuming card. The invocation SHALL be the same for Claude Code and opencode apart from the resolved tool path.
 
 #### Scenario: Both harnesses invoke the risk signals
 - **WHEN** Claude Code or opencode resolves the installed `risk-signals.js` copy
-- **THEN** it invokes the same `compute --parent <branch> [--cwd <project-root>]` form apart from the resolved tool path
+- **THEN** it invokes the same form, given by the consuming card or `compute --help`, apart from the resolved tool path, and reads the one JSON object the policy describes
+
+### Requirement: Tool help is the source of invocation forms
+
+The shared tool-resolution policy SHALL name `node <tool-path> <subcommand> --help` (`node <tool-path> --help` for a tool without subcommands) as the source of a tool's invocation form, to be run when an agent is unsure of the form of a call or a call ends with a usage error, and SHALL NOT keep a catalog of per-tool invocation forms. `to-pr.js`, `to-backlog.js`, and `from-backlog.js` SHALL remain called as their owning universal skill defines. The policy SHALL keep what `--help` does not carry: the meaning of each tool's verdicts, printed fields, and exit codes, the structured-input `--input-file` rule, the `root: project` and `root: global` rule, and what to do when a tool does not resolve. Command cards and other policies SHALL keep their own exact invocation lines. The rule SHALL apply identically on Claude Code and opencode.
+
+#### Scenario: Agent unsure of an invocation form
+
+- **WHEN** an agent on Claude Code or opencode is unsure of the form of a resolved tool's call, or the call ends with a usage error
+- **THEN** it runs the tool's `--help` for that subcommand and uses the usage and examples it prints, not a form restated in the tool-resolution policy
+
+#### Scenario: Policy keeps result meanings
+
+- **WHEN** an agent reads the tool-resolution policy to interpret a tool's output
+- **THEN** the policy states the verdicts, printed fields, and exit codes of that tool and carries no catalog of invocation forms
+
+#### Scenario: Call sites keep their invocation lines
+
+- **WHEN** a command card or another policy runs a tool
+- **THEN** it keeps its exact invocation line at the point of use and does not defer to `--help`

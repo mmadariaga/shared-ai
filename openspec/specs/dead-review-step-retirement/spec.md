@@ -23,5 +23,5 @@ The manifest SHALL retain sai-class retirement records for both harnesses for to
 
 #### Scenario: no live surface resolves the retired tool
 
-- **WHEN** the tool-resolution policy's per-tool invocation list is read
+- **WHEN** the tool-resolution policy is read
 - **THEN** it names no `validate-findings.js` entry

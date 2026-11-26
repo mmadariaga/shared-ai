@@ -78,78 +78,50 @@ Whichever root answers, the invocation keeps one form within one harness, so
 the installed permission rules cover it: a rule per root exists for the
 project-local form, the `~` form, and the absolute form of this install. Keep each
 tool's own accepted flag set; do not change invocation semantics beyond path
-resolution. `<name>` below is the filename placeholder of the subpaths
-above; `<change-name>` is the separate CLI positional argument where a tool
-takes one — never substitute one for the other.
+resolution.
 
-- `commit.js`: `node <tool-path> <subcommand> --json --cwd <project-root>`
-  plus the sub-command's required flags; `apply` takes the message as
-  `--input-file <path>`.
-- `to-pr.js`, `to-backlog.js`, `from-backlog.js`: the owning universal skill
-  defines the invocation.
-- `file-manifest.js`: `node <tool-path> <fold|verify> <change-name> --json
-  --cwd <project-root>`.
-- `check-delta-headers.js`: `node <tool-path> <change-name> [--json]
-  [--root <dir>] [--delta-dir <dir>] [--specs-dir <dir>]`; it takes no `--cwd`.
-- `scenario-coverage.js`: `node <tool-path> step --input-file <path> [--parent-branch
-  <branch>] --cwd <project-root>` (the input file holds a JSON list of scenario
-  titles) or `node <tool-path> change <change-name> [--parent-branch <branch>]
-  --cwd <project-root>`; `--parent-branch` names the branch the change base is
-  taken against, and a branch that does not resolve is an error. It prints one JSON
-  object (`verdict` `clean`, `missing`, or `n/a`, plus `missing`, `ambiguous`,
-  `parent_branch`, and `change_base`) and exits 0 for `clean` or `n/a`, 1 for
-  `missing`, and 2 for a usage or I/O error.
-- `test-select.js`: `node <tool-path> select --input-file <path> [--base <sha>]
-  [--timeout-ms <n>] --cwd <project-root>` (the input file holds a JSON list of the files a
-  step changed), `node <tool-path> swap --record <path> --dirty-baseline <path>
-  [--parent-branch <branch>] --cwd <project-root>`, or `node <tool-path> restore
-  --record <path> --cwd <project-root>`. `select` prints `verdict` (`selected`
-  or `full`), `tests`, and `reason` (null, or `no-binary`, `no-index`,
-  `sync-failed`, `stale-index`, `unindexed-file`, `no-dependents`,
-  `deleted-file`, `base-index-failed`, `codegraph-error`, `timeout`, `invalid-output`); `swap` and `restore` print `verdict` `swapped`, `refused`,
-  `restored`, `clean`, or `failed`. Exit 0 is any verdict but `refused` and
-  `failed` (1); 2 is a usage or I/O error.
-- `validate-backfill-drafts.js`: `node <tool-path> validate --harness
-  <claude|opencode> --cwd <project-root>` or `node <tool-path> check --cwd
-  <project-root> --fingerprint <hash>`, with the complete reference set in
-  `--input-file <path>`, per `@sai/policies/backfill-draft-validation.md`.
-- `backfill-no-specs.js`: `node <tool-path> compose --document-file <path>
-  --document-hash <sha256> --change-name <name> --transfer-dir <dir> [--cwd
-  <project-root>]`, adding `--backlog-origin <url>` or `--explore-origin <value>`
-  only to carry an existing origin; it prints one JSON object. The `order`
-  sub-command of `validate-backfill-drafts.js` takes `--target backfill|archive`
-  and the same `--input-file`, and prints the order text.
-- `worker-report-validator.js`: `node <tool-path> validate --kind <terminal|progress>
-  [--command <command>] --input-file <path>` with the payload in the input file (plus `--json --cwd`
-  where the tool accepts them); a terminal payload needs `--command`, a progress one takes none. A worker report that travels as a report reference uses `--kind terminal
-  --command <command> --report-dir <authorized-dir> --report-file <path>
-  --report-hash <sha256> --json` instead of the input file, per
-  `@sai/policies/worker-report-transport.md`.
-- `risk-signals.js`: `node <tool-path> compute --parent <branch> [--cwd
-  <project-root>]`, and `node <tool-path> validate --parent <branch> --file
-  <review.md> [--cwd <project-root>]`. It always prints one JSON object
-  (`status: ok` with the merge-base, fingerprint, and floors, or with the stored
-  block's `state`; or `status: blocked` with a `message`).
-- `change-document.js`: `node <tool-path> check --document-file <path>`, adding `--verdicts-file <path>` when judgment verdicts exist and `--slice` for a member of a slice set; `check-set` with one `--document-file <path>` per document; `verify-file --document-file <path> --document-hash <sha256>`; `hash --document-file <path>`; `split --document-file <path> [--document-hash <sha256>]` for the title line and the description of a publication; `compare --stored-file <path> --document-file <path>`; `sections [--origin <issue-url>] --input-file <path>` for an issue description; `set-origin --document-file <path> --origin <issue-url> --harness <claude|opencode>`; and `attach-origin --harness <claude|opencode> --input-file <path>` with the JSON `{document_files: [{document_file, hash}], correspondence}` in the input file. It always prints one JSON verdict and takes no `--cwd`.
-- `change-telemetry.js`: `node <tool-path> collect --harness <claude|opencode> --command <sai-plan|sai-build|sai-explore-plan|sai-explore-direct-build> --change <change-name> --cwd <project-root> --status <status> [--run-dir <dir>]`, per `@sai/policies/change-telemetry.md`. It always prints one JSON line (`written` or `skipped`), takes no `--json`, and exits 2 only for a usage error. `node <tool-path> explore-origin --harness <claude|opencode> --session <sessionID>` prints `{"outcome": "found", "session": <explore root session>}` or `{"outcome": "skipped", "reason": ...}` under the same rules.
-- `decision-records.js`: `node <tool-path> inventory --family <adr|ddr> --json
-  --cwd <project-root>`. It always prints one JSON object with `index_exists`,
-  `records`, `next_number`, and `duplicates`, read from `docs/<family>/` and
-  its `archive/` on disk.
-- `tool-access.js`: `node <tool-path> <verify|notices> --input-file <path>` with the JSON in the input file;
-  `verify` takes `{required, evidence}`, `notices` takes `{ladder_discards}`.
-  It prints JSON and takes neither `--json` nor `--cwd`.
-- `bin/sai-state.js` verbs (`spawn`, `emit`, `reset`, `close`): `node
-  <tool-path> <verb> ...` with the verb's own arguments; they take neither
-  `--json` nor `--cwd`. An identifier-event emit is built from flags
-  (`emit <id> <machineId> --set <field>=<id> [--add <field>=<id> ...]
-  [--set-path <field>="<path>"]`); `--input-file <path>` carries an event that
-  holds free text or a path the flags reject. The progress emit (`emit <id> <machineId> --progress
-  --report-dir <dir> --report-file <path> --report-hash <sha256>`, or
-  `--progress --input-file <path>`) loads the validator module
-  itself, relative to the resolved `sai-state.js`, so it needs no separate
-  `worker-report-validator.js` resolution and stays byte-identical whichever
-  `sai-state.js` copy the fetch tool returns.
+**The invocation form comes from the tool.** When you are unsure of the form of a
+call, or a call ends with a usage error, run `node <tool-path> <subcommand> --help`
+(`node <tool-path> --help` for a tool without subcommands) and use the usage and
+examples it prints. `to-pr.js`, `to-backlog.js`, and `from-backlog.js` are called
+as their owning universal skill defines. This file keeps only what `--help` does
+not carry: what a result means.
+
+## Results
+
+- `scenario-coverage.js` prints one JSON object whose `verdict` is `clean`,
+  `missing`, or `n/a`, with `missing`, `ambiguous`, `parent_branch`, and
+  `change_base`. Exit 0 is `clean` or `n/a`, 1 is `missing`, and 2 is a usage or
+  I/O error. `--parent-branch` names the branch the change base is taken against,
+  and a branch that does not resolve is an error.
+- `test-select.js` `select` prints `verdict` (`selected` or `full`), `tests`, and
+  `reason` (null, or `no-binary`, `no-index`, `sync-failed`, `stale-index`,
+  `unindexed-file`, `no-dependents`, `deleted-file`, `base-index-failed`,
+  `codegraph-error`, `timeout`, `invalid-output`); `swap` and `restore` print
+  `verdict` `swapped`, `refused`, `restored`, `clean`, or `failed`. Exit 0 is any
+  verdict but `refused` and `failed` (1); 2 is a usage or I/O error.
+- `risk-signals.js` always prints one JSON object: `status: ok` with the
+  merge-base, fingerprint, and floors, or with the stored block's `state`; or
+  `status: blocked` with a `message`.
+- `change-document.js` always prints one JSON verdict and takes no `--cwd`.
+- `change-telemetry.js` always prints one JSON line (`written` or `skipped`),
+  takes no `--json`, and exits 2 only for a usage error. `explore-origin` prints
+  `{"outcome": "found", "session": <explore root session>}` or
+  `{"outcome": "skipped", "reason": ...}`.
+- `decision-records.js` always prints one JSON object with `index_exists`,
+  `records`, `next_number`, and `duplicates`, read from `docs/<family>/` and its
+  `archive/` on disk.
+- `backfill-no-specs.js` `compose` prints one JSON object.
+- `check-delta-headers.js` takes no `--cwd`. `tool-access.js` and the `bin/sai-state.js`
+  verbs (`spawn`, `emit`, `reset`, `close`) take neither `--json` nor `--cwd`;
+  `tool-access.js` prints JSON.
+- `bin/sai-state.js` `emit` builds an identifier event from flags; `--input-file
+  <path>` carries an event that holds free text or a path the flags reject. The
+  progress emit loads the validator module itself, relative to the resolved
+  `sai-state.js`, so it needs no separate `worker-report-validator.js` resolution
+  and stays byte-identical whichever `sai-state.js` copy the fetch tool returns.
+
+## When a tool does not resolve
 
 If the fetch tool resolves no copy, say so — name the paths its error block lists — and stop, unless the consuming instruction explicitly declares that its gate is optional when the tool is missing. That exception skips only the named gate; it never substitutes a prose check. A missing validator never
 skips validation: resolve `worker-report-validator.js` on every turn that runs
