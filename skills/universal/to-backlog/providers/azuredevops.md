@@ -85,6 +85,13 @@ Only agreed immediate dependencies receive Predecessor links. On an established
 native relation failure, the common explicitly approved written fallback is
 available; already-created native links stay intact and are disclosed.
 Read-only `lookup-slice` requires project, explicit type and change name.
+Each Azure call is a separate process, so a set publication takes minutes: run
+`publish-set` and `continue-set` in the background with no shell timeout (Claude
+Code `Bash` with `run_in_background: true`, opencode shell with `background: true`),
+follow the progress lines on stderr in the output log, and never interrupt them;
+after an interruption `recover-set` runs first. A creation reads the IDs of one
+query, and `recover-set` and `lookup-slice` read only the new or matching work
+items, so their cost grows with the set, not with the project.
 
 Implementation-start assignment follows `sai/policies/backlog-implementation-start.md`.
 The separate assignment operations use the selected child's complete URL and

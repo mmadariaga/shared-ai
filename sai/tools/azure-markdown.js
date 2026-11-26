@@ -68,7 +68,7 @@ function decodeEntities(text) {
   });
 }
 const COUNTERS_LINE = /^<!-- backlog-id-counters: E=\d+ I=\d+ Q=\d+ -->$/;
-const RAW_HTML = /<\/?[a-zA-Z][a-zA-Z0-9-]*(?:\s[^<>]*)?\/?>|<!--|<![a-zA-Z]|<\?/;
+const RAW_HTML = /<\/?\p{L}[\p{L}0-9-]*(?:\s[^<>]*)?\/?>|<!--|<![a-zA-Z]|<\?/u;
 // Blank fenced code blocks and code spans, keeping every newline so a line number still points at the source line.
 function setAsideCode(text, keepCounters) {
   let fence = null;

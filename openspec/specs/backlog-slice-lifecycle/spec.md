@@ -599,3 +599,26 @@ Every reader of a SAI marker's `slices` array SHALL check its shape through one 
 
 - **WHEN** a hierarchical import reads an issue whose SAI marker has no usable `slices` array
 - **THEN** the import returns status `incomplete` with a message naming that issue.
+
+### Requirement: Continuation approval errors name the confirmation field
+
+When `continue-set` receives no verified continuation token, or a token that differs from the verified `continuation`, GitHub, GitLab, and Azure DevOps SHALL reject the continuation with an error that tells the caller to pass the continuation token in the `confirmation` field. The approval check itself SHALL stay unchanged.
+
+#### Scenario: A wrong token is rejected naming its field
+
+- **WHEN** `continue-set` runs on a receipt with pending operations and a `confirmation` value that does not match the verified continuation
+- **THEN** the continuation is rejected without remote writes and the error names the `confirmation` field.
+
+### Requirement: Set publication runs in the background and is never interrupted
+
+The `to-backlog` skill SHALL state, for Claude Code and opencode alike, that `publish-set` and `continue-set` run in the background with no shell timeout (Claude Code `Bash` with `run_in_background: true`, opencode shell with `background: true`) with their output sent to a log file, that the result is the final JSON object on stdout, that the progress of a provider that reports its steps (Azure DevOps; GitHub and GitLab report none) is read from its stderr progress lines in that log, that a run is never interrupted or ended by a timeout of the caller's own, and that after an interruption `recover-set` runs first with the saved receipt before any other call.
+
+#### Scenario: An agent starts a set publication
+
+- **WHEN** an agent follows the `to-backlog` skill to run `publish-set` or `continue-set`
+- **THEN** it runs the command in the background with no shell timeout and reads the result from the final JSON object of the log.
+
+#### Scenario: A publication was interrupted
+
+- **WHEN** a set publication ended before its final JSON object was written
+- **THEN** the skill directs `recover-set` with the saved receipt before any other call.

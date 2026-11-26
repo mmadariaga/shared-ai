@@ -26,6 +26,7 @@ function fixture(platform) {
   function show(number) {
     if (state.failRead === number) throw new Error('injected missing full child read');
     const row = state.rows[number - 1];
+    if (state.gone?.has(number)) throw new Error(`HTTP status 404: work item ${number} not found`);
     if (!row) throw new Error('missing item');
     return row;
   }
@@ -110,7 +111,13 @@ function fixture(platform) {
     const resource = args[args.indexOf('--resource') + 1];
     if (resource === 'projects') return JSON.stringify({ id: 'project-id', name: 'Project', visibility: 'private' });
     if (resource === 'workitemtypes') return JSON.stringify({ name: 'Task' });
-    if (resource === 'wiql') return JSON.stringify({ workItems: state.rows.map(row => ({ id: row.id })) });
+    if (resource === 'wiql') {
+      // The query travels in a payload file; a description filter narrows the rows like Azure does.
+      const query = JSON.parse(fs.readFileSync(args[args.indexOf('--in-file') + 1], 'utf8')).query, name = /CONTAINS '([^']*)'/.exec(query)?.[1];
+      (state.queries ||= []).push(query);
+      if (name && state.refuseFilter) throw new Error('HTTP status 400: TF51005 the query is not supported');
+      return JSON.stringify({ workItems: state.rows.filter(row => !name || (row.fields['System.Description'] || '').includes(name)).map(row => ({ id: row.id })) });
+    }
     if (resource === 'comments') {
       const token = args.find(arg => arg.startsWith('continuationToken='));
       const offset = token ? Number(token.split('=')[1]) : 0, count = Math.min(100, Math.max(0, state.comments - offset));
@@ -802,3 +809,71 @@ for (const platform of ['gitlab', 'azuredevops']) {
     assert.notEqual(updateOn.confirmation, updateOff.confirmation);
   });
 }
+
+// Azure set publication, recovery and lookup cost a number of calls that grows with the set, not with the project.
+const workItemReads = f => f.state.calls.filter(call => call.command === 'azure-sdk').map(call => JSON.parse(call.input))
+  .filter(request => request.client === 'wit' && request.method === 'GET' && request.route.id !== undefined).map(request => request.route.id);
+const BYSTANDERS = 30;
+function crowded() {
+  const f = fixture('azuredevops');
+  for (let i = 0; i < BYSTANDERS; i++) f.create(`Other ${i}`, `Unrelated ${i}`);
+  const lines = [];
+  return { f, io: { ...f.io, progress: line => lines.push(line) }, lines };
+}
+function privateDirectory(t, name) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), name)); fs.chmodSync(directory, 0o700);
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  return directory;
+}
+test('azuredevops: publication reads no existing work item and reports each step through io.progress without content', async t => {
+  const { f, io, lines } = crowded(), file = path.join(privateDirectory(t, 'sai-provider-calls-'), 'receipt.json');
+  const ready = await f.adapter['query-set'](f.request, io);
+  const result = await f.adapter['publish-set']({ ...f.request, receipt: file, confirmation: ready.confirmation }, io);
+  assert.equal(result.status, 'complete', JSON.stringify(result));
+  assert.ok(workItemReads(f).every(id => id > BYSTANDERS), 'no work item of the project is read to build a baseline');
+  assert.equal(f.state.queries.length, 3, 'one ID query per creation');
+  assert.deepEqual([...new Set(lines.map(line => line.step))].sort(), ['create', 'ids', 'read', 'references', 'relation']);
+  assert.ok(lines.every(line => Object.keys(line).every(key => ['step', 'index', 'number', 'ms'].includes(key)) && Number.isFinite(line.ms)));
+  assert.equal(lines.filter(line => line.step === 'ids').length, 3);
+  // The baseline keeps its format: the list of IDs.
+  assert.ok(JSON.parse(fs.readFileSync(file)).items.every(item => Array.isArray(item.baseline) && item.baseline.length >= BYSTANDERS));
+});
+test('azuredevops: recovery reads only the new IDs and skips one that vanished', async t => {
+  const { f, io } = crowded(); f.state.lost = true;
+  const file = path.join(privateDirectory(t, 'sai-provider-recover-'), 'receipt.json'), ready = await f.adapter['query-set'](f.request, io);
+  assert.equal((await f.adapter['publish-set']({ ...f.request, receipt: file, confirmation: ready.confirmation }, io)).status, 'partial_failure');
+  const created = BYSTANDERS + 1;
+  assert.equal(f.state.rows.length, created);
+  f.state.calls.length = 0;
+  assert.equal((await f.adapter['recover-set']({ receipt: file }, io)).candidates.length, 1);
+  assert.deepEqual([...new Set(workItemReads(f))], [created], 'only the new ID is read');
+  f.state.gone = new Set([created]);
+  assert.deepEqual((await f.adapter['recover-set']({ receipt: file }, io)).candidates, [{ index: 0, issues: [] }]);
+});
+test('azuredevops: lookup-slice reads only the matching Tasks and the parent, and falls back to the full read when the filter is refused', async t => {
+  const { f, io, lines } = crowded(), file = path.join(privateDirectory(t, 'sai-provider-lookup-'), 'receipt.json');
+  const ready = await f.adapter['query-set'](f.request, io);
+  assert.equal((await f.adapter['publish-set']({ ...f.request, receipt: file, confirmation: ready.confirmation }, io)).status, 'complete');
+  f.state.calls.length = 0; f.state.queries.length = 0;
+  assert.equal((await f.adapter['lookup-slice']({ ...f.request, change_name: 'dependent' }, io)).issue, await f.url(BYSTANDERS + 3));
+  assert.match(f.state.queries[0], /\[System\.Description\] CONTAINS 'dependent'/);
+  assert.ok(workItemReads(f).every(id => id > BYSTANDERS), 'no bystander is read');
+  assert.equal((await f.adapter['lookup-slice']({ ...f.request, change_name: 'nothing-here' }, io)).reason, 'slice-identity-ambiguous');
+  f.state.refuseFilter = true; f.state.calls.length = 0;
+  assert.equal((await f.adapter['lookup-slice']({ ...f.request, change_name: 'dependent' }, io)).issue, await f.url(BYSTANDERS + 3));
+  assert.ok(lines.some(line => line.step === 'lookup-fallback'));
+  assert.ok(workItemReads(f).some(id => id <= BYSTANDERS), 'the fallback reads the full inventory');
+});
+for (const platform of ['gitlab', 'azuredevops']) {
+  test(`${platform}: a continue-set approval error names the confirmation field`, async t => {
+    const f = fixture(platform); f.state.failRelation = true;
+    const { file } = await publish(t, f);
+    await assert.rejects(async () => await f.adapter['continue-set']({ receipt: file, confirmation: 'wrong' }, f.io), /`confirmation` field/);
+  });
+}
+test('gitlab: publication emits no progress lines', async t => {
+  const f = fixture('gitlab'), lines = [];
+  const { result } = await publish(t, { ...f, io: { ...f.io, progress: line => lines.push(line) } });
+  assert.equal(result.status, 'complete');
+  assert.deepEqual(lines, []);
+});

@@ -148,6 +148,11 @@ function withAutoApprove(io, cwd) {
   return { ...io, autoApprove: projectSettings.autoApprove({ cwd }) };
 }
 
+// One stderr line per remote step: the step, the item index, the work item number and the elapsed time, never content or tokens.
+function progress({ step, index, number, ms }) {
+  process.stderr.write(`to-backlog: ${step}${index === undefined ? '' : ` item=${index}`}${number === undefined ? '' : ` number=${number}`} elapsed=${ms}ms\n`);
+}
+
 async function main(rawArgv) {
   const guarded = usageKit.handle(USAGE, rawArgv, {
     json: info => (info.help ? { usage: info.usage, examples: info.examples }
@@ -165,7 +170,7 @@ async function main(rawArgv) {
     const request = normalizeRequestText(readRequest(readInput(inputFile)));
     const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
     const cwd = process.cwd();
-    const io = { run: async (command, args, input) => await run(command, args, cwd, input) };
+    const io = { run: async (command, args, input) => await run(command, args, cwd, input), progress };
     let result;
     if (operation === 'resolve-origin') {
       const candidates = request.provider ? registry.providers.filter(entry => entry.id === request.provider)

@@ -192,10 +192,11 @@ async function queryUpdate(request, io, rendered = false) {
   if (proposal.title === current.baseline.title && equivalent(proposal.description, current.baseline.description, current.format) && (!plan || !pendingPlanning(plan, plan.baseline).length)) return { status: 'no_changes', issue: current.issue };
   return { status: 'ready', proposal, confirmation: digest(proposal) };
 }
-async function list(proposal, io) {
+// The IDs of the work items of the configured type; `filter` is an extra WIQL condition (`AND ...`) that narrows the query in Azure.
+async function list(proposal, io, filter = '') {
   const quote = value => value.replace(/'/g, "''");
   const result = await azure.api(proposal, 'wit', 'wiql', { project: proposal.project }, io, 'POST', {
-    query: `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = '${quote(proposal.project)}' AND [System.WorkItemType] = '${quote(proposal.type)}' ORDER BY [System.Id]`
+    query: `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = '${quote(proposal.project)}' AND [System.WorkItemType] = '${quote(proposal.type)}'${filter} ORDER BY [System.Id]`
   }, { '$top': 20000 });
   if (!Array.isArray(result.workItems) || result.workItems.length >= 20000) throw new Error('Boards recovery inventory incomplete or exceeds supported query limit');
   const ids = result.workItems.map(row => row.id);
@@ -301,7 +302,31 @@ async function relationRow(p, item, io) {
 async function hasRelation(p, item, other, kind, io) {
   return ((await relationRow(p, item, io)).relations || []).some(link => link.rel === relationType(kind) && azure.equal(link.url, relationURL(p, other)));
 }
+const NOT_FOUND = /(?:HTTP(?: status)?|StatusCode|status code)\s*[:=]?\s*404\b/i;
+// A work item that disappears between a query and its read is not a candidate.
+async function readExisting(p, number, io) {
+  try { return await setRead(p, { number }, io); } catch (error) { if (NOT_FOUND.test(error.message)) return null; throw error; }
+}
+async function readAll(p, ids, io) {
+  const rows = [];
+  for (const number of ids) { const row = await readExisting(p, number, io); if (row) rows.push(row); }
+  return rows;
+}
+const inventory = async (p, io) => await readAll(p, await list(p, io), io);
 const set = require('./backlog-provider-set').bind('azuredevops', {
+  progress: true,
+  // The baseline of a creation is the ID list of one query; recovery reads only the IDs that are new against it.
+  ids: list,
+  inventorySince: async (p, baseline, io) => await readAll(p, (await list(p, io)).filter(id => !baseline.includes(id)), io),
+  // The slice lookup asks Azure for the Tasks whose description names the change; an organization that refuses the filter gets the full read.
+  sliceCandidates: async (p, changeName, io) => {
+    const start = Date.now();
+    let ids;
+    try { ids = await list(p, io, ` AND [System.Description] CONTAINS '${changeName}'`); }
+    catch { io.progress?.({ step: 'lookup-fallback', ms: Date.now() - start }); return await inventory(p, io); }
+    return await readAll(p, ids, io);
+  },
+  readByUrl: async (p, url, io) => { const number = /\/_workitems\/edit\/(\d+)$/.exec(url)?.[1]; return number ? await readExisting(p, Number(number), io) : undefined; },
   query: async (request, io) => await query(request, io, request.description_format !== 'html'), equivalent,
   // The originating work item keeps its own format; every work item the set creates is Markdown.
   formatOf: (p, index) => index ? 'markdown' : p.format, origin: readOrigin, representation: { hierarchy: 'native', dependencies: 'native' },
@@ -309,7 +334,7 @@ const set = require('./backlog-provider-set').bind('azuredevops', {
   renderDocument: text => checkMarkdown(text),
   append: (description, links, value, format) => format === 'markdown' ? `${description}\n\n${links.join('\n')}\n${sliceIdentity.encodeMarkdown(value)}`
     : `${description}\n<p>${links.map(sliceIdentity.escape).join('<br>')}</p>\n${sliceIdentity.encodeHtml(value)}`,
-  inventory: async (p, io) => { const rows = []; for (const number of await list(p, io)) rows.push(await setRead(p, { number }, io)); return rows; }, read: setRead,
+  inventory, read: setRead,
   create: async (p, item, io) => {
     const row = await azure.api(p, 'wit', 'workitems', { project: p.project, type: p.type }, io, 'POST', [
       { op: 'add', path: '/fields/System.Title', value: item.title }, { op: 'add', path: '/fields/System.Description', value: item.description },

@@ -206,7 +206,7 @@ async function continueSet(request, io) {
   const verified = await recover(request, io);
   if (verified.candidates.length) return verified;
   if (verified.status === 'complete' && !request.fallback) return verified;
-  if (!verified.continuation || verified.continuation !== request.confirmation) throw new Error('Explicit approval of the verified pending operations is required');
+  if (!verified.continuation || verified.continuation !== request.confirmation) throw new Error('Explicit approval of the verified pending operations is required: pass the continuation token in the `confirmation` field');
   const { file, receipt } = await load(request);
   require('./backlog-publication-retry').authorize(request, receipt, file, save);
   if (request.fallback === 'written') {
