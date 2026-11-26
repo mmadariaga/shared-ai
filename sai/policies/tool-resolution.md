@@ -120,6 +120,7 @@ not carry: what a result means.
   progress emit loads the validator module itself, relative to the resolved
   `sai-state.js`, so it needs no separate `worker-report-validator.js` resolution
   and stays byte-identical whichever `sai-state.js` copy the fetch tool returns.
+  `transfer.js receive` does the same relative to the resolved `transfer.js`.
 
 ## When a tool does not resolve
 
@@ -127,7 +128,7 @@ If the fetch tool resolves no copy, say so — name the paths its error block li
 skips validation: resolve `worker-report-validator.js` on every turn that runs
 a separate `validate` call and stop the same way when unresolvable, never
 interpreting a worker report by reading it (`@sai/policies/worker-report-transport.md`); a progress
-emit loads the validator itself and, when it is missing, exits 2 naming the
+emit, and `transfer.js receive`, load the validator itself and, when it is missing, exit 2 naming the
 tried paths. A missing `sai-state.js` is a store failure: a card that declares
 its own store fallback (the goal-driven coordinators carry on from their static
 step order or `run-state.md`, because their store never gates the run) follows

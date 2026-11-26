@@ -23,10 +23,17 @@
  * `notice` that names the agent and the cause. Exit 0.
  *
  * `start` and `continue` run one turn and print `{ status, sessionID, text, tokens, cost, exit_code, error }`, with
- * `status` `ok` or `failed`. `sessionID` is the one of the first output event (the handle for later turns), `text` the
+ * `status` `ok`, `failed`, or `busy`. `sessionID` is the one of the first output event (the handle for later turns), `text` the
  * text of the turn's last message, and `tokens` the sum of its steps. A turn is `failed` on a non-zero exit, an `error`
- * event, or (for `start`) no `sessionID`. Exit 0 for `ok`, 1 for `failed`, 2 for a usage error.
+ * event, or (for `start`) no `sessionID`. Exit 0 for `ok`, 1 for `failed`, 2 for a usage error, 3 for `busy`.
  * The message reaches opencode exactly as the file holds it: the tool adds nothing to it.
+ *
+ * A `continue` holds a turn lock while its turn runs: the file `<SAI temp root>/opencode-turns/<sessionID>.lock` of the
+ * Claude Code SAI temp root, which holds the PID of the tool process and is removed when the turn ends (a signal that
+ * stops the tool included). A `continue` whose lock belongs to a live process is refused: it prints `{ status: 'busy', ... }`
+ * with the PID of the running turn, sends nothing to opencode, and exits 3. A lock whose process no longer exists is
+ * ignored and replaced. A temp root that cannot be resolved leaves the turn unguarded, since the guard never stops a run on
+ * its own failure. The lock covers the turns this tool runs; `start` has no session yet and takes none.
  *
  * Stopping the tool (SIGTERM, SIGINT, SIGHUP) stops its `opencode run` process too. On Windows those handlers never
  * run, because Windows ends a process without delivering a signal; there the dispose relies on Claude Code's
@@ -40,6 +47,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { extractInputFile, readInputFile, InputFileError } = require('./input-reader');
 const { resolveOpencode, SHIM_UNRESOLVED } = require('./opencode-launcher');
+const { resolveTempRoot } = require('./temp-root');
 const usageKit = require('./usage');
 
 const AGENT = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
@@ -65,7 +73,10 @@ const USAGE = {
     },
     continue: {
       usage: [`${OD} continue --session <sessionID> --input-file <path> [--agent <name>] [--cwd <project-root>]`],
-      notes: ['Runs one turn that sends the message of the input file to an existing session.'],
+      notes: [
+        'Runs one turn that sends the message of the input file to an existing session.',
+        'Refused with status `busy` and exit 3, sending nothing, while an earlier turn of the same session still runs.',
+      ],
       examples: [`${OD} continue --session ses_0123456789abcdef --input-file message.txt --cwd /path/to/project`],
       flags: { '--session': { once: true }, '--input-file': { once: true }, '--agent': { once: true }, '--cwd': { once: true } },
       required: ['--session', '--input-file'],
@@ -73,6 +84,11 @@ const USAGE = {
   },
 };
 const PROBE_TIMEOUT_MS = 20000;
+const TURN_LOCK_DIR = 'opencode-turns';
+const BUSY_EXIT = 3;
+const CLAIM_STALE_MS = 10000;
+const CLAIM_ATTEMPTS = 100;
+const CLAIM_WAIT_MS = 20;
 
 /** A misuse of the command line (exit 2). */
 class UsageError extends Error {}
@@ -255,6 +271,127 @@ async function turn({ agent, session, message, cwd }, run = defaultRun) {
   };
 }
 
+/** Whether a process with this PID exists; a process this user cannot signal still exists. */
+function processAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code === 'EPERM';
+  }
+}
+
+/** The PID a lock file holds, or `null` when it holds anything else. */
+function lockHolder(file) {
+  try {
+    const pid = Number(fs.readFileSync(file, 'utf8').trim());
+    return Number.isInteger(pid) && pid > 0 ? pid : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The directory of the turn locks under the Claude Code SAI temp root, created when missing; `null` when the root cannot be
+ * resolved (a missing harness root on Linux, an unsafe one), which leaves the turn unguarded.
+ */
+function turnLockDirectory() {
+  try {
+    const directory = path.join(resolveTempRoot('claude'), TURN_LOCK_DIR);
+    fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+    return directory;
+  } catch {
+    return null;
+  }
+}
+
+/** Block this process for `milliseconds` without spinning. */
+function sleepSync(milliseconds) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
+/**
+ * Take the replacement claim of a lock: an exclusive-create file that one contender at a time holds while it removes a
+ * stale lock. A claim older than CLAIM_STALE_MS belongs to a process that died inside that instant and is removed.
+ */
+function takeClaim(claim) {
+  try {
+    fs.closeSync(fs.openSync(claim, 'wx', 0o600));
+    return true;
+  } catch (error) {
+    if (error.code !== 'EEXIST') throw error;
+  }
+  try {
+    if (Date.now() - fs.statSync(claim).mtimeMs > CLAIM_STALE_MS) fs.unlinkSync(claim);
+  } catch { /* the claim was released first */ }
+  return false;
+}
+
+/**
+ * Take the turn lock of `session` in `directory`. The PID is written to a private file that is hard-linked to the lock
+ * name, so the lock never exists empty and two processes never both create it. A lock whose PID is gone is replaced, and
+ * only by the contender that holds the replacement claim, which removes the file only while it still holds the stale PID it
+ * read: no contender can remove a lock that another one linked in the meantime, so two contenders over one stale lock never
+ * both acquire it. `{ acquired: true, release }`, or `{ acquired: false, pid }` with the PID of the live holder.
+ */
+function acquireTurnLock(directory, session, { pid = process.pid, alive = processAlive } = {}) {
+  const file = path.join(directory, `${session}.lock`);
+  const claim = `${file}.claim`;
+  const draft = path.join(directory, `${session}.${pid}.${Date.now()}.tmp`);
+  fs.writeFileSync(draft, String(pid), { mode: 0o600 });
+  try {
+    for (let attempt = 0; attempt < CLAIM_ATTEMPTS; attempt += 1) {
+      try {
+        fs.linkSync(draft, file);
+        return { acquired: true, release: () => { if (lockHolder(file) === pid) try { fs.unlinkSync(file); } catch { /* already gone */ } } };
+      } catch (error) {
+        if (error.code !== 'EEXIST') throw error;
+      }
+      const holder = lockHolder(file);
+      if (holder !== null && alive(holder)) return { acquired: false, pid: holder };
+      if (!takeClaim(claim)) {
+        sleepSync(CLAIM_WAIT_MS);
+        continue;
+      }
+      try {
+        if (lockHolder(file) === holder) fs.unlinkSync(file);
+      } catch { /* the lock is already gone */ } finally {
+        try { fs.unlinkSync(claim); } catch { /* the claim is gone */ }
+      }
+    }
+    return { acquired: false, pid: lockHolder(file) };
+  } finally {
+    try { fs.unlinkSync(draft); } catch { /* the draft is gone */ }
+  }
+}
+
+/** The result of a `continue` that was refused because an earlier turn of its session still runs. */
+function busyResult(session, pid) {
+  return {
+    status: 'busy', sessionID: session, text: '', tokens: emptyTokens(), cost: 0, exit_code: null,
+    error: `the previous turn of session ${session} is still running${pid ? ` (process ${pid})` : ''}; nothing was sent`,
+    ...(pid ? { busy_pid: pid } : {}),
+  };
+}
+
+/**
+ * Run one turn under the turn lock of its session. A `start` has no session and runs unguarded. The lock is released when the
+ * turn ends, and on process exit, which the signal handlers of `defaultRun` reach through `process.exit`.
+ */
+async function guardedTurn(params, { run = defaultRun, lockDirectory = turnLockDirectory, alive = processAlive } = {}) {
+  const directory = params.session ? lockDirectory() : null;
+  if (directory === null) return turn(params, run);
+  const lock = acquireTurnLock(directory, params.session, { alive });
+  if (!lock.acquired) return busyResult(params.session, lock.pid);
+  process.once('exit', lock.release);
+  try {
+    return await turn(params, run);
+  } finally {
+    process.removeListener('exit', lock.release);
+    lock.release();
+  }
+}
+
 /** The command and its options: `{ command, agent, session, inputFile, cwd }`, or a `UsageError`. */
 function parseArguments(argv) {
   const { argv: rest, inputFile } = extractInputFile(argv);
@@ -297,13 +434,13 @@ async function main(argv) {
     process.stdout.write(`${JSON.stringify(route(options))}\n`);
     return 0;
   }
-  const result = await turn({ agent: options.agent, session: options.session, message, cwd: options.cwd });
+  const result = await guardedTurn({ agent: options.agent, session: options.session, message, cwd: options.cwd });
   process.stdout.write(`${JSON.stringify(result)}\n`);
-  return result.status === 'ok' ? 0 : 1;
+  return result.status === 'ok' ? 0 : result.status === 'busy' ? BUSY_EXIT : 1;
 }
 
 if (require.main === module) {
   main(process.argv.slice(2)).then(code => { process.exitCode = code; });
 }
 
-module.exports = { route, checkAgents, FALLBACK_CAUSES, turn, readEvents, runArguments, harnessOf, parseArguments, UsageError, USAGE };
+module.exports = { route, checkAgents, FALLBACK_CAUSES, turn, guardedTurn, acquireTurnLock, busyResult, BUSY_EXIT, readEvents, runArguments, harnessOf, parseArguments, UsageError, USAGE };

@@ -61,6 +61,25 @@
  *       watch starts, so a path untouched before the watch is not silent at once. When
  *       the walk of a listed path stopped at the limit, the result carries `walk_limited`,
  *       the list of those paths, so a `silent` end that may have missed activity is visible.
+ *   receive --dir <dir> --path <path> --sha256 <hex> --kind <terminal|progress> [--command <name>]
+ *           [--paths-file <paths>] [--cwd <root>]
+ *       Receive one worker report reference in one call: look it up in the ledger, validate a terminal
+ *       report (`worker-report-validator.js`, the closed shape of `--command`) from the bytes read once, and
+ *       record it in the ledger before the caller acts on it. Answers `already: true` for a reference
+ *       already in the ledger, validating and recording nothing. A progress report is verified and recorded
+ *       without validation (`sai-state emit --progress` validates it). An invalid report and a report whose
+ *       claimed hash differs from its bytes are recorded too, so the watch never offers them again; a
+ *       reference that names no file inside `<dir>` records nothing. The answer carries `outcome`
+ *       (`duplicate`, `accepted`, `recorded`, `report-invalid`, `delivery-failed`), the validator's
+ *       `validation` with the parsed `payload` of an accepted report, and `watch`, the command that watches
+ *       `<dir>` (`--paths-file` and `--cwd` fill its two placeholders). Exit 1 when the report is not usable.
+ *       `accept` stays for the budget agents, which have no validator.
+ *   status --dir <dir> --input-file <paths> [--cwd <root>] [--since <time>] [--handle <id>] [--role <name>]
+ *       One-shot activity query of a worker the caller waits on: the newest file created or changed in
+ *       `<dir>` or below the writable paths of `--input-file` (the measure of `watch`), the reports of
+ *       `<dir>` the ledger does not list, and the worker's state (`live`, `retired` for a recorded
+ *       `--handle`, `gone` for a missing directory). `--since` is the time the message was sent (ISO 8601 or
+ *       epoch milliseconds): older activity does not count. `line` is the activity line to print.
  *   retire-handle --dir <dir> --handle <id>
  *       Record a worker handle (the agent ID on Claude Code, the sessionID on opencode) as retired in the
  *       reserved file `.sai-retired` inside `<dir>`, beside the ledger. Recording a recorded handle changes
@@ -291,9 +310,98 @@ function accept(dir, reference, { io = fs, check = false } = {}) {
     return { path: path.resolve(target), sha256, already: readLedger(root, { io }).has(referenceKey(target, sha256)), recorded: false };
   }
   const verified = verify(dir, { path: target, sha256 }, { io });
-  const already = readLedger(root, { io }).has(referenceKey(verified.path, sha256));
-  if (!already) io.appendFileSync(path.join(root, LEDGER), `${JSON.stringify({ path: verified.path, sha256 })}\n`, { mode: 0o600 });
-  return { path: verified.path, sha256, already, recorded: !already };
+  const recorded = recordReference(root, verified.path, sha256, { io });
+  return { path: verified.path, sha256, already: !recorded, recorded };
+}
+
+/** Append one reference to the ledger unless it is there already; whether this call recorded it. */
+function recordReference(root, target, sha256, { io = fs } = {}) {
+  if (readLedger(root, { io }).has(referenceKey(target, sha256))) return false;
+  io.appendFileSync(path.join(root, LEDGER), `${JSON.stringify({ path: path.resolve(target), sha256 })}\n`, { mode: 0o600 });
+  return true;
+}
+
+/**
+ * The sha256 of the file a reference names when it is a readable regular file inside the directory reached through
+ * no symbolic link and not a reserved name, else `null`. It serves a report whose claimed hash differs from its bytes:
+ * the ledger then records the bytes the watch would offer, so a returned report is never offered a second time.
+ */
+function storedHash(root, target, { io = fs } = {}) {
+  const resolved = path.resolve(target);
+  if (!within(root, resolved) || RESERVED.includes(path.relative(root, resolved).split(path.sep)[0])) return null;
+  let current = root;
+  for (const segment of path.relative(root, resolved).split(path.sep)) {
+    current = path.join(current, segment);
+    const stat = lstatOrNull(current, io);
+    if (!stat || stat.isSymbolicLink()) return null;
+  }
+  try {
+    if (!io.lstatSync(resolved).isFile()) return null;
+    return sha256Of(io.readFileSync(resolved));
+  } catch (error) {
+    return null;
+  }
+}
+
+/** The command that watches one report directory; the two values only the coordinator knows stay placeholders until it names them. */
+function watchCommand(root, { pathsFile = null, cwd = null } = {}) {
+  const tool = __filename.replace(/\\/g, '/');
+  return `node "${tool}" watch --dir "${root}" --input-file ${pathsFile ? `"${pathsFile}"` : '<paths-file>'} --cwd ${cwd ? `"${cwd}"` : '<project-root>'}`;
+}
+
+/**
+ * Receive one worker report reference in one call: the duplicate check, the validation of a terminal report, and the
+ * ledger record. A reference already in the ledger answers `already` and changes nothing. Otherwise a terminal report is
+ * verified and validated once (`worker-report-validator.js` `validateFile`, the closed shape of `command`), and a progress
+ * report is verified and recorded without validation, because `sai-state emit --progress` validates it. The record comes
+ * before the caller acts on the report, for every verdict that reached the file: an accepted report, an invalid one
+ * (returned to its author, so the watch never offers it again), and a report whose claimed hash differs from its bytes.
+ * A reference that names no file inside the directory records nothing, since a later correct delivery must not read as a
+ * duplicate. The answer carries `ok` (false when the report is not usable), `outcome` (`duplicate`, `accepted`, `recorded`
+ * for a progress report, `report-invalid`, or `delivery-failed`), the validator's `validation` verdict with the parsed
+ * `payload` of an accepted report, and the `watch` command of the directory.
+ */
+function receive(dir, reference, { kind, command, pathsFile = null, cwd = null, io = fs } = {}) {
+  const root = checkTransferDir(dir, { io });
+  if (kind !== 'terminal' && kind !== 'progress') throw new UsageError('receive requires --kind terminal or progress');
+  if (kind === 'terminal' && !command) throw new UsageError('receive --kind terminal requires --command <name>');
+  // Loaded here, never at the top: the validator loads this module back to verify a report.
+  const validator = require('./worker-report-validator');
+  if (kind === 'terminal' && !Object.hasOwn(validator.COMMAND_OUTCOMES, command)) {
+    throw new UsageError(`receive --command must be one of: ${Object.keys(validator.COMMAND_OUTCOMES).join(', ')}`);
+  }
+  const { sha256 } = reference;
+  const target = resolveReferencePath(root, reference.path);
+  if (typeof target !== 'string' || !path.isAbsolute(target)) throw new CheckError('Reference path must be an absolute path');
+  if (typeof sha256 !== 'string' || !SHA256.test(sha256)) throw new CheckError('Reference sha256 must be 64 lowercase hex characters');
+  const resolved = path.resolve(target);
+  const base = { path: resolved, sha256, kind, watch: watchCommand(root, { pathsFile, cwd }) };
+  if (readLedger(root, { io }).has(referenceKey(resolved, sha256))) {
+    return { ok: true, ...base, already: true, recorded: false, outcome: 'duplicate', validation: null };
+  }
+  let verdict;
+  if (kind === 'terminal') {
+    verdict = validator.validateFile(root, { path: resolved, sha256 }, 'terminal', { command, io });
+  } else {
+    try {
+      verify(root, { path: resolved, sha256 }, { io });
+      verdict = { ok: true, outcome: 'recorded', errors: [] };
+    } catch (error) {
+      if (!(error instanceof CheckError)) throw error;
+      verdict = { ok: false, outcome: 'delivery-failed', errors: [error.message] };
+    }
+  }
+  let recorded = false;
+  if (verdict.outcome === 'delivery-failed') {
+    const actual = storedHash(root, resolved, { io });
+    if (actual !== null) {
+      recorded = recordReference(root, resolved, actual, { io });
+      recorded = recordReference(root, resolved, sha256, { io }) || recorded;
+    }
+  } else {
+    recorded = recordReference(root, resolved, sha256, { io });
+  }
+  return { ok: verdict.ok, ...base, already: false, recorded, outcome: verdict.outcome, validation: kind === 'terminal' ? verdict : null, ...(kind === 'progress' && !verdict.ok ? { errors: verdict.errors } : {}) };
 }
 
 /** The handles recorded as retired in a transfer directory. */
@@ -429,6 +537,7 @@ const defaultSleep = milliseconds => new Promise(resolve => setTimeout(resolve, 
  */
 function newestMtime(start, io, { top = null } = {}) {
   let newest = 0;
+  let newestPath = null;
   let visited = 0;
   let limited = false;
   const walk = current => {
@@ -439,11 +548,11 @@ function newestMtime(start, io, { top = null } = {}) {
     const stat = lstatOrNull(current, io);
     if (!stat || stat.isSymbolicLink()) return;
     if (stat.isFile()) {
-      newest = Math.max(newest, stat.mtimeMs);
+      if (stat.mtimeMs >= newest) { newest = stat.mtimeMs; newestPath = current; }
       return;
     }
     if (!stat.isDirectory()) return;
-    if (current !== top) newest = Math.max(newest, stat.mtimeMs);
+    if (current !== top && stat.mtimeMs > newest) { newest = stat.mtimeMs; newestPath = current; }
     let entries;
     try {
       entries = io.readdirSync(current, { withFileTypes: true });
@@ -458,7 +567,7 @@ function newestMtime(start, io, { top = null } = {}) {
     }
   };
   walk(start);
-  return { newest, limited };
+  return { newest, limited, path: newestPath };
 }
 
 /**
@@ -468,14 +577,15 @@ function newestMtime(start, io, { top = null } = {}) {
  * may have missed activity can be named.
  */
 function latestActivity(root, writablePaths, io) {
-  let { newest } = newestMtime(root, io, { top: root });
+  const own = newestMtime(root, io, { top: root });
+  let { newest, path: newestPath } = own;
   const limited = [];
   for (const target of writablePaths) {
     const walked = newestMtime(target, io);
-    newest = Math.max(newest, walked.newest);
+    if (walked.newest > newest) { newest = walked.newest; newestPath = walked.path; }
     if (walked.limited) limited.push(target);
   }
-  return { newest, limited };
+  return { newest, limited, path: newestPath };
 }
 
 /**
@@ -491,7 +601,7 @@ async function watch(dir, { settleMs = DEFAULT_SETTLE_MS, maxMs = DEFAULT_MAX_MS
   const deadline = started + maxMs;
   for (;;) {
     let reports;
-    let activity = { newest: 0, limited: [] };
+    let activity = { newest: 0, limited: [], path: null };
     try {
       reports = undelivered(root, settleMs, io, now());
       if (reports.length === 0) activity = latestActivity(root, writablePaths, io);
@@ -508,6 +618,62 @@ async function watch(dir, { settleMs = DEFAULT_SETTLE_MS, maxMs = DEFAULT_MAX_MS
     if (remaining <= 0) return { reports: [], ended: 'max', ...limited };
     await sleep(Math.min(pollMs, remaining, silentMs - silentFor));
   }
+}
+
+/** `12s`, `3m`, `1h5m`: a short age for the activity line. */
+function formatAge(milliseconds) {
+  const seconds = Math.max(0, Math.round(milliseconds / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  return minutes % 60 === 0 ? `${hours}h` : `${hours}h${minutes % 60}m`;
+}
+
+/** An instant given as an ISO 8601 date-time or as epoch milliseconds, in milliseconds; `null` when `value` is absent. */
+function parseInstant(value, flag = '--since') {
+  if (value === undefined || value === null) return null;
+  const milliseconds = /^\d{10,}$/.test(String(value)) ? Number(value) : Date.parse(String(value));
+  if (!Number.isFinite(milliseconds)) throw new UsageError(`${flag} must be an ISO 8601 date-time or epoch milliseconds`);
+  return milliseconds;
+}
+
+/**
+ * One-shot answer to "is the worker I wait on still working?": the newest sign of life of its report directory and its
+ * writable paths (`latestActivity`, the measure `watch` uses), the reports saved there that the ledger does not list, and
+ * the worker's state. `since` is the time the coordinator sent the worker its message: activity older than it does not
+ * count, so a worker with no activity since the send reports `active: false`. `handle` is the worker's handle: a handle
+ * recorded as retired reports `retired`; a directory that no longer exists reports `gone`. `line` is the activity line the
+ * coordinator prints (without the public-chat marker); `role` names the worker in it.
+ */
+function status(dir, { writablePaths = [], since = null, handle = null, role = null, cwd = process.cwd(), io = fs, now = Date.now } = {}) {
+  const who = role ? `${role} worker` : 'worker';
+  let root;
+  try {
+    root = checkTransferDir(dir, { io });
+  } catch (error) {
+    if (error instanceof CheckError && typeof dir === 'string' && path.isAbsolute(dir) && !lstatOrNull(path.resolve(dir), io)) {
+      return { dir: path.resolve(dir), state: 'gone', active: false, last_activity: null, unledgered: [], line: `${who}: its report directory no longer exists, so the run has ended` };
+    }
+    throw error;
+  }
+  const at = now();
+  const state = handle && readRetired(root, { io }).has(handle) ? 'retired' : 'live';
+  const activity = latestActivity(root, writablePaths, io);
+  const unledgered = undelivered(root, 0, io, at);
+  const last = activity.newest > 0 ? { at: new Date(activity.newest).toISOString(), path: activity.path, age_ms: Math.max(0, Math.round(at - activity.newest)) } : null;
+  const active = last !== null && (since === null || activity.newest >= since);
+  const shown = last === null ? null : path.relative(cwd, last.path).startsWith('..') ? last.path : path.relative(cwd, last.path) || last.path;
+  let line;
+  if (state === 'retired') line = `${who}: retired, its coordinator replaced or ended it`;
+  else if (unledgered.length > 0) line = `${who}: ${unledgered.length} saved report${unledgered.length === 1 ? '' : 's'} not yet received, receive ${unledgered.length === 1 ? 'it' : 'them'} now`;
+  else if (active) line = `${who}: active, last activity ${formatAge(last.age_ms)} ago in ${shown}`;
+  else if (since !== null) line = `${who}: no activity since its message was sent at ${new Date(since).toISOString()}`;
+  else line = `${who}: no activity recorded yet`;
+  return {
+    dir: root, state, active, since: since === null ? null : new Date(since).toISOString(), last_activity: last,
+    unledgered, ...(activity.limited.length > 0 ? { walk_limited: activity.limited } : {}), line,
+  };
 }
 
 /** Copy verified bytes to a destination inside `cwd`. */
@@ -577,6 +743,27 @@ const USAGE = {
       flags: { ...SHA256_FLAGS, '--check': false },
       required: ['--dir', '--path', '--sha256'],
     },
+    receive: {
+      usage: [`${TR} receive --dir <dir> --path <path> --sha256 <hex> --kind <terminal|progress> [--command <name>] [--paths-file <paths>] [--cwd <root>]`],
+      notes: [
+        'Checks the ledger, validates a terminal report, and records the reference in one call. --command is required for --kind terminal and names a command of worker-report-validator.js.',
+        'A relative --path resolves against --dir. The answer names the watch command of --dir; --paths-file and --cwd fill its placeholders.',
+        'Exit 1 when the report is invalid or its delivery failed.',
+      ],
+      examples: [`${TR} receive --dir /path/to/report-dir --path report.json --sha256 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef --kind terminal --command implement`],
+      flags: { ...SHA256_FLAGS, '--kind': { values: ['terminal', 'progress'], once: true }, '--command': ONCE, '--paths-file': ONCE, '--cwd': ONCE },
+      required: ['--dir', '--path', '--sha256', '--kind'],
+    },
+    status: {
+      usage: [`${TR} status --dir <dir> --input-file <paths> [--cwd <root>] [--since <time>] [--handle <id>] [--role <name>]`],
+      notes: [
+        '--input-file is required, as for watch: a JSON array of the paths the worker may write ([] is valid).',
+        '--since is the time the worker was sent its message (ISO 8601 or epoch milliseconds); `line` is the activity line to print.',
+      ],
+      examples: [`${TR} status --dir /path/to/report-dir --input-file writable-paths.json --cwd /path/to/project --role design`],
+      flags: { '--dir': ONCE, '--input-file': ONCE, '--cwd': ONCE, '--since': ONCE, '--handle': ONCE, '--role': ONCE },
+      required: ['--dir', '--input-file'],
+    },
     watch: {
       usage: [`${TR} watch --dir <dir> --input-file <paths> [--settle <duration>] [--max <duration>] [--poll <duration>] [--silent-after <minutes>] [--cwd <root>]`],
       notes: ['--input-file is required: a JSON array of the paths the worker may write ([] is valid).'],
@@ -612,7 +799,7 @@ function usageResponse(found) {
     : { ok: false, command: null, error: found.cause, usage: found.usage, examples: found.examples };
 }
 
-const FLAGS = { '--harness': 'harness', '--dir': 'dir', '--path': 'path', '--sha256': 'sha256', '--destination': 'destination', '--cwd': 'cwd', '--input-file': 'inputFile', '--handle': 'handle', '--settle': 'settle', '--max': 'max', '--poll': 'poll', '--silent-after': 'silentAfter' };
+const FLAGS = { '--harness': 'harness', '--dir': 'dir', '--path': 'path', '--sha256': 'sha256', '--destination': 'destination', '--cwd': 'cwd', '--input-file': 'inputFile', '--handle': 'handle', '--settle': 'settle', '--max': 'max', '--poll': 'poll', '--silent-after': 'silentAfter', '--kind': 'kind', '--command': 'workerCommand', '--paths-file': 'pathsFile', '--since': 'since', '--role': 'role' };
 
 function parseArgs(argv) {
   const opts = { command: null };
@@ -670,6 +857,16 @@ function execute(opts) {
     case 'accept':
       require_(opts, ['dir', 'path', 'sha256']);
       return accept(opts.dir, { path: opts.path, sha256: opts.sha256 }, { check: opts.check === true });
+    case 'receive':
+      require_(opts, ['dir', 'path', 'sha256', 'kind']);
+      return receive(opts.dir, { path: opts.path, sha256: opts.sha256 }, { kind: opts.kind, command: opts.workerCommand, pathsFile: opts.pathsFile, cwd: opts.cwd });
+    case 'status':
+      require_(opts, ['dir']);
+      if (!opts.inputFile) throw new UsageError('status requires --input-file <paths>: a JSON array of the paths the worker may write ([] when the report directory is the only activity source)');
+      return status(opts.dir, {
+        writablePaths: parseWritablePaths(readInputBytes(opts.inputFile), opts.cwd || process.cwd()),
+        since: parseInstant(opts.since), handle: opts.handle || null, role: opts.role || null, cwd: opts.cwd || process.cwd(),
+      });
     case 'retire-handle':
       require_(opts, ['dir', 'handle']);
       return retireHandle(opts.dir, opts.handle);
@@ -694,7 +891,8 @@ function main(argv) {
   const parsed = parseArgs(argv);
   if (parsed.error) return respond({ ok: false, command: null, error: parsed.error }, 2);
   try {
-    return respond({ ok: true, command: parsed.opts.command, ...execute(parsed.opts) }, 0);
+    const result = execute(parsed.opts);
+    return respond({ ok: true, command: parsed.opts.command, ...result }, result.ok === false ? 1 : 0);
   } catch (error) {
     if (error instanceof CheckError) return respond({ ok: false, command: parsed.opts.command, check: 'failed', error: error.message }, 1);
     return respond({ ok: false, command: parsed.opts.command, error: error.message }, 2);
@@ -728,6 +926,6 @@ async function run(argv) {
   }
 }
 
-if (require.main === module) run(process.argv.slice(2)).then(code => { process.exitCode = code; });
+module.exports = { MARKER, LEDGER, RETIRED, CheckError, UsageError, checkTransferDir, open, put, verify, resolveReferencePath, accept, receive, status, retireHandle, live, watch, parseDuration, parseSilentAfter, parseWritablePaths, materialize, close, parseArgs, main, run, USAGE };
 
-module.exports = { MARKER, LEDGER, RETIRED, CheckError, UsageError, checkTransferDir, open, put, verify, resolveReferencePath, accept, retireHandle, live, watch, parseDuration, parseSilentAfter, parseWritablePaths, materialize, close, parseArgs, main, run, USAGE };
+if (require.main === module) run(process.argv.slice(2)).then(code => { process.exitCode = code; });

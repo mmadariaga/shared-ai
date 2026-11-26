@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
-const { route, turn, readEvents, runArguments, harnessOf, parseArguments, UsageError } = require('../sai/tools/opencode-dispatch');
+const { route, turn, guardedTurn, acquireTurnLock, busyResult, BUSY_EXIT, readEvents, runArguments, harnessOf, parseArguments, UsageError } = require('../sai/tools/opencode-dispatch');
 
 const repoRoot = path.resolve(__dirname, '..');
 const SCRIPT = path.join(repoRoot, 'sai/tools/opencode-dispatch.js');
@@ -332,4 +332,171 @@ test('E13 opencode dispatch sites and templates stay free of the routing key', (
   for (const file of ['sai/orchestration/workers/bindings/opencode/standalone-worker-template.md', 'skills/opencode/budget-explorer/SKILL.md', 'skills/opencode/budget-executor/SKILL.md', 'skills/opencode/budget-subagent/SKILL.md']) {
     assert.doesNotMatch(read(file), /harness: opencode|opencode-dispatch/, file);
   }
+});
+
+const okRun = async () => ({ status: 0, stdout: [event('step_start'), text('m1', 'done'), stepFinish({})].join('\n') });
+
+test('E6 a continue refuses to start while the lock of its session belongs to a live process, and sends nothing', async () => {
+  const dir = scratch('lock-busy');
+  try {
+    assert.equal(acquireTurnLock(dir, 'ses_busy', { pid: 4242 }).acquired, true);
+    let sent = 0;
+    const result = await guardedTurn({ session: 'ses_busy', message: 'again', cwd: '.' }, { lockDirectory: () => dir, alive: pid => pid === 4242, run: async () => { sent += 1; return okRun(); } });
+    assert.equal(sent, 0, 'nothing reaches opencode');
+    assert.deepEqual([result.status, result.sessionID, result.exit_code, result.busy_pid], ['busy', 'ses_busy', null, 4242]);
+    assert.match(result.error, /still running \(process 4242\); nothing was sent/);
+    assert.equal(fs.readFileSync(path.join(dir, 'ses_busy.lock'), 'utf8'), '4242', 'the lock of the running turn is untouched');
+    assert.equal(BUSY_EXIT, 3);
+    assert.deepEqual(busyResult('ses_x', 0).tokens, { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0 });
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('E6 a lock whose process no longer exists is ignored, and the turn runs and releases its own lock', async () => {
+  const dir = scratch('lock-stale');
+  try {
+    fs.writeFileSync(path.join(dir, 'ses_stale.lock'), '999999');
+    let sent = 0;
+    const result = await guardedTurn({ session: 'ses_stale', message: 'again', cwd: '.' }, { lockDirectory: () => dir, alive: () => false, run: async () => {
+      sent += 1;
+      assert.equal(fs.readFileSync(path.join(dir, 'ses_stale.lock'), 'utf8'), String(process.pid), 'the running turn holds the lock');
+      return okRun();
+    } });
+    assert.equal(sent, 1);
+    assert.equal(result.status, 'ok');
+    assert.deepEqual(fs.readdirSync(dir), [], 'the lock and its draft are gone when the turn ends');
+
+    fs.writeFileSync(path.join(dir, 'ses_junk.lock'), 'not a pid');
+    assert.equal((await guardedTurn({ session: 'ses_junk', message: 'm', cwd: '.' }, { lockDirectory: () => dir, run: okRun })).status, 'ok', 'a lock that holds no PID is replaced');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('the turn lock is released when the turn fails or throws, and a second turn of another session is not blocked', async () => {
+  const dir = scratch('lock-release');
+  try {
+    const failed = await guardedTurn({ session: 'ses_a', message: 'm', cwd: '.' }, { lockDirectory: () => dir, run: async () => ({ status: 1, stdout: '' }) });
+    assert.equal(failed.status, 'failed');
+    assert.deepEqual(fs.readdirSync(dir), []);
+    await assert.rejects(guardedTurn({ session: 'ses_a', message: 'm', cwd: '.' }, { lockDirectory: () => dir, run: async () => { throw new Error('spawn failed'); } }), /spawn failed/);
+    assert.deepEqual(fs.readdirSync(dir), []);
+
+    const first = acquireTurnLock(dir, 'ses_one', { pid: process.pid });
+    assert.equal(first.acquired, true);
+    const other = await guardedTurn({ session: 'ses_two', message: 'm', cwd: '.' }, { lockDirectory: () => dir, run: okRun });
+    assert.equal(other.status, 'ok', 'the lock is per session');
+    first.release();
+    assert.deepEqual(fs.readdirSync(dir), []);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('F2 a contender that finds the stale lock replaced meanwhile never removes the lock that replaced it', () => {
+  const dir = scratch('lock-race');
+  try {
+    fs.writeFileSync(path.join(dir, 'ses_race.lock'), '4001');
+    let first = null;
+    // While the second contender checks the stale holder, the first one completes its whole replacement.
+    const second = acquireTurnLock(dir, 'ses_race', { pid: 5002, alive: pid => {
+      if (pid === 4001 && first === null) first = acquireTurnLock(dir, 'ses_race', { pid: 5001, alive: holder => holder === 5001 });
+      return pid === 5001;
+    } });
+    assert.equal(first.acquired, true);
+    assert.deepEqual([second.acquired, second.pid], [false, 5001], 'the second contender sees the live lock of the first');
+    assert.equal(fs.readFileSync(path.join(dir, 'ses_race.lock'), 'utf8'), '5001', 'the lock of the first contender is untouched');
+    assert.deepEqual(fs.readdirSync(dir).sort(), ['ses_race.lock'], 'no draft or claim is left behind');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('F2 several processes over one stale lock never acquire it at once', { skip: process.platform === 'win32' }, async () => {
+  const dir = scratch('lock-contenders');
+  try {
+    const dead = spawnSync(process.execPath, ['-e', '']);
+    fs.writeFileSync(path.join(dir, 'ses_many.lock'), String(dead.pid));
+    const go = path.join(dir, 'go');
+    const script = `
+      const fs = require('fs');
+      const { acquireTurnLock } = require(${JSON.stringify(SCRIPT)});
+      while (!fs.existsSync(${JSON.stringify(go)})) { /* wait for the start signal */ }
+      const lock = acquireTurnLock(${JSON.stringify(dir)}, 'ses_many', {});
+      if (lock.acquired) {
+        fs.appendFileSync(${JSON.stringify(path.join(dir, 'acquired.log'))}, process.pid + '\\n');
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 600);
+        lock.release();
+      }
+    `;
+    const children = Array.from({ length: 8 }, () => new Promise(resolve => spawn(process.execPath, ['-e', script], { stdio: 'ignore' }).on('close', resolve)));
+    await new Promise(resolve => setTimeout(resolve, 400));
+    fs.writeFileSync(go, '');
+    await Promise.all(children);
+    assert.equal(fs.readFileSync(path.join(dir, 'acquired.log'), 'utf8').trim().split('\n').length, 1, 'exactly one contender took the stale lock');
+    assert.equal(fs.existsSync(path.join(dir, 'ses_many.lock')), false);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a release never removes a lock that another process took over, a start takes no lock, and an unresolved lock directory leaves the turn unguarded', async () => {
+  const dir = scratch('lock-misc');
+  try {
+    const mine = acquireTurnLock(dir, 'ses_mine', { pid: 111 });
+    fs.writeFileSync(path.join(dir, 'ses_mine.lock'), '222');
+    mine.release();
+    assert.equal(fs.readFileSync(path.join(dir, 'ses_mine.lock'), 'utf8'), '222');
+    fs.unlinkSync(path.join(dir, 'ses_mine.lock'));
+
+    let asked = 0;
+    const started = await guardedTurn({ agent: 'w', message: 'm', cwd: '.' }, { lockDirectory: () => { asked += 1; return dir; }, run: okRun });
+    assert.deepEqual([started.status, asked, fs.readdirSync(dir)], ['ok', 0, []]);
+
+    const unguarded = await guardedTurn({ session: 'ses_x', message: 'm', cwd: '.' }, { lockDirectory: () => null, run: okRun });
+    assert.equal(unguarded.status, 'ok');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('E6 the CLI refuses a continue with status busy and exit 3 while the session lock is live, and sends nothing to opencode', { skip: process.platform === 'win32' }, () => {
+  const { resolveTempRoot } = require('../sai/tools/temp-root');
+  let root;
+  try { root = resolveTempRoot('claude'); } catch { root = null; }
+  if (root === null) return;
+  const dir = scratch('cli-busy');
+  const session = `ses_busy_${process.pid}_${Date.now()}`;
+  const locks = path.join(root, 'opencode-turns');
+  fs.mkdirSync(locks, { recursive: true, mode: 0o700 });
+  const lock = path.join(locks, `${session}.lock`);
+  try {
+    const bin = fakeOpencode(dir);
+    const log = path.join(dir, 'log.jsonl');
+    const message = path.join(dir, 'message.txt');
+    fs.writeFileSync(message, 'again');
+    fs.writeFileSync(lock, String(process.pid));
+    const env = { PATH: `${bin}${path.delimiter}${process.env.PATH}`, FAKE_LOG: log };
+    const busy = cli(['continue', '--session', session, '--agent', 'worker', '--input-file', message, '--cwd', dir], env, dir);
+    assert.equal(busy.status, 3, busy.stderr);
+    const result = JSON.parse(busy.stdout);
+    assert.deepEqual([result.status, result.sessionID, result.busy_pid], ['busy', session, process.pid]);
+    assert.equal(fs.existsSync(log), false, 'opencode was never run');
+
+    fs.writeFileSync(lock, '999999999');
+    const free = cli(['continue', '--session', session, '--agent', 'worker', '--input-file', message, '--cwd', dir], env, dir);
+    assert.equal(free.status, 0, free.stderr);
+    assert.equal(fs.existsSync(lock), false, 'the turn removed the lock it took over');
+  } finally {
+    fs.rmSync(lock, { force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('I3 the dispatch policy tells the coordinator how to handle a busy refusal', () => {
+  const policy = read('sai/policies/opencode-dispatch.md');
+  assert.match(policy, /`status: busy`/);
+  assert.match(policy, /exit code 3/);
+  assert.match(policy, /resend the same message once/);
 });

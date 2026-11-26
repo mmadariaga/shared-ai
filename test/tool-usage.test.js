@@ -34,7 +34,7 @@ const TOOLS = [
   { name: 'tool-access', file: 'sai/tools/tool-access.js', kind: 'text', subcommands: ['verify', 'notices'] },
   { name: 'prereqs', file: 'sai/tools/prereqs.js', kind: 'text', subcommands: ['check'] },
   { name: 'change-picker', file: 'sai/tools/change-picker.js', kind: 'text', subcommands: ['resolve'] },
-  { name: 'transfer', file: 'sai/tools/transfer.js', kind: 'json', keep: { ok: false }, subcommands: ['open', 'put', 'verify', 'materialize', 'accept', 'watch', 'retire-handle', 'live', 'close'] },
+  { name: 'transfer', file: 'sai/tools/transfer.js', kind: 'json', keep: { ok: false }, subcommands: ['open', 'put', 'verify', 'materialize', 'accept', 'receive', 'status', 'watch', 'retire-handle', 'live', 'close'] },
   { name: 'temp-root', file: 'sai/tools/temp-root.js', kind: 'json', keep: { ok: false, code: 'USAGE' }, subcommands: ['resolve', 'mkdtemp', 'remove'] },
   { name: 'dispose-shells', file: 'sai/tools/dispose-shells.js', kind: 'json', keep: { status: 'error' }, subcommands: [] },
   { name: 'project-settings', file: 'sai/tools/project-settings.js', kind: 'json', keep: { status: 'error' }, subcommands: ['get', 'warming'] },

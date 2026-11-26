@@ -7,12 +7,12 @@ TBD - created by archiving change recover-undelivered-worker-reports. Update Pur
 
 ### Requirement: Accepted references are recorded and duplicates ignored
 
-After a coordinator has processed a report reference, it SHALL record it with `transfer.js accept` in the ledger of the report directory. A report that fails validation SHALL be recorded after it is returned to its author as invalid. For every reference, from a worker message or from the watch, the coordinator SHALL look it up with `transfer.js accept --check`: for a terminal report inside the paired check of § Receiver boundary, which issues the validation in the same turn, and for a progress report before its emit. A reference already in the ledger (same `path` and `sha256`) SHALL be treated like a wake acknowledgement (`sai/policies/cache-warming.md` § Wake acknowledgement): no validation result acted on, no event emitted, no attempt spent, and no continuation sent. One exception: a repeated reference that answers a message the coordinator sent is a rejected continuation, handled under `sai/policies/worker-lifecycle.md` § Continuation timing, not a duplicate. Because the ledger lives in the report directory that the run state keeps, a reference accepted before a context compaction or a resumed run SHALL NOT be processed again.
+For every worker report reference, from a worker message or from the watch, the coordinator SHALL run `transfer.js receive`, which records the reference in the ledger of the report directory in the same call that checks and validates it, before the coordinator acts on it. A report that fails validation SHALL be recorded by that same call, and the coordinator SHALL return it to its author as invalid. A reference already in the ledger (same `path` and `sha256`) SHALL answer `already: true`, and the coordinator SHALL treat it like a wake acknowledgement (`sai/policies/cache-warming.md` § Wake acknowledgement): no validation result acted on, no event emitted, no attempt spent, and no continuation sent. One exception: a repeated reference that answers a message the coordinator sent is a rejected continuation, handled under `sai/policies/worker-lifecycle.md` § Continuation timing, not a duplicate. Because the ledger lives in the report directory that the run state keeps, a reference recorded before a context compaction or a resumed run SHALL NOT be processed again; a run that resumes SHALL resume from its run state and the artifacts on disk. The budget agents' dispatcher SHALL keep `transfer.js accept`, because the budget agents have no validator.
 
 #### Scenario: A repeated reference costs nothing
 
-- **WHEN** a worker's wake repeats a reference that the coordinator already accepted, and the coordinator has sent the worker no message since
-- **THEN** the coordinator acts on no validation result, emits nothing, spends no attempt, and sends no continuation
+- **WHEN** a worker's wake repeats a reference that the coordinator already received, and the coordinator has sent the worker no message since
+- **THEN** `receive` answers `already: true`, and the coordinator acts on no validation result, emits nothing, spends no attempt, and sends no continuation
 
 #### Scenario: Acceptance survives compaction
 
@@ -21,12 +21,12 @@ After a coordinator has processed a report reference, it SHALL record it with `t
 
 #### Scenario: A repeated reference that answers a sent message
 
-- **WHEN** a worker answers a message the coordinator sent with a reference the coordinator already accepted
+- **WHEN** a worker answers a message the coordinator sent with a reference the coordinator already received
 - **THEN** the coordinator handles the reply as a rejected continuation under `sai/policies/worker-lifecycle.md` § Continuation timing
 
 ### Requirement: Background watch while waiting for a worker
 
-Each time a coordinator starts waiting for the result of a worker that reports through the transport policy, it SHALL launch `transfer.js watch --dir <report-dir> --input-file <paths-file> --cwd <project root>` in the background (Claude Code `Bash` with `run_in_background: true` and the description `watch-reports`; opencode shell with `background: true`), whatever the warming setting, with the input file holding the paths the worker's brief lets it write, or `[]` when the report directory is the only place the worker writes. Every relaunch of a watch for the same worker task (after an empty end, after a first `silent`, and for a replacement worker) SHALL pass the same input file. When the watch exits 2 because `--input-file` is missing, the coordinator SHALL relaunch it with the file and SHALL spend no obstacle attempt. When the watch ends with an empty list and not `silent`, the coordinator SHALL launch it again, SHALL send nothing to the worker, and SHALL write nothing to the user. When the watch ends `silent`, the coordinator SHALL handle it as an obstacle of the step under the existing budget, with no user question of its own: the first `silent` asks the same worker once for its report and relaunches the watch, and a second consecutive `silent` with no report between them replaces the worker. When the expected result arrives by any path, the coordinator SHALL stop the watch (Claude Code `TaskStop`, opencode removal of its shell), and SHALL also stop it before it disposes the worker and closes the report directory; a later firing SHALL have no effect. When the watch cannot be launched (no shell, permission refused), the coordinator SHALL print one notice and continue without it, and the run SHALL NOT stop. On cache-warming responses the coordinator SHALL follow `cache-warming.md` for the main-session continuation check or subagent protocol, as applicable. Only the watch, and the immediate one-shot scan of a worker reply without a reference, SHALL look for undelivered reports; a warming notification SHALL NOT trigger report polling.
+Each time a coordinator starts waiting for the result of a worker that reports through the transport policy, it SHALL launch `transfer.js watch --dir <report-dir> --input-file <paths-file> --cwd <project root>` in the background (Claude Code `Bash` with `run_in_background: true` and the description `watch-reports`; opencode shell with `background: true`), whatever the warming setting, with the input file holding the paths the worker's brief lets it write, or `[]` when the report directory is the only place the worker writes. Every relaunch of a watch for the same worker task (after an empty end, after a first `silent`, and for a replacement worker) SHALL pass the same input file. When the watch exits 2 because `--input-file` is missing, the coordinator SHALL relaunch it with the file and SHALL spend no obstacle attempt. When the watch ends with an empty list and not `silent`, the coordinator SHALL launch it again, SHALL send nothing to the worker, and SHALL write nothing to the user. When the watch ends `silent`, the coordinator SHALL handle it as an obstacle of the step under the existing budget, with no user question of its own: the first `silent` asks the same worker once for its report and relaunches the watch, and a second consecutive `silent` with no report between them replaces the worker. When the expected result arrives by any path, the coordinator SHALL stop the watch (Claude Code `TaskStop`, opencode removal of its shell), and SHALL also stop it before it disposes the worker and closes the report directory; a later firing SHALL have no effect. When the watch cannot be launched (no shell, permission refused), the coordinator SHALL print one notice and continue without it, and the run SHALL NOT stop. On cache-warming responses the coordinator SHALL follow `cache-warming.md` for the main-session continuation check or subagent protocol, as applicable. Only the watch, the immediate one-shot scan of a worker reply without a reference, and the one-shot `transfer.js status` query SHALL look for undelivered reports; a warming notification SHALL trigger no scan of its own, and a coordinator wake during a worker wait SHALL run only the `status` query, receiving a report it lists.
 
 #### Scenario: The watch runs with warming off
 - **WHEN** a coordinator with cache warming off waits for a worker's result
@@ -42,7 +42,7 @@ Each time a coordinator starts waiting for the result of a worker that reports t
 
 #### Scenario: Continuation check does not poll for reports
 - **WHEN** a coordinator receives a warming notification while waiting for a worker
-- **THEN** it follows the applicable warming protocol without polling for undelivered reports or duplicating running work, leaving report discovery to the watch
+- **THEN** it follows the applicable warming protocol, runs no watch scan and duplicates no running work, and runs only the one-shot `status` query, receiving any report that query lists
 
 #### Scenario: A silent watch is an obstacle, not a relaunch
 - **WHEN** the watch ends with `ended: silent`
@@ -58,17 +58,17 @@ Each time a coordinator starts waiting for the result of a worker that reports t
 
 ### Requirement: Found reports follow the delivered-report path
 
-When the watch ends with reports, the coordinator SHALL process each in creation order exactly as if the worker had delivered it: the duplicate check, the validation (a `progress-` report goes to the step machine's progress emit), the same invalid-report recovery that counts as an obstacle attempt, and then the record. A worker message that is a protocol literal SHALL NOT be a result: the coordinator SHALL keep waiting with the watch armed. A worker message that carries no reference and is not a protocol literal SHALL follow the immediate scan of the reply-without-reference rule instead of a passive wait. A worker turn that ends with the wake literal, the stop literal, or `ok` instead of its report reference SHALL trigger the same recovery through the watch. `sai/policies/worker-report-transport.md` SHALL name the wake and stop literals by their term with a pointer to `sai/policies/cache-warming.md`, and SHALL spell neither literal nor a bare `ok`.
+When the watch ends with reports, the coordinator SHALL process each in creation order exactly as if the worker had delivered it: one `transfer.js receive` call (a `progress-` report is received and then goes to the step machine's progress emit), and the same invalid-report recovery that counts as an obstacle attempt. Because `receive` records a report that fails validation, the watch SHALL NOT report it again. A worker message that is a protocol literal SHALL NOT be a result: the coordinator SHALL keep waiting with the watch armed. A worker message that carries no reference and is not a protocol literal SHALL follow the immediate scan of the reply-without-reference rule instead of a passive wait. A worker turn that ends with the wake literal, the stop literal, or `ok` instead of its report reference SHALL trigger the same recovery through the watch. `sai/policies/worker-report-transport.md` SHALL name the wake and stop literals by their term with a pointer to `sai/policies/cache-warming.md`, and SHALL spell neither literal nor a bare `ok`.
 
 #### Scenario: A found report is processed as delivered
 
 - **WHEN** the watch reports a saved report whose reference never arrived
-- **THEN** the coordinator validates and processes it as if the worker had returned its reference
+- **THEN** the coordinator receives and processes it as if the worker had returned its reference
 
 #### Scenario: An invalid found report is an obstacle attempt
 
 - **WHEN** a report found by the watch fails validation
-- **THEN** the coordinator applies the invalid-report recovery, counts one obstacle attempt, and records the reference so the watch does not report it again
+- **THEN** the coordinator applies the invalid-report recovery and counts one obstacle attempt, and the `receive` call has recorded the reference so the watch does not report it again
 
 #### Scenario: A non-result message keeps the wait
 
@@ -95,36 +95,12 @@ When several workers run in parallel, the coordinator SHALL watch each report di
 
 ### Requirement: Coordinator profiles grant the recovery verbs
 
-The shared `coordinator` capability profile in `sai/install-manifest.json` SHALL allow `node {sai}/tools/transfer.js accept *` and `node {sai}/tools/transfer.js watch *`, so every coordinator profile that extends it can run both verbs on Claude Code and opencode.
+The shared `coordinator` capability profile in `sai/install-manifest.json` SHALL allow `node {sai}/tools/transfer.js accept *`, `node {sai}/tools/transfer.js receive *`, `node {sai}/tools/transfer.js status *`, and `node {sai}/tools/transfer.js watch *`, so every coordinator profile that extends it can run these verbs on Claude Code and opencode.
 
 #### Scenario: A coordinator may run accept and watch
 
 - **WHEN** the capability profiles are compiled for a coordinator command
-- **THEN** its shell grants include `transfer.js accept` and `transfer.js watch`
-
-### Requirement: Terminal reports run a paired same-turn duplicate check and validation
-
-For each terminal report reference after ready, the coordinator SHALL run the paired check of `sai/policies/worker-report-transport.md` § Receiver boundary: `transfer.js accept --check` and `worker-report-validator.js validate --kind terminal --command <command>` issued as two independent calls in one model response (a same-turn batch), on Claude Code and opencode alike. The coordinator SHALL read no field of the report before it has both answers. When `--check` answers `already: true`, the coordinator SHALL discard the validate result, spend no attempt, and send no continuation. On any other `--check` answer, the coordinator SHALL handle the validate result by the existing receiver rules, invalid-report recovery included. A call of the batch that comes back cancelled or without a result SHALL be re-issued alone in the next turn; that cancellation SHALL NOT be an obstacle attempt, and a validate result SHALL never be acted on without the `--check` answer of the same reference. The paired check SHALL cover terminal reports only: a `progress-` report SHALL keep `accept --check` and `sai-state emit … --progress` in sequence, because the emit advances the step machine and never runs speculatively. The paired check SHALL be stated only in that policy, and `sai/tools/transfer.js` and `sai/tools/worker-report-validator.js` SHALL stay unchanged.
-
-#### Scenario: A duplicate terminal report discards its validation
-
-- **WHEN** the paired check runs for a terminal reference and `accept --check` answers `already: true`
-- **THEN** the coordinator discards the validate result, spends no attempt, and sends no continuation
-
-#### Scenario: A new terminal report follows the receiver rules
-
-- **WHEN** the paired check runs for a terminal reference and `accept --check` does not answer `already: true`
-- **THEN** the coordinator handles the validate result by the existing receiver rules, including invalid-report recovery
-
-#### Scenario: A cancelled call of the pair is re-issued alone
-
-- **WHEN** one call of the paired batch comes back cancelled or without a result
-- **THEN** the coordinator re-issues that call alone in the next turn, counts no obstacle attempt, and acts on no validate result before it has the `--check` answer of the same reference
-
-#### Scenario: A progress report keeps the sequential order
-
-- **WHEN** the coordinator receives a `progress-` report reference
-- **THEN** it runs `accept --check` first and runs `sai-state emit … --progress` only after the check does not answer `already: true`
+- **THEN** its shell grants include `transfer.js accept`, `transfer.js receive`, `transfer.js status`, and `transfer.js watch`
 
 ### Requirement: Each coordinator SHALL state its worker's writable paths as a fact of its own card
 
@@ -210,3 +186,63 @@ A worker message that carries no report reference and is not a protocol literal 
 
 - **WHEN** a coordinator waits for the `--no-specs` POC
 - **THEN** the undelivered-report rules do not apply
+
+### Requirement: Worker reports are received in one call
+
+For each worker report reference after ready, from a worker message or from the watch, the coordinator SHALL run `transfer.js receive --dir <report-dir> --path <path> --sha256 <sha256> --kind terminal --command <command>` (or `--kind progress` with no `--command` for a `progress-` report), with `--paths-file` and `--cwd` naming the writable-paths file and project root of the watch, on Claude Code and opencode alike. The coordinator SHALL read no field of the report before `receive` has answered, and SHALL act on the `validation.payload` of an accepted answer without reading the file again. The ledger SHALL hold the reference when the call returns, before the coordinator acts on it, so no separate recording call follows. On `outcome: report-invalid` or `delivery-failed` the coordinator SHALL apply the existing invalid-report recovery. A progress report (`outcome: recorded`) SHALL go next to `sai-state emit … --progress` with the same reference. A `receive` call that comes back cancelled or without a result SHALL be re-issued alone in the next turn without counting an obstacle attempt; when the re-issue answers `already: true` for a reference the coordinator has not processed yet, the coordinator SHALL validate it read-only with `worker-report-validator.js validate` and act on that verdict. When `transfer.js` cannot be resolved, the run SHALL stop on that obstacle and the coordinator SHALL never interpret a report by reading it. `sai/policies/worker-report-transport.md` SHALL be the single source of this receipt, and the ten coordinator cards (`archive`, `audit`, `backfill`, `commit`, `deep-review`, `explore/direct-build-coordinator.md`, `implement`, `merge`, `plan/cycle.md`, `review`) SHALL name `receive` in their pointer to it.
+
+#### Scenario: An accepted terminal report is acted on from the answer
+- **WHEN** a worker returns the reference of a valid terminal report
+- **THEN** the coordinator runs one `receive` call and acts on its `validation.payload` without reading the report file or running a separate validation or recording call
+
+#### Scenario: A progress report is received before its emit
+- **WHEN** the coordinator receives a `progress-` report reference
+- **THEN** it runs `receive --kind progress` and then `sai-state emit … --progress` with the same reference
+
+#### Scenario: A lost receive call is re-issued alone
+- **WHEN** a `receive` call comes back cancelled and its re-issue answers `already: true` for a reference the coordinator has not processed
+- **THEN** the coordinator counts no obstacle attempt, validates the report read-only with `worker-report-validator.js validate`, and acts on that verdict
+
+#### Scenario: Coordinator pointers name receive
+- **WHEN** a coordinator card points to the undelivered-report rules of the transport policy
+- **THEN** the pointer names `receive`
+
+### Requirement: The watch is relaunched from the receive answer
+
+The `watch` field of every `receive` answer SHALL be the exact command that watches that report directory. While the coordinator still waits for a worker of that directory (its next step, a fix round, or the answer to its question), it SHALL launch that command again in the background. At the worker's last use it SHALL launch nothing, stop the watch, and dispose the worker.
+
+#### Scenario: Watch relaunched for the next step
+- **WHEN** the coordinator has received a report and sends the same worker its next step
+- **THEN** it launches the `watch` command of the `receive` answer in the background
+
+#### Scenario: No watch after the last use
+- **WHEN** the coordinator has received the last report it expects from a worker
+- **THEN** it launches no watch, stops the running one, and disposes the worker
+
+### Requirement: Waiting messages name the worker role
+
+Every message a coordinator prints about a wait SHALL name the role of the worker it waits on (spec, design, plan RED, fix RED, GREEN, review, security, performance, accessibility, commit, archive, backfill, merge, or Direct Build implementer), so a user who sees several workers, or two workers of the same family, can tell which one is meant. `sai/policies/worker-report-transport.md` SHALL be the only statement of this rule, and the coordinator cards SHALL NOT repeat it.
+
+#### Scenario: Design and plan RED are told apart
+- **WHEN** the design coordinator waits for the plan RED worker
+- **THEN** its wait message names the plan RED role, not only the `sai-2-` agent family
+
+#### Scenario: Parallel audits each get their own line
+- **WHEN** `/sai-deep-review` waits for several audit workers at once
+- **THEN** the coordinator prints one line per worker, each naming its own audit role
+
+### Requirement: Activity line on request and on coordinator wakes during a worker wait
+
+To show whether a waited-on worker is still working, the coordinator SHALL run the one-shot `transfer.js status --dir <report-dir> --input-file <paths-file> --cwd <project-root> --role <role> [--since <time>] [--handle <handle>]`, with the same writable-paths file as the watch of that worker, and SHALL print its `line` when the user asks for the status of a wait and on each of its own cache-warm wakes while it waits for a worker. Several workers waited on at once SHALL take one `status` call each, in one same-turn batch. When `unledgered` lists a report, the coordinator SHALL run `receive` on it in the same turn. The coordinator SHALL never send the worker a status request. With cache warming off, the activity line SHALL appear only when the user asks for it, and a wake with no worker being waited on SHALL keep the main-session literal.
+
+#### Scenario: User asks for the status of a wait
+- **WHEN** the user asks whether the waited-on worker is still working
+- **THEN** the coordinator runs `transfer.js status` and prints its activity line without sending the worker any message
+
+#### Scenario: Saved report found by the status query
+- **WHEN** `status` lists a report in `unledgered`
+- **THEN** the coordinator runs `receive` on that report in the same turn
+
+#### Scenario: Wake with no worker being waited on
+- **WHEN** a coordinator cache-warm wake opens a turn while no worker is being waited on and there is nothing to handle
+- **THEN** the coordinator prints the main-session literal `➡️ Warming context cache up.`
