@@ -188,4 +188,9 @@ const readSet = require('./backlog-provider-import').bind('azuredevops', async (
   return { ...result, item: { ...result.item, ...relations } };
   } catch (error) { return { ...result, status: 'incomplete', reason: error.reason || 'retrieval-failed', message: error.message }; }
 });
-module.exports = { classify, resolve, resolveLink, read, readSet, nativeRelations, address, segment };
+// Pure route shape of a complete work-item link (`.../_workitems/edit/N`), with no context lookup.
+function issueRoute(value) {
+  try { resolveLink(value); return true; } catch { return false; }
+}
+
+module.exports = { classify, issueRoute, resolve, resolveLink, read, readSet, nativeRelations, address, segment };
