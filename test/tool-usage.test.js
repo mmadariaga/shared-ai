@@ -18,7 +18,7 @@ const TOOLS = [
   { name: 'commit', file: 'sai/tools/commit.js', kind: 'text', subcommands: ['collect', 'apply'] },
   { name: 'to-pr', file: 'sai/tools/to-pr.js', kind: 'json', keep: { status: 'blocked' }, subcommands: ['prepare', 'collect', 'resolve', 'destination', 'query', 'push-query', 'push', 'publish', 'recover', 'resume', 'plan-query', 'plan-commit'] },
   { name: 'to-backlog', file: 'sai/tools/to-backlog.js', kind: 'json', keep: { status: 'failure_before_publication' }, subcommands: ['resolve', 'resolve-origin', 'query', 'publish', 'recover', 'read-update', 'query-update', 'update', 'recover-update', 'query-set', 'publish-set', 'recover-set', 'continue-set', 'query-set-update', 'update-set', 'recover-set-update', 'continue-set-update', 'lookup-slice', 'inspect-assignment', 'propose-assignment', 'assign', 'verify-assignment'] },
-  { name: 'from-backlog', file: 'sai/tools/from-backlog.js', kind: 'json', keep: { status: 'error', reason: 'usage' }, subcommands: ['resolve', 'read'] },
+  { name: 'from-backlog', file: 'sai/tools/from-backlog.js', kind: 'json', keep: { status: 'error', reason: 'usage' }, subcommands: ['resolve', 'read', 'detect'] },
   { name: 'from-next-backlog-item', file: 'sai/tools/from-next-backlog-item.js', kind: 'json', keep: { status: 'pending', reason: 'usage' }, subcommands: ['select'] },
   { name: 'file-manifest', file: 'sai/tools/file-manifest.js', kind: 'text', subcommands: ['fold', 'verify', 'format', 'writeback'] },
   { name: 'check-delta-headers', file: 'sai/tools/check-delta-headers.js', kind: 'text', subcommands: [] },
