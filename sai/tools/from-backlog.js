@@ -242,7 +242,7 @@ async function runAzureSdk(input) {
 const FB = 'node sai/tools/from-backlog.js';
 
 const USAGE = {
-  subcommands: Object.fromEntries([['resolve', 'Resolves the provider and the issue the reference names.'], ['read', 'Reads the issue (or the set of issues) the reference names.']].map(([operation, what]) => [operation, {
+  subcommands: Object.fromEntries([['resolve', 'Resolves the provider and the issue the reference names.'], ['read', 'Reads the issue (or the set of issues) the reference names.'], ['detect', 'Detects offline whether the reference is one complete issue URL of the provider that resolve would select.']].map(([operation, what]) => [operation, {
     usage: [`${FB} ${operation} <registry.json> --input-file <path>`],
     notes: [`${what} The request JSON {"reference": ...} is the input file (stdin is also accepted); the JSON result is printed on stdout.`],
     examples: [`${FB} ${operation} providers/registry.json --input-file request.json`],
