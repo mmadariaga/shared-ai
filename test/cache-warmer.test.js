@@ -1,5 +1,8 @@
 'use strict';
 
+// `wake_local` is a local time, so pin the suite's zone: the exact assertions below then hold everywhere.
+process.env.TZ = 'UTC';
+
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -161,7 +164,7 @@ const warmer = require('../skills/universal/sai-cache-warmer/wait');
 
 const WAIT = path.resolve(__dirname, '../skills/universal/sai-cache-warmer/wait.js');
 const ON = { interval: 4, max: 30 };
-const REMINDER = 'If you are the main session, check for an unhandled user response or actionable authorized work. Handle it before ending the turn; otherwise preserve the current wait or completed state, and when nothing is left to handle reply with exactly `➡️ Warming context cache up.`. If you are a subagent, follow your existing warming protocol: reply to a wake with exactly `warming context cache up`, and to `dispose` and every wake after it with exactly `cache warming stopped`.';
+const REMINDER = 'If you are the main session, check for an unhandled user response or actionable authorized work. Handle it before ending the turn; otherwise preserve the current wait or completed state, and when nothing is left to handle reply with exactly `➡️ Warming context cache up - HH:mm.`, with the `wake_local` of the result in place of `HH:mm`, or with exactly `➡️ Warming context cache up.` when the result carries no `wake_local`. If you are a subagent, follow your existing warming protocol: reply to a wake with exactly `warming context cache up`, and to `dispose` and every wake after it with exactly `cache warming stopped`.';
 const armResult = launch => ({ launch, reminder: REMINDER });
 
 function chainFixture(t, timings = ON) {
@@ -192,11 +195,32 @@ test('continuation reminder accompanies both arm decisions and every normal warm
   assert.deepEqual([first.status, final.status, offArm.status, offWake.status], ['continue', 'finished', 'finished', 'finished']);
   for (const result of [first, final, offArm, offWake]) {
     assert.equal(result.reminder, REMINDER);
+    assert.match(result.wake_local, /^\d{2}:\d{2}$/, 'every warm result dates its production to the minute');
     assert.equal(Object.hasOwn(result.state, 'reminder'), false);
     const decoded = JSON.parse(Buffer.from(warmer.stateToken(result.state), 'base64url').toString('utf8'));
     assert.deepEqual(decoded, result.state, 'the token still encodes only the state');
     assert.ok(!JSON.stringify(recordOf(saiRoot, started.chain)).includes('reminder'));
+    assert.equal(Object.hasOwn(result.state, 'wake_local'), false, 'the state never carries the wake time');
+    assert.equal(JSON.stringify(decoded).includes('wake_local'), false, 'the state token never carries it');
+    assert.ok(!JSON.stringify(recordOf(saiRoot, started.chain)).includes('wake_local'), 'the chain record never carries it');
   }
+});
+
+test('E1 I1 wake_local is the local HH:mm at which the result resolved, on continue and on an immediate finished', async t => {
+  const { begin, io, clock, saiRoot, setting } = chainFixture(t, { interval: 4, max: 30 });
+  const { chain } = begin();
+  clock.time = new Date(2026, 9, 24, 16, 0, 45, 123).getTime();
+  const armed = await warmer.warmOnce({ chain }, io);
+  assert.equal(armed.status, 'continue');
+  assert.equal(armed.wake_local, '16:04', 'the production time, to the minute: the seconds of the clock are not reused');
+  assert.equal(Object.hasOwn(armed.state, 'wake_local'), false);
+  assert.ok(!JSON.stringify(recordOf(saiRoot, chain)).includes('wake_local'));
+  assert.equal(Object.hasOwn(warmer.armCheck(chain, io), 'wake_local'), false, 'an arm check dates no wake and carries no wake time');
+  setting.value = 'off';
+  clock.time = new Date(2026, 9, 24, 16, 20, 0, 0).getTime();
+  const finished = await warmer.warmOnce({ chain }, io);
+  assert.deepEqual([finished.status, finished.waited_ms], ['finished', 0], 'an immediate finished still carries the field');
+  assert.equal(finished.wake_local, '16:20');
 });
 
 test('CLI arm and warm JSON transports carry the same reminder without changing the state token', t => {
@@ -212,9 +236,12 @@ test('CLI arm and warm JSON transports carry the same reminder without changing 
   for (const result of [armed, run(['warm', '--state', armed.state_token]), run(['warm', '--input-file', inputFile])]) {
     assert.equal(result.status, 'finished');
     assert.equal(result.reminder, REMINDER);
+    assert.match(result.wake_local, /^\d{2}:\d{2}$/, 'the CLI warm JSON carries the wake time');
     if (result.state_token) assert.deepEqual(JSON.parse(Buffer.from(result.state_token, 'base64url').toString('utf8')), result.state);
     assert.equal(Object.hasOwn(result.state, 'reminder'), false);
+    assert.equal(Object.hasOwn(result.state, 'wake_local'), false);
   }
+  assert.equal(Object.hasOwn(run(['arm', '--chain', began.chain]), 'wake_local'), false, 'the arm JSON carries no wake time');
 });
 
 test('E1–E7 behavioral scenarios are instruction checks, not evidence of model compliance', () => {
@@ -583,7 +610,7 @@ test('E7 the arm check reuses a live fixed-deadline wait, never moves the deadli
   assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).closing_ms, 600000, 'the check never moves the deadline');
   clock.time = 600000;
   assert.deepEqual(warmer.armCheck(began.chain, check), armResult(false), 'after the deadline nothing is launched');
-  assert.deepEqual(await warmer.warmOnce({ chain: began.chain }, check), { status: 'finished', waited_ms: 0, state: { chain: began.chain }, reminder: REMINDER });
+  assert.deepEqual(await warmer.warmOnce({ chain: began.chain }, check), { status: 'finished', waited_ms: 0, state: { chain: began.chain }, reminder: REMINDER, wake_local: '00:10' });
 });
 
 test('I1 a new owner starts its interval only after the previous lease was released or went stale', async t => {
@@ -1138,11 +1165,15 @@ test('cache-warming.md is the single source of the three reply literals, their r
   const policy = fs.readFileSync(path.resolve(__dirname, '../sai/policies/cache-warming.md'), 'utf8');
   assert.match(policy, /\*\*Wake literal\*\*: the subagent reply `warming context cache up` to a `continue` or `finished` wake/);
   assert.match(policy, /\*\*Stop literal\*\*: the subagent reply `cache warming stopped` to the `dispose` message, to every wake after it, and to a wake that is not the JSON `wait\.js` prints/);
-  assert.match(policy, /\*\*Main-session literal\*\*: the main-session reply `➡️ Warming context cache up\.`/);
+  assert.match(policy, /\*\*Main-session literal\*\*: the main-session reply template `➡️ Warming context cache up - HH:mm\.`/);
+  assert.match(policy, /its no-time form `➡️ Warming context cache up\.` is printed when the result carries no `wake_local`/);
+  assert.match(policy, /\*\*Wake\.\*\*[^\n]*"wake_local"[\s\S]{0,300}produced, not when it is delivered/);
+  assert.match(policy, /Every `warm` result carries it, `continue` and every `finished` form alike/);
+  assert.match(policy, /only the `HH:mm` slot is data from the payload, printed verbatim/);
   assert.match(policy, /\*\*Normalized recognition\*\*: comparison that ignores letter case, surrounding whitespace, and one trailing period/);
   assert.match(policy, /\*\*Legacy alias\*\*: a bare `ok`/);
   assert.match(policy, /A `finished` wake keeps the wake literal/);
-  assert.match(policy, /print the main-session literal as the only text of the turn[\s\S]{0,120}print no literal/);
+  assert.match(policy, /print the main-session literal `➡️ Warming context cache up - <wake_local>\.`[\s\S]{0,400}print no literal/);
   assert.match(policy, /The stop literal never decides whether an agent has ended: only the stop call does/);
   assert.match(policy, /Any other text, such as a translation, a paraphrase, or a literal with words added, is not an acknowledgement/);
   assert.match(policy, /fixed English protocol text under `@sai\/policies\/public-chat\.md` § Protocol preservation[\s\S]{0,300}plain text without the `➡️` prefix/);
@@ -1160,7 +1191,9 @@ test('CONTINUATION_REMINDER names the reply literals of the main session and of 
   const source = fs.readFileSync(WAIT, 'utf8');
   const reminder = source.match(/const CONTINUATION_REMINDER = '([^\n]*)';/)[1];
   assert.equal(reminder, REMINDER);
-  assert.match(reminder, /reply with exactly `➡️ Warming context cache up\.`/);
+  assert.match(reminder, /reply with exactly `➡️ Warming context cache up - HH:mm\.`/);
+  assert.match(reminder, /with the `wake_local` of the result in place of `HH:mm`/);
+  assert.match(reminder, /`➡️ Warming context cache up\.` when the result carries no `wake_local`/);
   assert.match(reminder, /reply to a wake with exactly `warming context cache up`/);
   assert.match(reminder, /`dispose` and every wake after it with exactly `cache warming stopped`/);
 });
