@@ -14,8 +14,9 @@
 //   close      {outcome}              outcome: completed | escalated | stopped
 //   status     {}                     changes nothing; returns the run state
 //   publication {value}               only for a machine built with `publication: true`: records
-//                                     the run's publication answer (yes | no); an explicit later
-//                                     value replaces the recorded one
+//                                     the run's publication answer, one of the machine's
+//                                     `publicationAnswers` (yes | no by default); an explicit
+//                                     later value replaces the recorded one
 //
 // A run machine built on the core adds only its own vocabulary:
 //   refs         ref kind -> state list field that `record` appends to
@@ -28,8 +29,10 @@
 //   onStart      (fresh, sig, ctx) called when a run starts, with the fresh state it opens; returns
 //                a rejection reason to refuse the start, or nothing to accept it
 //   publication  true when the run carries a publication answer: the `publication` state field
-//                ('' until answered, then `yes` or `no`), the `publication` event, and the field in the
-//                `run` view. The answer survives a resumption; a fresh run starts with none.
+//                ('' until answered), the `publication` event, and the field in the `run` view.
+//                `publicationAnswers` names the values the machine accepts (yes | no by default),
+//                so each run machine opens only its own surface. The answer survives a
+//                resumption; a fresh run starts with none.
 
 const ATTEMPT_BUDGET = 3;
 const STAGES = Object.freeze(['idle', 'running', 'escalated', 'completed', 'stopped']);
@@ -72,8 +75,13 @@ function workerHandleRecord(ctx, current, sig) {
   return ctx.outcome(current);
 }
 
-function createRunMachine({ machineId, hint, refs, extraState, handleEvent, handleRecord, onClose, onStart, publication }) {
-  const withPublication = publication === true;
+function createRunMachine({ machineId, hint, refs, extraState, handleEvent, handleRecord, onClose, onStart, publication, publicationAnswers }) {
+  const answers = publication === true
+    ? Object.freeze(Array.isArray(publicationAnswers) && publicationAnswers.length > 0
+      ? publicationAnswers.slice()
+      : PUBLICATION_ANSWERS)
+    : null;
+  const withPublication = answers !== null;
   const extra = Object.freeze(Object.assign({}, extraState, withPublication ? { publication: '' } : {}));
   const refFields = Object.freeze(Object.assign({}, refs));
   const fieldNames = Object.keys(extra).concat(Object.keys(refFields).map((kind) => refFields[kind]));
@@ -232,7 +240,7 @@ function createRunMachine({ machineId, hint, refs, extraState, handleEvent, hand
       case 'publication': {
         if (!withPublication) return handleEvent ? handleEvent({ outcome, reject, running, usableId, usablePath }, current, sig) : null;
         if (!running) return reject('run is not running');
-        if (PUBLICATION_ANSWERS.indexOf(sig.value) === -1) return reject('publication must be yes or no');
+        if (answers.indexOf(sig.value) === -1) return reject('publication must be ' + answers.join(' or '));
         current.publication = sig.value;
         return outcome(current);
       }

@@ -1,6 +1,6 @@
 ---
 description: Plan a change in one run — /sai-1-spec then /sai-2-design from a change document, each segment reviewed, checked, and committed locally, with no stop between segments.
-argument-hint: "[change document | --document-file <path> --document-hash <sha256> | change-name] [--publish yes|no]"
+argument-hint: "[change document | --document-file <path> --document-hash <sha256> | change-name] [--publish [yes|no|draft]] [--build-publish <yes|no|draft>]"
 model: sonnet
 effort: high
 allowed-tools: {{capabilityAllowedTools}}

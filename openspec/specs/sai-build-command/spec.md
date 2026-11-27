@@ -109,7 +109,7 @@ Build SHALL preserve the implementation segment's escalation stops, its three-at
 
 ### Requirement: Final navigation is apply completion
 
-When the run completes, build SHALL print the finding counts from the review's `Summary:` tally by category, then the Fixed, Excluded, Left open, and Questions lists where they have entries, then the review's `## Recommended Audits` block verbatim, and end with exactly `Build done.`. It SHALL run no audit and SHALL NOT chain another segment. The resolved change name SHALL replace `{name}` wherever it appears. A run that stops SHALL end without `Build done.`.
+When the run completes, build SHALL print the finding counts from the review's `Summary:` tally by category, then the Fixed, Excluded, Left open, and Questions lists where they have entries, then the review's `## Recommended Audits` block verbatim, and end with exactly `Build done.`. It SHALL run no audit and SHALL NOT chain another segment. The resolved change name SHALL replace `{name}` wherever it appears. Before `Build done.`, a completed close with changes SHALL print the next command for a new chat: `/sai-archive {name} --push yes` when the publication answer is `yes` or `draft` and the publication step confirmed the push of this branch, and `/sai-archive {name} --push no` otherwise. An `outcome: no-changes` close SHALL print no archive hint. A run that stops SHALL end without `Build done.`.
 
 #### Scenario: Successful build closes at review navigation
 
@@ -117,6 +117,7 @@ When the run completes, build SHALL print the finding counts from the review's `
 - **THEN** build prints the finding counts, the lists where present, and the review's `## Recommended Audits` block, and the run ends with `Build done.`
 
 #### Scenario: Successful build closes with Build done
+
 - **WHEN** every segment that ran completes and the review has findings
 - **THEN** build prints the counts, the lists where present, the recommended audits block verbatim, and ends with `Build done.`
 
@@ -126,9 +127,26 @@ When the run completes, build SHALL print the finding counts from the review's `
 - **THEN** it offers the audits in the review's `## Recommended Audits` block, chosen from the review's findings rather than an unconditional audit suite, and runs none of them
 
 #### Scenario: Recommended audits are offered, not run
+
 - **WHEN** build prints its successful close
 - **THEN** it prints the recommended audits block verbatim and runs no audit
 
 #### Scenario: No successful final completion transition
+
 - **WHEN** build stops without completing its final segment
 - **THEN** build does not print `Build done.` and uses the stopped-run guidance of its coordinator
+
+#### Scenario: Completed close names the archive push value
+
+- **WHEN** a completed build with changes holds the answer `yes` or `draft` and the publication step confirmed the push
+- **THEN** the close prints `/sai-archive {name} --push yes` before `Build done.`
+
+#### Scenario: An unconfirmed push names --push no
+
+- **WHEN** a completed build with changes holds the answer `no`, skipped its publication, or did not confirm its push
+- **THEN** the close prints `/sai-archive {name} --push no`
+
+#### Scenario: No-changes close prints no archive hint
+
+- **WHEN** the review segment's accepted report carries `outcome: no-changes`
+- **THEN** the close prints no archive hint

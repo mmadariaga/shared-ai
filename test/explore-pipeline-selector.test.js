@@ -709,9 +709,12 @@ test('Step 4: successful Plan (unattended) emits the build handoff and never dis
   const close = plan.slice(plan.indexOf('**Close.**'), plan.indexOf('**`next-slice` on Implement.**'));
 
   assert.ok(close.length > 0, 'the Plan close should be specified');
-  assert.match(close, /review here → \`\/sai-build \{name\}\` in another chat/, 'successful Plan should hand off to the build composition');
+  assert.match(close, /review here → the build command printed by the plan coordinator in another chat/, 'successful Plan should hand off to the build composition');
+  assert.match(close, /then run the build command the plan coordinator printed in another chat/);
+  assert.match(close, /print no second build command line/, 'the plan coordinator prints the only build hint');
   assert.match(close, /titled active slice/);
   assert.match(close, /The route never dispatches \`\/sai-3-implement\` or any later worker/);
+  assert.doesNotMatch(close, /\`sai-build \{name\}\`/, 'the explore close prints no second build command');
   assert.doesNotMatch(close, /\`sai-3 was not run\.\`/i, 'successful Plan should not emit the obsolete terminal text');
 });
 

@@ -1,5 +1,5 @@
 ---
-description: Build a change in one run — /sai-3-implement then /sai-4-review, closing with a findings summary for you to triage (commits pre-authorized, no stop between segments). Accepts --publish yes|no, --parent-branch <branch>.
+description: Build a change in one run — /sai-3-implement then /sai-4-review, closing with a findings summary for you to triage (commits pre-authorized, no stop between segments). Accepts --publish [yes|no|draft], --parent-branch <branch>.
 model: opencode-go/deepseek-v4.1-flash#max
 subtask: false
 ---

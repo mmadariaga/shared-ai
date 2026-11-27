@@ -8,7 +8,8 @@ Plans a change in one invocation. It chains [`/sai-1-spec`](sai-1-spec.md), then
 
 - A change document from [`/sai-explore`](sai-explore.md), pasted or passed as `--document-file <path> --document-hash <sha256>`, which is what `sai-state block --export` produces. Without a document, give the name of a change that already has `proposal.md` and either a spec file or `.openspec.yaml` with `skip_specs: true`.
 - `--overview-lang` no longer exists: passing it ends the run with an unknown-option error before anything is written.
-- `--publish yes|no`: answers the publication question below in advance. Any other value ends the run before anything is written.
+- `--publish [yes|no|draft]`: answers the publication question below in advance. A bare `--publish` is `yes`, and `draft` does the same as `yes` because the plan's request is always a draft; `no` publishes nothing. Any other value, or a second `--publish`, ends the run before anything is written.
+- `--build-publish <yes|no|draft>`: sets the publication flag carried by the closing build hint. It is accepted on any invocation, wins over `pr.publishAfterRun`, and does not change the plan's own publication. A bare `--build-publish`, any other value, or a second `--build-publish` ends the run before anything is written with `Cannot start /sai-plan: --build-publish takes yes, no or draft.` The `/sai-explore` Plan route passes it from the set's publication answer and slice position.
 
 ## In detail
 
@@ -17,7 +18,8 @@ on GitHub, GitLab or Azure DevOps when the run ends, through [`/to-pr`](to-pr.md
 after its input checks pass (the document and its hash, the change name) and before the first
 worker starts, and it names the current branch, its remote, and the request state: a new
 request is created as a draft, and an open request of the branch is updated and keeps its
-draft or ready state. The answer comes from, in this order, the `--publish yes|no` argument,
+draft or ready state. The answer comes from, in this order, the `--publish [yes|no|draft]` argument
+(a bare `--publish` is `yes`, and `draft` is normalized to `yes`),
 the answer a resumed run already recorded, the [`pr.publishAfterRun`](../project-settings.md#plan-publication-answer)
 setting when it reads `yes` or `no`, and then the question; the first value found wins and
 nothing later is asked. The same start question applies when Explore runs Plan; standalone
@@ -36,8 +38,8 @@ failed authentication, a rejected push (never retried with force), or a branch w
 was merged or closed (never reopened), publication is skipped with its reason and the run still
 counts as completed. All committed branch changes enter the request: it need not be
 documents-only. Implementation uses this same branch and request later; the plan never marks the
-request ready, and [`/sai-build`](sai-build.md) marks it ready only when it holds its own `yes` answer. An unattended run publishes without a final look at the request text; you
-accept that when you answer `yes`.
+request ready, and [`/sai-build`](sai-build.md) marks an open draft request ready only when it holds its own `yes` answer, while a `draft` answer creates or keeps a draft. An unattended run publishes without a final look at the request text; you
+accept that when you answer `yes` or `draft`.
 
 The command runs the spec segment and the design segment in the same session, with no approval between segments. The behavior, checks, and stops of each segment are the ones described in [`/sai-1-spec`](sai-1-spec.md) and [`/sai-2-design`](sai-2-design.md). Invoking the command approves the specs.
 
@@ -49,4 +51,4 @@ With `experimental.changeTelemetry` on, the command records the run's cost in `t
 
 When the spec segment runs, the design segment reuses the research it did: the spec worker's explorers save their reports in a run-scoped research directory, the spec worker records only its exceptions in an annotations file, and design reads those annotations first and researches only its own gaps. A saved file that is no longer usable costs one line in the closing report and never stops the run. Running `/sai-2-design` alone reuses nothing.
 
-The assumptions and the findings left open are reported once, in the closing report, and are not written to the repository. When both segments ended normally, the planning report closes with `Plan done in openspec/changes/{change-name}/. Review it and run /sai-build {change-name} in a new chat when ready.` A publication that was answered `yes` runs before this line and prints its outcome with the reports. Otherwise the command prints the reports so far and ends without the closing line, and publishes nothing.
+The assumptions and the findings left open are reported once, in the closing report, and are not written to the repository. When both segments ended normally, the planning report closes with `Plan done in openspec/changes/{change-name}/. Review it and run /sai-build {change-name} <build-publish> in a new chat when ready.`, where `<build-publish>` is `--publish` for a `yes` recommendation, `--publish draft` for `draft`, or `--publish no` for `no`. The value is the `--build-publish` argument when given; otherwise `pr.publishAfterRun` decides: `no` gives `--publish no`, and `yes`, `ask`, or an absent value gives the bare `--publish` as a recommendation. In the `/sai-explore` Plan route, the value comes from the set's publication answer, branch strategy, and pending slices, and the plan coordinator prints the only hint. A publication that was answered `yes` runs before this line and prints its outcome with the reports. Otherwise the command prints the reports so far and ends without the closing line, and publishes nothing.

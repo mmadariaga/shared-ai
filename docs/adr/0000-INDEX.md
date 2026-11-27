@@ -281,6 +281,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0223 — Publication auto-approve is a standing publication grant](./0223-publication-auto-approve-is-a-standing-publication-grant.md) — **Amends** 0209b (decision 4), **Amends** 0222
 - [0224 — Publication consent comes only from the local settings file](./0224-publication-consent-comes-only-from-the-local-settings-file.md) — **Amends** 0222, **Amends** 0223
 - [0227b — Publication consent comes from either settings file](./0227b-publication-consent-comes-from-either-settings-file.md) — Supersedes 0224, Refs 0222, Refs 0223
+- [0235 — Optional publication flags and one build hint](./0235-optional-publication-flags-and-one-build-hint.md) — **Amends** 0222
 
 ### `/sai-deep-review`, `/sai-5-security`, `/sai-6-performance`, and `/sai-7-accessibility`
 

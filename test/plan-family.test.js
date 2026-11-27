@@ -387,7 +387,7 @@ test('I5: plan-run@1 records the publication answer, an explicit value replaces 
   let run = planRun.transition(planRun.initialState, { kind: 'start', dir: '/tmp/plan-p' });
   assert.equal(run.run.publication, '');
   assert.equal(planRun.project(run.state).run.publication, '');
-  for (const value of ['maybe', '', undefined, true]) assert.equal(planRun.transition(run.state, { kind: 'publication', value }).rejected, 'publication must be yes or no');
+  for (const value of ['maybe', 'draft', '', undefined, true]) assert.equal(planRun.transition(run.state, { kind: 'publication', value }).rejected, 'publication must be yes or no', 'plan rejects draft and every other value');
   run = planRun.transition(run.state, { kind: 'publication', value: 'yes' });
   assert.equal(run.run.publication, 'yes');
   assert.equal(run.state.publication, 'yes');

@@ -207,7 +207,7 @@ Every catalogue key that the post-setup menu shows as a value row SHALL declare 
 
 ### Requirement: Plan publication answer setting
 
-The catalogue SHALL hold `pr.publishAfterRun`, the answer to the start-of-run publication question of `/sai-plan` and `/sai-build` and to the round-3 publication question that `/sai-explore` asks once per crystallized set. The reader SHALL accept `yes` or `no` compared case-insensitively after trimming and SHALL return the value in lower case. `ask` SHALL keep the normal question like any other key, and an absent key SHALL mean `ask`. Any other value SHALL be dropped with a warning that it must be yes, no, or ask. A `yes` or a `no` SHALL count from either settings file, the local file winning key by key. The key SHALL NOT be a `/to-pr` destination field, so `readPr` SHALL NOT return it, and the project settings screen SHALL NOT list it.
+The catalogue SHALL hold `pr.publishAfterRun`, the answer to the start-of-run publication question of `/sai-plan` and `/sai-build`, the round-3 publication question that `/sai-explore` asks once per crystallized set, and the recommendation of the standalone `/sai-plan` build hint. The reader SHALL accept `yes` or `no` compared case-insensitively after trimming and SHALL return the value in lower case; `draft` SHALL NOT be a value of this key. `ask` SHALL keep the normal question like any other key, and an absent key SHALL mean `ask`. Any other value SHALL be dropped with a warning that it must be yes, no, or ask. A `yes` or a `no` SHALL count from either settings file, the local file winning key by key. For the build hint, `no` SHALL give `--publish no`, and `yes`, `ask`, an absent key, and an invalid value SHALL give the bare `--publish` as a recommendation; the `/sai-explore` Plan route SHALL always hand `--build-publish` over and SHALL NOT read this key for the hint. The key SHALL NOT be a `/to-pr` destination field, so `readPr` SHALL NOT return it, and the project settings screen SHALL NOT list it.
 
 #### Scenario: Yes is normalized
 
@@ -228,6 +228,11 @@ The catalogue SHALL hold `pr.publishAfterRun`, the answer to the start-of-run pu
 
 - **WHEN** `get pr.publishAfterRun --json --cwd <root>` runs in a project whose `.sai/settings.jsonc` sets `pr.publishAfterRun` to `yes` and no local file holds the key
 - **THEN** the CLI prints `value: yes` with `source: setting` and no warnings
+
+#### Scenario: The build hint recommendation follows the setting
+
+- **WHEN** a standalone `/sai-plan` completes with no `--build-publish` and `pr.publishAfterRun` reads `no`
+- **THEN** the closing build hint names `--publish no`, and a `yes`, `ask`, absent, or invalid value names the bare `--publish`
 
 ### Requirement: PR/MR language setting
 

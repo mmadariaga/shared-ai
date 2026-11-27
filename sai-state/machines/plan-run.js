@@ -17,9 +17,10 @@
 //   escalate      {obstacle}             the run waits for the user's answer
 //   answer        {obstacle, choice}     `continue` resets the obstacle, `stop` stops the run
 //   record        {ref, path}            ref: assumption | report | report-dir | research-dir | finding | baseline
-//   publication   {value}                the publication answer of the run, yes | no, returned in the
-//                                        `run` view (`''` until answered); an explicit later value
-//                                        replaces the recorded one
+//   publication   {value}                the publication answer of the run, one of this machine's
+//                                        `publicationAnswers` (yes | no), returned in the `run` view
+//                                        (`''` until answered); an explicit later value replaces the
+//                                        recorded one
 //   close         {outcome}              outcome: completed | escalated | stopped
 //   status        {}                     changes nothing; returns the run state
 
@@ -72,6 +73,7 @@ module.exports = createRunMachine({
   refs: REFS,
   extraState: { segment: '', completed: [] },
   publication: true,
+  publicationAnswers: ['yes', 'no'],
   handleEvent,
   onClose(current) {
     current.segment = '';

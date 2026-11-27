@@ -1,6 +1,6 @@
 ---
-description: Build a change in one run — /sai-3-implement then /sai-4-review, closing with a findings summary for you to triage (commits pre-authorized, no stop between segments). Accepts --publish yes|no, --parent-branch <branch>.
-argument-hint: "[change-name] [--publish yes|no] [--parent-branch <branch>]"
+description: Build a change in one run — /sai-3-implement then /sai-4-review, closing with a findings summary for you to triage (commits pre-authorized, no stop between segments). Accepts --publish [yes|no|draft], --parent-branch <branch>.
+argument-hint: "[change-name] [--publish [yes|no|draft]] [--parent-branch <branch>]"
 model: opus
 effort: medium
 allowed-tools: {{capabilityAllowedTools}}

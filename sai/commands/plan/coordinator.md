@@ -6,7 +6,7 @@ Fetch `@sai/policies/cache-warming.md`
 Fetch `@sai/policies/change-telemetry.md`
 Fetch `@sai/commands/plan/cycle.md`
 
-You chain the segments of one plan run in a single session. The invocation carries one string, `arguments_value`: a change document or the reference to one (`--document-file <path> --document-hash <sha256>`), or the name of a change, with the optional `--publish yes|no`.
+You chain the segments of one plan run in a single session. The invocation carries one string, `arguments_value`: a change document or the reference to one (`--document-file <path> --document-hash <sha256>`), or the name of a change, with the optional `--publish [yes|no|draft]` and `--build-publish <yes|no|draft>`.
 
 ## Goal
 
@@ -14,7 +14,7 @@ Turn a crystallized change document into the full plan of a change with no human
 
 ## Start
 
-1. Drop every `--fast-track` and `--supervised` token or line from `arguments_value`: both are accepted and ignored, and no banner is printed. Any `--overview-lang` token is an unknown option now: print `Cannot start /sai-plan: unknown option --overview-lang.` and end the run before anything is written. Take `--publish <answer>` out and keep it for the publication answer below; an answer other than `yes` or `no`, or a missing one, ends the run before anything is written with: `Cannot start /sai-plan: --publish takes yes or no.`
+1. Drop every `--fast-track` and `--supervised` token or line from `arguments_value`: both are accepted and ignored, and no banner is printed. Any `--overview-lang` token is an unknown option now: print `Cannot start /sai-plan: unknown option --overview-lang.` and end the run before anything is written. Take `--publish` out and keep its value for the publication answer below: the value is consumed only when it is exactly `yes`, `no`, or `draft`, from the separate form or the attached `--publish=<value>` form; when the next token is anything else, the bare `--publish` equals `yes` and leaves that token in place, and `draft` is normalized to `yes` for the answer because the plan's request is always a draft. A value other than `yes`, `no`, or `draft`, or a second `--publish`, ends the run before anything is written with: `Cannot start /sai-plan: --publish takes yes, no or draft.` Take `--build-publish <yes|no|draft>` out too, in the separate or the attached `--build-publish=<value>` form, and keep it as the build hint value; a bare `--build-publish`, a value other than `yes`, `no`, or `draft`, or a second `--build-publish` ends the run before anything is written with: `Cannot start /sai-plan: --build-publish takes yes, no or draft.`
 2. Find the input and the change name as `sai/commands/spec/coordinator.md` Start steps 2 and 3 do: a document gives the change name (its `Change name:` line), and otherwise the first token is the name. Text after a name is not feedback here: feedback belongs to `/sai-1-spec` and `/sai-2-design`. When the string holds neither a document nor a name, print this and end the run, writing nothing: `Cannot start /sai-plan: pass a change document (paste it, or use --document-file and --document-hash), or the name of a change that already has proposal.md and specs/.`
 3. Decide which segments run, from what `openspec/changes/{name}/` holds:
    - Both `proposal.md` and a file under `specs/` exist: the specs exist and the disk wins. The spec segment counts as done, the document (if one came) does not rewrite them, and the report says so.
@@ -30,8 +30,8 @@ A run publishes a draft PR/MR of its plan only when it holds a `yes` answer, and
 
 Resolve it once, after the input checks have passed (Start steps 2 and 3, and, when the spec segment runs, the document validation of its Start step 5) and before the first worker is created, so a run that ends at those checks asks nothing. When the spec segment counts as done, resolve it right after Start step 4. The first of these that yields a value is the answer, and nothing after it is asked. An explicit `--publish` value wins over the recorded answer and replaces it:
 
-1. The `--publish yes|no` argument.
-2. The answer recorded in the run state: the `publication` field of the `run` view of `plan-run@1`. Without a `--publish` argument a resumed run reuses it and asks nothing. A resumed run with no recorded answer goes on to the next source.
+1. The `--publish [yes|no|draft]` argument, where a bare `--publish` is `yes` and `draft` is normalized to `yes`.
+2. The answer recorded in the run state: the `publication` field of the `run` view of `plan-run@1` (`yes` or `no`). Without a `--publish` argument a resumed run reuses it and asks nothing. A resumed run with no recorded answer goes on to the next source.
 3. The `pr.publishAfterRun` setting, read with `node <tool-path> get pr.publishAfterRun --json --cwd <project-root>` (`project-settings.js`, resolved per `tool-resolution.md`) when it returns `yes` or `no`. Print its `warnings` verbatim, one line each. `ask`, an absent key, an invalid value, and a tool that cannot run leave the question normal.
 4. The question below.
 
@@ -56,7 +56,9 @@ After the last segment that ran ends, the reports it printed stand as the report
 
 **Telemetry.** Before publication and any closing line, and before the run is closed (its run directory still holds the review round files), record the change telemetry as `change-telemetry.md` says, with `--command sai-explore-plan` when this coordinator runs inside the `/sai-explore` **Plan - Unattended** route and `--command sai-plan` otherwise, and `--run-dir` set to the run directory. Its one line, when it has one, comes before the closing line.
 
-- **Both segments completed** (or the spec segment counted as done and the design segment completed): say which artifacts were created and close the planning report with exactly ``Plan done in openspec/changes/{name}/. Review it and run `/sai-build {name}` in a new chat when ready.`` This literal closes the planning report, not the command interaction.
+**Build hint.** Resolve the build publication flag once for the completed close. `--build-publish` when it was given: `yes` gives `--publish`, `draft` gives `--publish draft`, and `no` gives `--publish no`. Without it, read `pr.publishAfterRun` with `node <tool-path> get pr.publishAfterRun --json --cwd <project-root>` (`project-settings.js`, resolved per `tool-resolution.md`): `no` gives `--publish no`, and `yes`, `ask`, an absent key, an invalid value, and a tool that cannot run give the bare `--publish` as a recommendation. The plan's own `--publish` answer never decides this flag. On the `/sai-explore` Plan route, `--build-publish` is always handed over, so the set's answer and slice position decide the flag and `pr.publishAfterRun` is not read. This coordinator prints the only build hint; a failed or stopped run prints none.
+
+- **Both segments completed** (or the spec segment counted as done and the design segment completed): say which artifacts were created and close the planning report with exactly this form, replacing `{build_publish}` with the flag § Build hint resolved: ``Plan done in openspec/changes/{name}/. Review it and run `/sai-build {name} {build_publish}` in a new chat when ready.`` This literal closes the planning report, not the command interaction. The `/sai-explore` Plan close refers to this printed build command and prints no second one.
 - **A segment failed, was stopped, or ended on an unanswered escalation**: end the run with the reports printed so far and no closing line, and publish nothing.
 
 **Research hand-over.** When the cycle's Research hand-over kept a line (a research directory that could not be opened, or saved research files that were unusable), print it with the reports of the run, before the closing line.

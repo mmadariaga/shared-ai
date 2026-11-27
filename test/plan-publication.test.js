@@ -55,7 +55,7 @@ test('I6 I7 E1 E2 E12: only composed Plan owns the start-of-run publication answ
   assert.match(plan, /## Publication answer/);
   assert.ok(plan.indexOf('## Publication answer') < plan.indexOf('## Segments'));
   // E2: argument, run state, setting, question, in that order.
-  const order = ['`--publish yes|no` argument', 'recorded in the run state', '`pr.publishAfterRun` setting', 'The question below'].map(text => plan.indexOf(text));
+  const order = ['`--publish [yes|no|draft]` argument', 'recorded in the run state', '`pr.publishAfterRun` setting', 'The question below'].map(text => plan.indexOf(text));
   assert.ok(order.every(position => position > 0) && order.every((position, index) => !index || position > order[index - 1]));
   assert.match(plan, /Resolve it once, after the input checks have passed/);
   assert.match(plan, /before the first worker is created, so a run that ends at those checks asks nothing/);
@@ -66,19 +66,42 @@ test('I6 I7 E1 E2 E12: only composed Plan owns the start-of-run publication answ
   assert.match(plan, /branch \{branch\}, remote \{remote\}|Branch \{branch\}, remote \{remote\}/);
   assert.match(plan, /AskUserQuestion.*question|`question`/);
   assert.match(plan, /A run that fails, is stopped, or ends on an unanswered escalation publishes nothing, whatever the answer/);
-  assert.match(plan, /close the planning report with exactly ``Plan done in openspec\/changes\/\{name\}\/\. Review it and run `\/sai-build \{name\}` in a new chat when ready\.``/);
+  assert.match(plan, /replacing `\{build_publish\}` with the flag § Build hint resolved/);
+  assert.match(plan, /``Plan done in openspec\/changes\/\{name\}\/\. Review it and run `\/sai-build \{name\} \{build_publish\}` in a new chat when ready\.``/);
   assert.match(plan, /This literal closes the planning report, not the command interaction/);
-  assert.match(plan, /--publish <answer>/);
+  assert.match(plan, /Take `--publish` out and keep its value/);
+  assert.match(plan, /Cannot start \/sai-plan: --publish takes yes, no or draft\./);
   assert.ok(plan.indexOf('**Telemetry.**') < plan.indexOf('**Publication.**') && plan.indexOf('**Publication.**') < plan.indexOf('Close the run per the cycle'));
   assert.doesNotMatch(plan, /end with exactly ``Plan done/);
   assert.match(explore, /--publish <yes\|no>/);
+  assert.match(explore, /--build-publish <yes\|no\|draft>/);
   assert.match(explore, /the plan coordinator asks no publication question of its own/);
   assert.doesNotMatch(explore, /asks its start question inside this route/);
   assert.doesNotMatch(fs.readFileSync('AGENTS.md', 'utf8'), /Plan route asks\s+the same start question inside the route/);
   for (const phase of ['spec', 'design']) assert.doesNotMatch(fs.readFileSync(`sai/commands/${phase}/coordinator.md`, 'utf8'), /Publish a draft PR\/MR|publication answer/);
   const claude = fs.readFileSync('commands/claude/sai-plan.md', 'utf8');
-  assert.match(claude, /^argument-hint: .*\[--publish yes\|no\]"$/m);
+  assert.match(claude, /^argument-hint: .*\[--publish \[yes\|no\|draft\]\] \[--build-publish <yes\|no\|draft>\]"$/m);
   assert.doesNotMatch(fs.readFileSync('commands/opencode/sai-plan.md', 'utf8'), /^argument-hint:/m);
+});
+
+test('E7 E8 E9 I1 I6: the plan parses --build-publish on any invocation, normalizes draft, and owns the only build hint', () => {
+  const plan = fs.readFileSync('sai/commands/plan/coordinator.md', 'utf8');
+  const explore = fs.readFileSync('sai/commands/explore/steps/pipeline-plan-unattended.md', 'utf8');
+  assert.match(plan, /Take `--build-publish <yes\|no\|draft>` out too, in the separate or the attached `--build-publish=<value>` form/);
+  assert.match(plan, /Cannot start \/sai-plan: --build-publish takes yes, no or draft\./);
+  assert.match(plan, /a bare `--build-publish`, a value other than `yes`, `no`, or `draft`, or a second `--build-publish`/);
+  assert.match(plan, /\*\*Build hint\.\*\*/);
+  assert.match(plan, /`--build-publish` when it was given: `yes` gives `--publish`, `draft` gives `--publish draft`, and `no` gives `--publish no`/);
+  assert.match(plan, /Without it, read `pr.publishAfterRun`/);
+  assert.match(plan, /`no` gives `--publish no`, and `yes`, `ask`, an absent key, an invalid value, and a tool that cannot run give the bare `--publish` as a recommendation/);
+  assert.match(plan, /The plan's own `--publish` answer never decides this flag/);
+  assert.match(plan, /On the `\/sai-explore` Plan route, `--build-publish` is always handed over/);
+  assert.match(plan, /This coordinator prints the only build hint/);
+  assert.match(explore, /`no` when the set holds no answer or a `no`/);
+  assert.match(explore, /`draft` when the set holds `yes`, the `branch_strategy` is `shared` or `none`, and the `pending` list holds a slice other than this one/);
+  assert.match(explore, /`yes` otherwise \(a `per-slice` strategy or the last pending slice\)/);
+  assert.match(explore, /then run the build command the plan coordinator printed in another chat/);
+  assert.match(explore, /print no second build command line/);
 });
 test('I6: the publication continuation is unattended and asks neither the inclusion nor the remote question', () => {
   const publication = fs.readFileSync('sai/commands/plan/publication.md', 'utf8');
