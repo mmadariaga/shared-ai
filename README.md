@@ -89,8 +89,8 @@ Start with an idea in `/sai-explore`, or import existing work using the
 [`/sai-3-implement`](docs/commands/sai-3-implement.md), one
 [`/sai-4-review`](docs/commands/sai-4-review.md) pass, and a second implement run
 for the findings it judges justified. It asks one start question, answered in
-advance with `--publish yes|no` or the `pr.publishAfterRun` setting, about publishing
-a PR/MR ready for review when the run ends. Run those two commands on their own for
+advance with `--publish [yes|no|draft]` or the `pr.publishAfterRun` setting, about publishing
+a PR/MR ready for review or as a draft when the run ends. Run those two commands on their own for
 step-by-step control.
 
 Need broader specialized audits? Add `--full` or `--path <dir>` to `/sai-deep-review`.
@@ -134,7 +134,7 @@ does not use the same RED → GREEN process; check its results before publishing
 | Command | Role | Output |
 |---------|------|--------|
 | [`/sai-explore`](docs/commands/sai-explore.md) | Clarify the idea and choose how to build it | Proposal handoff, reviewed plan, or completed Direct Build |
-| [`/sai-plan`](docs/commands/sai-plan.md) | Plan a change in one run: specs, then design; optionally publish a draft PR/MR (answered at the start) | `proposal.md`, `specs/`, `design.md`, `tasks.md`, the interface stubs and failing plan tests, and local commits per segment; a `yes` answer to the start question is the only approval publication needs |
+| [`/sai-plan`](docs/commands/sai-plan.md) | Plan a change in one run: specs, then design; optionally publish a draft PR/MR (answered at the start) | `proposal.md`, `specs/`, `design.md`, `tasks.md`, the interface stubs and failing plan tests, and local commits per segment; a `yes` or `draft` answer to the start question is the only approval publication needs |
 | [`/sai-build`](docs/commands/sai-build.md) | Build and review a change in one run | Tests, production code, one local commit per step, a `review.md`, and fixes for the findings it judges justified |
 | [`/sai-deep-review`](docs/commands/sai-deep-review.md) | Coordinate code review and specialized audits, then fix the findings it judges justified, with no human in the loop | Reports, a commit per audit report, and one local commit per fix step |
 | [`/sai-archive`](docs/commands/sai-archive.md) | Sync specs and archive the completed change | Archived change, optional local commit, and optional push |

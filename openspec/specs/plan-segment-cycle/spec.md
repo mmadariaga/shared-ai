@@ -9,7 +9,7 @@ The plan segment cycle is the shared unattended run of a `/sai-1-spec` or `/sai-
 
 The segment cycle (`sai/commands/plan/cycle.md`) SHALL keep its run state in the `plan-run@1` machine, built on the shared run core, with the segments `spec` and `design` and the events `start`, `segment-start`, `segment-done`, `attempt`, `escalate`, `answer`, `record`, `publication`, `close`, and `status`. The state SHALL hold identifiers and paths only, and the run's publication answer. The session key SHALL be `plan-{name}`, shared by `/sai-1-spec`, `/sai-2-design`, and `/sai-plan`. A fresh run SHALL create its run directory outside the repository with `temp-root.js mkdtemp --harness <claude|opencode> --prefix plan-{name}-`, passing no other argument (in particular no `--cwd`), and free text (assumptions, reports, findings, baselines, hand-over files) SHALL live in files in that directory. Whoever opened the run SHALL close it: inside `/sai-plan` the plan coordinator opens and closes the run and each segment only emits `segment-start` and `segment-done`. `implement-run@1` SHALL keep its behavior.
 
-The shared run core SHALL offer the `publication` event only to a machine built with `publication: true`. Such a machine SHALL hold a `publication` state field, `''` until answered, SHALL accept `publication` with `value` `yes` or `no` only while the run is running, SHALL let a later explicit value replace the recorded one, and SHALL return the field in its `run` view. `plan-run@1` SHALL be built with `publication: true`.
+The shared run core SHALL offer the `publication` event only to a machine built with `publication: true`. Such a machine SHALL hold a `publication` state field, `''` until answered, SHALL accept `publication` with a value from the machine's own `publicationAnswers` list only while the run is running, SHALL let a later explicit value replace the recorded one, and SHALL return the field in its `run` view. `implement-run@1` SHALL declare `['yes', 'no', 'draft']` and `plan-run@1` SHALL declare `['yes', 'no']`, so `implement-run@1` accepts `draft` while `plan-run@1` rejects it. `plan-run@1` SHALL be built with `publication: true`.
 
 #### Scenario: a fresh run opens a private run directory
 
@@ -35,6 +35,11 @@ The shared run core SHALL offer the `publication` event only to a machine built 
 
 - **WHEN** a running `plan-run@1` receives `publication` with a value other than `yes` or `no`, or a run that is not running receives it
 - **THEN** the event is rejected and the recorded answer is unchanged
+
+#### Scenario: each machine declares its own publication answers
+
+- **WHEN** `implement-run@1` receives `publication` with `value` `draft` and `plan-run@1` receives `publication` with `value` `draft`
+- **THEN** `implement-run@1` records `draft` in its run view and `plan-run@1` rejects the event with `publication must be yes or no`
 
 ### Requirement: Segment workers are standalone and report through a file
 

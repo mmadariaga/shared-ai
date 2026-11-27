@@ -245,11 +245,12 @@ test('implement-run@1 carries the publication answer of /sai-build: recorded, re
   assert.equal(machine.transition(machine.initialState, { kind: 'publication', value: 'yes' }).rejected, 'run is not running');
   const started = run(start);
   assert.equal(started.run.publication, '', 'a direct /sai-3-implement run carries an unused empty field');
-  for (const value of ['maybe', '', undefined, true]) assert.equal(machine.transition(started.state, { kind: 'publication', value }).rejected, 'publication must be yes or no');
+  for (const value of ['maybe', '', undefined, true]) assert.equal(machine.transition(started.state, { kind: 'publication', value }).rejected, 'publication must be yes or no or draft');
   const yes = machine.transition(started.state, { kind: 'publication', value: 'yes' });
   assert.equal(yes.run.publication, 'yes');
   assert.equal(machine.project(yes.state).run.publication, 'yes', 'a resumed run reads the recorded answer');
   assert.equal(machine.transition(yes.state, { kind: 'publication', value: 'no' }).run.publication, 'no');
+  assert.equal(machine.transition(yes.state, { kind: 'publication', value: 'draft' }).run.publication, 'draft', 'the build stores draft as it is');
   const withWorker = machine.transition(yes.state, { kind: 'record', ref: 'worker', role: 'red', handle: 'ses_1', reason: 'create' });
   assert.equal(withWorker.run.publication, 'yes', 'the other events leave the answer alone');
   const closed = machine.transition(yes.state, { kind: 'close', outcome: 'completed' });

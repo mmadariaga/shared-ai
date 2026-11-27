@@ -663,7 +663,7 @@ The request status SHALL become `complete` only when its approved content and an
 
 ### Requirement: Unattended mode for a SAI coordinator with a recorded publication answer
 
-`to-pr.js` SHALL accept an `--unattended` flag on `plan-commit`, `push`, and `publish` only, and SHALL reject it on every other operation. Only the flag SHALL enable the mode; a request field named `unattended` SHALL be ignored. The flag SHALL replace the `approved` and `confirmation` checks of those operations and SHALL keep every other check, including the plan's staged-content check and recheck, the remote branch verification after the push, the baseline reread, the closing-reference and description checks, and the receipt. The `to-pr` skill SHALL allow the mode only for a SAI coordinator that holds a recorded `yes` publication answer (today `/sai-plan`, through `sai/commands/plan/publication.md`, and `/sai-build` and a Direct Build - Unattended slice of `/sai-explore`, through `sai/commands/build/publication.md`); in that mode it SHALL ask nothing, SHALL send `publish_pr_as_draft` in `query` and `publish`: `true` for `/sai-plan`, and for the build publication the value its caller hands over (`false` for `/sai-build`), SHALL report each refusal or failure as the cause of a skipped publication, SHALL NOT retry it, SHALL NOT retry a refused or rejected push with force, and SHALL run `recover` read-only on `uncertain` or `partial_failure`. A user's `/to-pr` invocation, a general grant, and any coordinator without a recorded `yes` SHALL keep the interactive flow unchanged.
+`to-pr.js` SHALL accept an `--unattended` flag on `plan-commit`, `push`, and `publish` only, and SHALL reject it on every other operation. Only the flag SHALL enable the mode; a request field named `unattended` SHALL be ignored. The flag SHALL replace the `approved` and `confirmation` checks of those operations and SHALL keep every other check, including the plan's staged-content check and recheck, the remote branch verification after the push, the baseline reread, the closing-reference and description checks, and the receipt. The `to-pr` skill SHALL allow the mode only for a SAI coordinator that holds a recorded publication answer of `yes`, or of `draft` for the build command (today `/sai-plan`, through `sai/commands/plan/publication.md`, and `/sai-build` and a Direct Build - Unattended slice of `/sai-explore`, through `sai/commands/build/publication.md`); in that mode it SHALL ask nothing, SHALL send `publish_pr_as_draft` in `query` and `publish`: `true` for `/sai-plan`, and for the build publication the value its caller hands over (`false` for a `yes` answer, `true` for a `draft` answer), SHALL report each refusal or failure as the cause of a skipped publication, SHALL NOT retry it, SHALL NOT retry a refused or rejected push with force, and SHALL run `recover` read-only on `uncertain` or `partial_failure`. A user's `/to-pr` invocation, a general grant, and any coordinator without a recorded answer of `yes` or `draft` SHALL keep the interactive flow unchanged.
 
 #### Scenario: The flag replaces the approval tokens
 - **WHEN** `push --unattended` runs without `approved` or `confirmation` fields on a publishable branch
@@ -678,8 +678,12 @@ The request status SHALL become `complete` only when its approved content and an
 - **THEN** the approval token check applies as in the interactive flow
 
 #### Scenario: Build publication sends the ready state
-- **WHEN** `/sai-build` publishes in the unattended mode
+- **WHEN** `/sai-build` publishes in the unattended mode with the `yes` answer
 - **THEN** the skill sends `publish_pr_as_draft: false` in `query` and `publish` and sends no `draft` or `ready` field
+
+#### Scenario: Build publication sends the draft state
+- **WHEN** `/sai-build` publishes in the unattended mode with the `draft` answer
+- **THEN** the skill sends `publish_pr_as_draft: true` in `query` and `publish`
 
 ### Requirement: Unattended mode refuses unsafe publications
 

@@ -510,12 +510,12 @@ Every Direct Build response SHALL reach the active validator exactly as received
 
 ### Requirement: Plan - Unattended follows the /sai-plan coordinator
 
-The explore route `Plan - Unattended` SHALL export the first pending slice's stored block with `sai-state block <id> <change-name> --export --harness <claude|opencode>` and follow `sai/commands/plan/coordinator.md` in the explore session with `--block-file`, `--block-hash`, `--publish <yes|no>` carrying the publication answer recorded for the crystallized set in `explore-slice@1` (omitted only when a detached HEAD left the set without one), and, when `overview_language` is not `None`, `--overview-lang <overview_language>`. The plan coordinator SHALL own the dispatches, the answers to worker questions, the checks, the review rounds, the commits, and the run state, and SHALL ask no publication question of its own in this route: Explore asked it in round 3. Explore SHALL keep the slice rules: it emits `{intent: complete}` to `explore-slice@1` when the spec segment completes or counts as done and again when the design segment completes, emits `{intent: fail}` when a segment does not complete, never starts a later slice on its own, and advances only on `next-slice`. A failed slice SHALL be parked and retryable by a fresh `Plan - Unattended` picker answer.
+The explore route `Plan - Unattended` SHALL export the first pending slice's stored block with `sai-state block <id> <change-name> --export --harness <claude|opencode>` and follow `sai/commands/plan/coordinator.md` in the explore session with `--block-file`, `--block-hash`, `--publish <yes|no>` carrying the publication answer recorded for the crystallized set in `explore-slice@1` (omitted only when a detached HEAD left the set without one), `--build-publish <yes|no|draft>` carrying the build hint value derived from the `run` view of `explore-slice@1` (`no` when the set holds no answer or `no`; `draft` when the set holds `yes`, the `branch_strategy` is `shared` or `none`, and the `pending` list holds a slice other than the current one; `yes` otherwise), and, when `overview_language` is not `None`, `--overview-lang <overview_language>`. The plan coordinator SHALL own the dispatches, the answers to worker questions, the checks, the review rounds, the commits, and the run state, SHALL print the only build hint, and SHALL ask no publication question of its own in this route: Explore asked it in round 3. Explore SHALL keep the slice rules: it emits `{intent: complete}` to `explore-slice@1` when the spec segment completes or counts as done and again when the design segment completes, emits `{intent: fail}` when a segment does not complete, never starts a later slice on its own, and advances only on `next-slice`. A failed slice SHALL be parked and retryable by a fresh `Plan - Unattended` picker answer.
 
 #### Scenario: Plan route follows the plan coordinator
 
 - **WHEN** the user selects `Plan - Unattended` for a dispatchable slice
-- **THEN** explore exports the slice's block and follows `/sai-plan` with the block reference and the set's `--publish` answer, without dispatching spec or design workers outside the plan coordinator
+- **THEN** explore exports the slice's block and follows `/sai-plan` with the block reference, the set's `--publish` answer, and its `--build-publish` value, without dispatching spec or design workers outside the plan coordinator
 
 #### Scenario: a failed segment parks the slice
 
@@ -526,6 +526,11 @@ The explore route `Plan - Unattended` SHALL export the first pending slice's sto
 
 - **WHEN** the user selects `Plan - Unattended` and no recorded answer or `pr.publishAfterRun` value of `yes` or `no` resolved the publication answer before round 3
 - **THEN** the publication question was asked in round 3 of the Explore route, the answer reaches the plan coordinator as `--publish`, and the plan coordinator asks no publication question before its first worker starts
+
+#### Scenario: the route hands the build hint value
+
+- **WHEN** the set holds `yes` with a `shared` branch strategy and a later pending slice
+- **THEN** explore follows `/sai-plan` with `--build-publish draft` and the plan coordinator prints the only build hint
 
 ### Requirement: Direct Build - Unattended follows the Direct Build coordinator card
 
