@@ -448,13 +448,16 @@ test('document emit: a multi-slice set records every name in dependency order', 
   }
 });
 
-test('document emit: change names never appear on the wire', () => {
+test('document emit: the verdict projects no change name, and only the pending list of the run view carries them', () => {
   const id = spawnSession('doc-wire');
   try {
     const result = emitSet(id, [doc('secret-name')]);
     assert.equal(result.exitCode, 0, result.stderr);
-    assert.doesNotMatch(result.stdout, /secret-name/);
     const json = JSON.parse(result.stdout);
+    assert.doesNotMatch(JSON.stringify(json.validation), /secret-name/);
+    assert.deepEqual(json.run.pending, ['secret-name']);
+    const { pending, ...rest } = json.run;
+    assert.doesNotMatch(JSON.stringify(rest), /secret-name/);
     assert.equal(json.validation.names, undefined);
     assert.equal(json.validation.documents[0].name, undefined);
   } finally {

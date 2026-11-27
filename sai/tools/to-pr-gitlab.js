@@ -73,7 +73,7 @@ async function closedRequests(target, source, base, io) {
   return rows;
 }
 // Mark ready: an existing draft request loses its `Draft: ` title prefix, which `prepareQuery` leaves out of the wire
-// title of a `ready:true` proposal, so the title written below is the ready title.
+// title of a `publish_pr_as_draft: false` proposal, so the title written below is the ready title.
 async function mutate(proposal, io) {
   const endpoint = `projects/${proposal.target.id}/merge_requests`;
   return identity(await api(proposal.target, proposal.existing ? `${endpoint}/${proposal.existing.number}` : endpoint, io, proposal.existing ? 'PUT' : 'POST', proposal.existing

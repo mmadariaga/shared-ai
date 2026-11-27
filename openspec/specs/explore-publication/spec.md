@@ -60,7 +60,7 @@ Round 3 of `/sai-explore` SHALL carry the publication question as a conditional 
 
 ### Requirement: Explore routes apply the recorded publication answer
 
-Every slice of the set SHALL read the recorded answer and ask nothing. The Plan - Unattended route SHALL hand it to the plan coordinator as a `--publish <yes|no>` line, omitted only when the set holds no answer because HEAD was detached, so a `yes` publishes a draft request through `/sai-plan`. With a `yes`, the Direct Build - Unattended coordinator, not a worker, SHALL push the branch without force and publish a ready-for-review request by following `sai/commands/build/publication.md`, after the telemetry commit (or right after the archive worker's clean result when the telemetry collection was skipped) and before the slice transition; the archive worker SHALL keep its no-push rule and the publication SHALL create no commit. A Direct Build run that stopped before the archive worker's clean `completed` result SHALL publish nothing, and a block provider that supplies no answer SHALL mean `no`. A Manual slice SHALL ignore the answer. With a `shared` branch every publishing slice SHALL update the same request, and a request already ready for review SHALL stay ready when a later Plan slice publishes; with `per-slice` branches each publishing slice SHALL publish its own request. A failed or skipped publication SHALL NOT stop the slice, its transition, or the chain of slices.
+Every slice of the set SHALL read the recorded answer and ask nothing. The Plan - Unattended route SHALL hand it to the plan coordinator as a `--publish <yes|no>` line, omitted only when the set holds no answer because HEAD was detached, so a `yes` publishes a draft request through `/sai-plan`. With a `yes`, the Direct Build - Unattended coordinator, not a worker, SHALL push the branch without force and publish its request by following `sai/commands/build/publication.md` with the request state that the set's branch strategy and pending slices decide (a draft while later slices of a set on one `shared` or `none` branch remain pending, ready for review otherwise), after the telemetry commit (or right after the archive worker's clean result when the telemetry collection was skipped) and before the slice transition; the archive worker SHALL keep its no-push rule and the publication SHALL create no commit. A Direct Build run that stopped before the archive worker's clean `completed` result SHALL publish nothing, and a block provider that supplies no answer SHALL mean `no`. A Manual slice SHALL ignore the answer. With a `shared` branch every publishing slice SHALL update the same request, and a request already ready for review SHALL stay ready when a later slice publishes it as a draft; with `per-slice` branches each publishing slice SHALL publish its own request. A failed or skipped publication SHALL NOT stop the slice, its transition, or the chain of slices. The round-3 publication question SHALL say that a Direct Build slice publishes a draft while later slices of a set on one shared branch remain pending and a request that is ready for review otherwise, and with a `shared` branch that the request stays a draft until the last slice of the set is built.
 
 #### Scenario: Plan slice hands the answer over
 
@@ -69,7 +69,7 @@ Every slice of the set SHALL read the recorded answer and ask nothing. The Plan 
 
 #### Scenario: Direct Build slice publishes a ready request
 
-- **WHEN** a Direct Build - Unattended slice reaches a clean archive result and its telemetry commit with the set answer `yes`
+- **WHEN** a Direct Build - Unattended slice of a single-slice set, or of a `per-slice` set, reaches a clean archive result and its telemetry commit with the set answer `yes`
 - **THEN** the coordinator pushes the branch without force and publishes a ready-for-review request before the slice transition
 
 #### Scenario: Failed publication keeps the chain going
@@ -84,12 +84,12 @@ Every slice of the set SHALL read the recorded answer and ask nothing. The Plan 
 
 ### Requirement: Direct Build reports the publication outcome
 
-The Direct Build - Unattended terminal report SHALL state the publication outcome in What you need to know: the request URL with its verified ready or draft state after a publication; the skip, refusal, or failure reason, with the confirmed push when there is one, when the answer was `yes` and the publication did not complete; and `Nothing was pushed.` when the answer was `no`, when none was recorded, or when no publication ran.
+The Direct Build - Unattended terminal report SHALL state the publication outcome in What you need to know: the request URL with the state it published the request in after a publication (ready for review, or a draft with the number of slices of the set still pending, and when the last slice could not mark the request ready, that it stays a draft with the reason and that it can be marked ready by hand); the skip, refusal, or failure reason, with the confirmed push when there is one, when the answer was `yes` and the publication did not complete; and `Nothing was pushed.` when the answer was `no`, when none was recorded, or when no publication ran.
 
 #### Scenario: Successful publication is reported
 
 - **WHEN** a Direct Build slice with the answer `yes` publishes its request
-- **THEN** the terminal report gives the request URL and its verified state
+- **THEN** the terminal report gives the request URL and the state it published the request in, and for a draft the number of slices still pending
 
 #### Scenario: No answer reports nothing pushed
 
@@ -104,3 +104,56 @@ Standalone `/sai-direct-build` SHALL take no publication answer, SHALL keep its 
 
 - **WHEN** `/sai-direct-build` completes a run
 - **THEN** nothing is pushed or published and no publication question is asked
+
+### Requirement: explore-slice@1 records the set's branch strategy and returns the pending slices
+
+`explore-slice@1` SHALL hold a set-wide `branchStrategy` field whose value is empty until recorded and then `shared`, `per-slice`, or `none`, and every response SHALL return it as `branch_strategy` in its `run` view, beside `pending`, the names of the pending slices of the recorded inventory in inventory order. The `branch-strategy` intent with a `value` SHALL record the strategy once per recorded inventory: it SHALL be rejected with `INVENTORY_NOT_READY` before an inventory is recorded, with `INVALID_BRANCH_STRATEGY` for a value other than `shared`, `per-slice`, or `none`, and with `BRANCH_STRATEGY_ALREADY_RECORDED` when the set already holds a strategy, changing nothing in each case. The intent without a `value` SHALL record nothing and SHALL return the view. `/sai-explore` SHALL record the strategy when the slice-set branch answer is final, right after the branch creation point and before it emits `{intent: route-choice}` (a missing or cancelled base answer records `none`); a single change, a backlog answer `publish-stop`, and an unasked branch question SHALL record nothing. A new recorded inventory SHALL clear the strategy together with the publication answer, unless the set of change names is unchanged, and a stored state without the field SHALL read as empty. On a degraded store, `/sai-explore` SHALL hold the strategy in conversation state for the set.
+
+#### Scenario: Strategy is recorded once and read back
+
+- **WHEN** an inventory of two slices is recorded, `branch-strategy` is emitted with `value=shared`, and later the intent is emitted without a value
+- **THEN** the first emit records `shared`, and the second returns `branch_strategy: shared` and `pending` with both slice names in inventory order, and records nothing
+
+#### Scenario: Second strategy is rejected
+
+- **WHEN** the set already holds a strategy and `branch-strategy` is emitted with another value
+- **THEN** the machine answers `BRANCH_STRATEGY_ALREADY_RECORDED` and keeps the recorded strategy
+
+#### Scenario: Invalid strategy is rejected
+
+- **WHEN** `branch-strategy` is emitted with a value other than `shared`, `per-slice`, or `none`
+- **THEN** the machine answers `INVALID_BRANCH_STRATEGY` and records nothing
+
+#### Scenario: New inventory clears the strategy
+
+- **WHEN** a new crystallization records an inventory with a different set of change names
+- **THEN** `branch_strategy` is empty again
+
+### Requirement: Direct Build keeps a shared request a draft until the last slice
+
+With the set answer `yes`, a Direct Build - Unattended slice SHALL hand `sai/commands/build/publication.md` the request state `publish_pr_as_draft: true` when the `branch_strategy` of the `explore-slice@1` `run` view is `shared` or `none` and its `pending` list holds a slice other than the current one, so a request that every slice of the set updates stays a draft until the last slice is built. In every other case (`per-slice`, no recorded strategy, a single-slice set, or no other pending slice) it SHALL hand `publish_pr_as_draft: false`. A pending slice SHALL count whatever route it takes later, so a set whose last slice is not Direct Build leaves the request a draft. A draft publication SHALL NOT turn an existing ready request back into a draft. When marking the request ready fails on the last slice, the request SHALL stay a draft, the report SHALL give the reason and say that it can be marked ready by hand, and the slice SHALL still count as completed. A slice that fails or stops SHALL publish nothing, so the request keeps its state.
+
+#### Scenario: Earlier slice of a shared set publishes a draft
+
+- **WHEN** the first Direct Build slice of a two-slice set with branch strategy `shared` publishes with the answer `yes`
+- **THEN** it hands `publish_pr_as_draft: true` and the request is created as a draft
+
+#### Scenario: Last slice of a shared set marks the request ready
+
+- **WHEN** the last pending Direct Build slice of a set with branch strategy `shared` or `none` publishes with the answer `yes`
+- **THEN** it hands `publish_pr_as_draft: false` and the shared draft request is marked ready for review
+
+#### Scenario: Per-slice set publishes ready requests
+
+- **WHEN** a Direct Build slice of a set with branch strategy `per-slice` publishes while other slices remain pending
+- **THEN** it hands `publish_pr_as_draft: false` and its own request is ready for review
+
+#### Scenario: Last slice is not Direct Build
+
+- **WHEN** the last pending slice of a `shared` set takes the Plan or Manual route
+- **THEN** no slice marks the shared request ready and it stays a draft
+
+#### Scenario: Failed mark-ready on the last slice
+
+- **WHEN** marking the shared request ready fails on the last Direct Build slice
+- **THEN** the request stays a draft, the report gives the reason and says it can be marked ready by hand, and the slice counts as completed

@@ -27,18 +27,18 @@ The to-pr skill SHALL prepare titles and descriptions primarily from committed b
 
 ### Requirement: Create or update the exact matching request
 
-The system SHALL query open requests for the selected source repository, source branch, target repository, and target branch. One existing match SHALL select update instead of duplicate creation; multiple matches SHALL block publication for clarification. Updates SHALL write title and description, any separately approved managed risk comment, and only an explicitly requested draft conversion on GitHub, GitLab or Azure DevOps. Reviewers, assignees, labels and unrelated fields SHALL remain unchanged. Identical content SHALL end without mutation only when the title, computed description including any tool-owned closing block, requested draft state and required managed comment already match. Titles SHALL use the existing shared title validator, excluding GitLab's supported draft prefix from Conventional Commits validation.
+The system SHALL query open requests for the selected source repository, source branch, target repository, and target branch. One existing match SHALL select update instead of duplicate creation; multiple matches SHALL block publication for clarification. Updates SHALL write title and description, any separately approved managed risk comment, and only the conversion of a draft to ready that `publish_pr_as_draft: false` requests on GitHub, GitLab or Azure DevOps; an update with `publish_pr_as_draft` absent or `true` SHALL keep the request's draft or ready state. Reviewers, assignees, labels and unrelated fields SHALL remain unchanged. Identical content SHALL end without mutation only when the title, computed description including any tool-owned closing block, requested `publish_pr_as_draft` state and required managed comment already match. Titles SHALL use the existing shared title validator, excluding GitLab's supported draft prefix from Conventional Commits validation.
 
 #### Scenario: Existing request receives a content update
 - **WHEN** exactly one open request matches the selected source and destination
-- **THEN** the proposed operation updates its title and description, any approved managed risk comment and explicitly requested draft conversion, preserves unrelated fields, and does not create another request.
+- **THEN** the proposed operation updates its title and description, any approved managed risk comment and any conversion of a draft to ready that `publish_pr_as_draft: false` requests, preserves unrelated fields, and does not create another request.
 
 #### Scenario: Matching requests are ambiguous
 - **WHEN** more than one open request matches
 - **THEN** publication stops for clarification without mutation.
 
 #### Scenario: Content is unchanged
-- **WHEN** the existing title and description already match the proposed content, including the recomputed closing block, and any requested draft state and required managed comment also match
+- **WHEN** the existing title and description already match the proposed content, including the recomputed closing block, and the requested `publish_pr_as_draft` state and required managed comment also match
 - **THEN** the operation ends without mutation.
 
 #### Scenario: Title validation fails
@@ -47,11 +47,11 @@ The system SHALL query open requests for the selected source repository, source 
 
 ### Requirement: Complete presentation and exact publication approval
 
-The skill SHALL apply the same approval workflow on Claude Code and opencode. Before asking for approval, it SHALL complete `query` and, when publication is ready, `push-query`. It SHALL show the operation, platform, repository, visibility, source branch, target branch, existing request URL when updating, and complete proposed title and description. When a managed risk comment is required, it SHALL also show the complete comment body, provider and repository, existing request URL or new request destination, authenticated author, and whether the comment is created or updated. It SHALL show an explicitly requested Azure draft state and append the exact comment allocation and draft-state operations to the applicable approval question. The proposal and confirmation SHALL bind risk placement, complete risk block, comment body and baseline, accepted original overflow length and limit, and explicit draft state; changing any of these SHALL invalidate earlier approval. Updates SHALL also show their baseline and changes, preserving unrelated description content unless replacement is explicitly approved. Any proposal concurrency warning and every entry of the `query` result's `warnings` SHALL be shown verbatim before approval. For Azure updates, the warning SHALL disclose that the interval between reread and PATCH is not protected against concurrent edits; rereading SHALL NOT be described as atomic protection. Public destinations SHALL receive an explicit warning.
+The skill SHALL apply the same approval workflow on Claude Code and opencode. Before asking for approval, it SHALL complete `query` and, when publication is ready, `push-query`. It SHALL show the operation, platform, repository, visibility, source branch, target branch, existing request URL when updating, and complete proposed title and description. When a managed risk comment is required, it SHALL also show the complete comment body, provider and repository, existing request URL or new request destination, authenticated author, and whether the comment is created or updated. It SHALL show the state the request will be created in (a draft, or ready for review when `publish_pr_as_draft` is `false`) and any requested conversion of a draft to ready, and append the exact comment allocation and request-state operations to the applicable approval question. The proposal and confirmation SHALL bind risk placement, complete risk block, comment body and baseline, accepted original overflow length and limit, and the `publish_pr_as_draft` value; changing any of these SHALL invalidate earlier approval. Updates SHALL also show their baseline and changes, preserving unrelated description content unless replacement is explicitly approved. Any proposal concurrency warning and every entry of the `query` result's `warnings` SHALL be shown verbatim before approval. For Azure updates, the warning SHALL disclose that the interval between reread and PATCH is not protected against concurrent edits; rereading SHALL NOT be described as atomic protection. Public destinations SHALL receive an explicit warning.
 
-When `push-query` returns `ready`, the skill SHALL also show the exact remote, push URL, branch, and commit, then use the exact base question "Push this commit to this remote branch without force and publish the title and description above?", appending the exact proposed comment-allocation and Azure draft-state operations when present It SHALL offer "Approve PR message and push branch", "Edit", and "Cancel" on GitHub and Azure Repos, substituting "MR" for "PR" on GitLab.
+When `push-query` returns `ready`, the skill SHALL also show the exact remote, push URL, branch, and commit, then use the exact base question "Push this commit to this remote branch without force and publish the title and description above?", appending the exact proposed comment-allocation and request-state operations when present It SHALL offer "Approve PR message and push branch", "Edit", and "Cancel" on GitHub and Azure Repos, substituting "MR" for "PR" on GitLab.
 
-When `push-query` returns `no_changes`, the skill SHALL use the exact base question "Publish this exact title and description to this destination?", appending the exact proposed comment-allocation and Azure draft-state operations when present It SHALL offer "Approve PR message", "Edit", and "Cancel" on GitHub and Azure Repos, substituting "MR" for "PR" on GitLab.
+When `push-query` returns `no_changes`, the skill SHALL use the exact base question "Publish this exact title and description to this destination?", appending the exact proposed comment-allocation and request-state operations when present It SHALL offer "Approve PR message", "Edit", and "Cancel" on GitHub and Azure Repos, substituting "MR" for "PR" on GitLab.
 
 The skill SHALL wait for an explicit answer binding the exact proposal and each operation named in the question. Invocation and general prior grants SHALL NOT authorize these operations, and neither SHALL the unattended mode outside the SAI coordinator that holds a recorded publication answer. The one standing grant SHALL be the `publication.autoApprove` project setting: when the `query` or `push-query` proposal reports `auto_approve: true`, the skill SHALL show the complete proposal as above, ask no approval question, and run the push and publication at once with `approved:true` and the unchanged tokens, reporting a tool refusal as the blocker without asking. The skill SHALL ask the approval question as usual when the user asked in the conversation to review before publishing, and when a result does not report `auto_approve: true`. A pending comment continuation SHALL stay an explicit approval. Cancellation SHALL perform none of the operations proposed in that question and SHALL preserve the draft. Editing SHALL apply the edits, rerun `query` and `push-query` as applicable, present the complete updated proposal, and require fresh approval.
 
@@ -59,11 +59,11 @@ Changed content, destination, baseline, or HEAD SHALL invalidate stale approval 
 
 #### Scenario: Approve a combined push and publication
 - **WHEN** publication is ready and the remote branch does not contain the selected commit
-- **THEN** the skill presents the complete publication proposal, warnings, and exact push details, asks the exact combined base question with any required comment-allocation or Azure draft-state operation suffix, and waits for explicit approval of every operation named.
+- **THEN** the skill presents the complete publication proposal, warnings, the request state, and exact push details, asks the exact combined base question with any required comment-allocation or request-state operation suffix, and waits for explicit approval of every operation named.
 
 #### Scenario: Approve publication
 - **WHEN** publication is ready and `push-query` reports that the remote branch already holds the approved commit
-- **THEN** the skill presents the complete publication proposal and asks the publication-only base question with any required comment-allocation or Azure draft-state operation suffix and the publication-only approval, Edit, and Cancel options.
+- **THEN** the skill presents the complete publication proposal and asks the publication-only base question with any required comment-allocation or request-state operation suffix and the publication-only approval, Edit, and Cancel options.
 
 #### Scenario: Provider terminology matches the destination
 - **WHEN** the skill presents either approval question
@@ -78,7 +78,7 @@ Changed content, destination, baseline, or HEAD SHALL invalidate stale approval 
 - **THEN** the skill applies the edits, reruns the applicable publication and push queries, presents the complete updated proposal, and requests fresh approval.
 
 #### Scenario: Approved content or state changes
-- **WHEN** content, destination, baseline, or HEAD changes before all approved operations finish
+- **WHEN** content, destination, baseline, HEAD, or the `publish_pr_as_draft` value changes before all approved operations finish
 - **THEN** stale approval is rejected and the skill returns to complete presentation and fresh authorization for still-pending operations without repeating a completed push.
 
 #### Scenario: Azure update concurrency limitation
@@ -177,17 +177,17 @@ The system SHALL verify published content by reading the selected destination af
 
 ### Requirement: Azure Repos Services publication adapter
 
-The shipped provider registry SHALL include an Azure DevOps Services adapter and conditional provider reference for to-pr. It SHALL verify organization, project, repository, authenticated identity, and source and target branches before publication, and reject Server or incompatible destinations. Queries SHALL identify active requests by repository and both branches, block multiple matches, and retain Markdown descriptions. Creation SHALL supply the exact source and target refs; updates SHALL change title and description and additionally set isDraft:true only for an explicit draft:true request. Creation SHALL likewise send isDraft:true only when requested. Otherwise the field SHALL be omitted, preserving an existing draft state and the previous creation behavior. The adapter SHALL verify the requested state by reading isDraft:true back from the selected request and SHALL NOT report an unverified state as fulfilled. Separately approved managed risk comments SHALL use repository-scoped PR threads and update only the uniquely marked authenticated author's comment.
+The shipped provider registry SHALL include an Azure DevOps Services adapter and conditional provider reference for to-pr. It SHALL verify organization, project, repository, authenticated identity, and source and target branches before publication, and reject Server or incompatible destinations. Queries SHALL identify active requests by repository and both branches, block multiple matches, and retain Markdown descriptions. Creation SHALL supply the exact source and target refs and SHALL send `isDraft:true` unless the request sends `publish_pr_as_draft: false`, in which case the field SHALL be omitted. Updates SHALL change title and description; an update SHALL omit `isDraft` when `publish_pr_as_draft` is absent or `true`, preserving the existing draft or ready state, and SHALL set `isDraft:false` on a draft request when `publish_pr_as_draft` is `false`. The adapter SHALL verify the requested state by reading `isDraft` back from the selected request and SHALL NOT report an unverified state as fulfilled. Separately approved managed risk comments SHALL use repository-scoped PR threads and update only the uniquely marked authenticated author's comment.
 
 Azure publication SHALL use the shared complete-proposal approval workflow: combined human approval when a push is required and publication-only approval otherwise. Push and publication SHALL retain separate tokens and validation. Azure approval options SHALL use PR terminology. Azure execution SHALL reuse the existing authenticated runner without installation, login, credential changes, or global-default changes. The adapter and its recovery mechanisms SHALL remain unchanged by the combined human approval.
 
 #### Scenario: Azure creation is selected
 - **WHEN** destination resolution selects a valid Azure Repos Services repository with no matching active request
-- **THEN** preparation loads only the Azure provider reference and prepares exact repository, branches, title, and Markdown description for explicit approval.
+- **THEN** preparation loads only the Azure provider reference and prepares exact repository, branches, title, Markdown description, and request state for explicit approval.
 
 #### Scenario: Azure update is selected
 - **WHEN** exactly one active Azure request matches the repository and both branches
-- **THEN** preparation selects that request for a title-and-description update with only any explicitly requested Azure draft conversion and separately approved managed risk comment, rather than duplicate creation.
+- **THEN** preparation selects that request for a title-and-description update with only a conversion of a draft to ready that `publish_pr_as_draft: false` requests and any separately approved managed risk comment, rather than duplicate creation.
 
 #### Scenario: Azure branch needs publication
 - **WHEN** the remote source branch does not contain the approved commit
@@ -571,67 +571,67 @@ Across GitHub, GitLab and Azure DevOps, the tool SHALL identify managed comments
 
 ### Requirement: Explicit Azure draft-state scope
 
-The tool SHALL accept draft:true for explicit draft requests on GitHub, GitLab and Azure DevOps and bind the requested state to the approved proposal. For Azure DevOps it SHALL send isDraft:true on creation or update. It SHALL reject draft:false. Without a draft request, Azure payloads SHALL omit isDraft, preserving previous creation behavior and existing state. Readback SHALL separately confirm requested draft state; verified content alone SHALL NOT establish draft completion.
+The tool SHALL bind the `publish_pr_as_draft` value to the approved proposal for Azure DevOps. With `publish_pr_as_draft` absent or `true`, it SHALL send `isDraft:true` on creation, and an update SHALL omit `isDraft`, so the existing draft or ready state is preserved. With `publish_pr_as_draft: false`, a creation SHALL omit `isDraft` and an update of a draft request SHALL send `isDraft:false`. Readback SHALL separately confirm the requested state; verified content alone SHALL NOT establish that the state is complete.
 
 #### Scenario: Draft creation or conversion is approved
-- **WHEN** an Azure creation or existing-request update is approved with draft:true
-- **THEN** the adapter sends isDraft:true and reports the draft request fulfilled only after readback confirms that state.
+- **WHEN** an Azure creation is approved with `publish_pr_as_draft` absent or `true`
+- **THEN** the adapter sends `isDraft:true` and reports the state complete only after readback confirms the draft.
 
 #### Scenario: Draft operation changes after approval
-- **WHEN** draft:true is added after approval of an ordinary Azure proposal
+- **WHEN** the `publish_pr_as_draft` value changes after approval of an Azure proposal
 - **THEN** the earlier confirmation is rejected before publication.
 
 #### Scenario: No draft request preserves state
-- **WHEN** an Azure update omits draft:true
-- **THEN** its payload omits isDraft and the existing draft state is preserved.
+- **WHEN** an Azure update runs with `publish_pr_as_draft` absent or `true`
+- **THEN** its payload omits `isDraft` and the existing draft or ready state is preserved.
 
 #### Scenario: Draft readback is incomplete
-- **WHEN** Azure content matches the approved proposal but isDraft:true cannot be confirmed
-- **THEN** recovery reports content verified and draft pending, not full success, without repeating creation.
+- **WHEN** Azure content matches the approved proposal but the requested state cannot be confirmed
+- **THEN** recovery reports content verified and `publish_pr_as_draft.status: pending`, not full success, without repeating creation.
 
 ### Requirement: Explicit three-provider draft publication
 
-The shared publisher SHALL support explicit `draft:true` creation and conversion on GitHub, GitLab and Azure DevOps. Complete presentation and exact publication approval SHALL bind the requested state and any conversion of an existing ready request. Without an explicit request, ordinary creation behavior and existing draft state SHALL be preserved. In the unattended mode, `draft:true` SHALL decide only the state of a request created then: an open request SHALL keep its draft or ready state and SHALL NOT be converted. False or other unsupported draft values SHALL be rejected.
+The shared publisher SHALL create a missing request as a draft on GitHub, GitLab and Azure DevOps when `publish_pr_as_draft` is absent or `true`. Complete presentation and exact publication approval SHALL bind the requested state and any conversion of an existing draft to ready. An existing request SHALL keep its draft or ready state under `publish_pr_as_draft: true`, in interactive and unattended publication alike, and SHALL NOT be converted to a draft: the publisher SHALL perform no conversion of a ready request to a draft on any provider.
 
 #### Scenario: GitHub draft creation
-- **WHEN** an approved explicit draft request has no matching GitHub PR
+- **WHEN** an approved request with `publish_pr_as_draft` absent or `true` has no matching GitHub PR
 - **THEN** creation uses REST with `draft:true` and the same selected source and target branches.
 
 #### Scenario: GitHub ready request converts to draft
-- **WHEN** an approved explicit draft request matches one ready GitHub PR
-- **THEN** the adapter converts that PR through GraphQL using its verified node ID and updates the same PR rather than creating a duplicate.
+- **WHEN** an approved request with `publish_pr_as_draft: true` matches one ready GitHub PR
+- **THEN** the adapter updates that PR's content without converting it to draft and creates no duplicate.
 
 #### Scenario: GitLab draft creation or conversion
-- **WHEN** an explicit draft request creates or updates a GitLab MR
-- **THEN** the approved wire title has one supported `Draft: ` prefix and the same MR is reused for conversion.
+- **WHEN** a request with `publish_pr_as_draft` absent or `true` creates a GitLab MR, or updates an MR that is already a draft
+- **THEN** the approved wire title has one supported `Draft: ` prefix, and an update of an MR that is ready for review keeps a title without the prefix.
 
 #### Scenario: Azure draft behavior is retained
-- **WHEN** an explicit draft request creates or updates an Azure DevOps PR
-- **THEN** the existing adapter writes `isDraft:true` and verifies the requested state.
+- **WHEN** a request with `publish_pr_as_draft` absent or `true` creates an Azure DevOps PR
+- **THEN** the adapter writes `isDraft:true` and verifies the requested state.
 
 #### Scenario: Existing draft is reused
-- **WHEN** the selected request is already a draft and its content needs updating
-- **THEN** the publisher updates that request while preserving draft state and performs no redundant GitHub conversion.
+- **WHEN** the selected request is already a draft and its content needs updating with `publish_pr_as_draft: true`
+- **THEN** the publisher updates that request while preserving draft state and performs no GitHub conversion.
 
 #### Scenario: Draft approval changes
-- **WHEN** publication's requested draft state or conversion differs from the exact approved proposal
+- **WHEN** publication's requested state or conversion differs from the exact approved proposal
 - **THEN** the prior confirmation is rejected before mutation and complete renewed approval is required.
 
 #### Scenario: Unattended update keeps a ready request ready
-- **WHEN** an unattended `draft:true` publication matches one open ready request
+- **WHEN** an unattended `publish_pr_as_draft: true` publication matches one open ready request
 - **THEN** the publisher updates that request without converting it to draft.
 
 ### Requirement: Verify draft state independently of request content
 
-For an explicit draft request, publication and recovery SHALL require readback confirming draft state as well as approved content before reporting success. GitHub SHALL use the returned draft flag, GitLab SHALL use draft or work_in_progress rather than its title alone, and Azure DevOps SHALL retain its isDraft check. Unverified state SHALL remain uncertain and SHALL NOT authorize another creation or completed push.
+Publication and recovery SHALL require readback confirming the requested `publish_pr_as_draft` state as well as approved content before reporting success: a draft for a request created with `true`, a request that is not a draft for `false`, and for an existing request updated with `true` the state it already had. GitHub SHALL use the returned draft flag, GitLab SHALL use draft or work_in_progress rather than its title alone, and Azure DevOps SHALL retain its isDraft check. Unverified state SHALL remain uncertain and SHALL NOT authorize another creation or completed push.
 
 #### Scenario: Content matches but draft state does not
-- **WHEN** the approved title and description are present but requested draft state cannot be confirmed
-- **THEN** publication remains uncertain and reports the unresolved draft state rather than accepting a normal request as success.
+- **WHEN** the approved title and description are present but the requested state cannot be confirmed
+- **THEN** publication remains uncertain and reports `publish_pr_as_draft.status: pending` rather than accepting the request as success.
 
 #### Scenario: Lost response is recovered read-only
-- **WHEN** draft publication may have succeeded but its response was lost
-- **THEN** recovery reads the selected request and reports completion only when exact content and draft state match, without repeating creation, conversion or push.
+- **WHEN** a draft publication may have succeeded but its response was lost
+- **THEN** recovery reads the selected request and reports completion only when exact content and the requested state match, without repeating creation, conversion or push.
 
 ### Requirement: Timed-out push is read back and reported as uncertain
 
@@ -663,7 +663,7 @@ The request status SHALL become `complete` only when its approved content and an
 
 ### Requirement: Unattended mode for a SAI coordinator with a recorded publication answer
 
-`to-pr.js` SHALL accept an `--unattended` flag on `plan-commit`, `push`, and `publish` only, and SHALL reject it on every other operation. Only the flag SHALL enable the mode; a request field named `unattended` SHALL be ignored. The flag SHALL replace the `approved` and `confirmation` checks of those operations and SHALL keep every other check, including the plan's staged-content check and recheck, the remote branch verification after the push, the baseline reread, the closing-reference and description checks, and the receipt. The `to-pr` skill SHALL allow the mode only for a SAI coordinator that holds a recorded `yes` publication answer (today `/sai-plan`, through `sai/commands/plan/publication.md`, and `/sai-build`, through `sai/commands/build/publication.md`); in that mode it SHALL ask nothing, SHALL send `draft:true` in `query` and `publish` for `/sai-plan` and `ready:true` in both for `/sai-build`, never both fields, SHALL report each refusal or failure as the cause of a skipped publication, SHALL NOT retry it, SHALL NOT retry a refused or rejected push with force, and SHALL run `recover` read-only on `uncertain` or `partial_failure`. A user's `/to-pr` invocation, a general grant, and any coordinator without a recorded `yes` SHALL keep the interactive flow unchanged.
+`to-pr.js` SHALL accept an `--unattended` flag on `plan-commit`, `push`, and `publish` only, and SHALL reject it on every other operation. Only the flag SHALL enable the mode; a request field named `unattended` SHALL be ignored. The flag SHALL replace the `approved` and `confirmation` checks of those operations and SHALL keep every other check, including the plan's staged-content check and recheck, the remote branch verification after the push, the baseline reread, the closing-reference and description checks, and the receipt. The `to-pr` skill SHALL allow the mode only for a SAI coordinator that holds a recorded `yes` publication answer (today `/sai-plan`, through `sai/commands/plan/publication.md`, and `/sai-build` and a Direct Build - Unattended slice of `/sai-explore`, through `sai/commands/build/publication.md`); in that mode it SHALL ask nothing, SHALL send `publish_pr_as_draft` in `query` and `publish`: `true` for `/sai-plan`, and for the build publication the value its caller hands over (`false` for `/sai-build`), SHALL report each refusal or failure as the cause of a skipped publication, SHALL NOT retry it, SHALL NOT retry a refused or rejected push with force, and SHALL run `recover` read-only on `uncertain` or `partial_failure`. A user's `/to-pr` invocation, a general grant, and any coordinator without a recorded `yes` SHALL keep the interactive flow unchanged.
 
 #### Scenario: The flag replaces the approval tokens
 - **WHEN** `push --unattended` runs without `approved` or `confirmation` fields on a publishable branch
@@ -679,7 +679,7 @@ The request status SHALL become `complete` only when its approved content and an
 
 #### Scenario: Build publication sends the ready state
 - **WHEN** `/sai-build` publishes in the unattended mode
-- **THEN** the skill sends `ready:true` in `query` and `publish` and sends no `draft` field
+- **THEN** the skill sends `publish_pr_as_draft: false` in `query` and `publish` and sends no `draft` or `ready` field
 
 ### Requirement: Unattended mode refuses unsafe publications
 
@@ -715,32 +715,32 @@ The GitHub, GitLab, and Azure DevOps adapters SHALL each provide a closed-reques
 
 ### Requirement: Unattended ready request state with verified mark-ready
 
-`to-pr.js` SHALL accept an explicit `ready:true` request state only on `publish --unattended`; any other `ready` value, a `ready:true` outside the unattended mode, and `ready:true` combined with `draft:true` SHALL be rejected. With `ready:true` the publisher SHALL create a missing request ready for review, SHALL update an open request and mark a draft one ready for review, and SHALL leave an open ready request ready. GitHub SHALL mark a draft ready with the GraphQL `markPullRequestReadyForReview` mutation and the verified node ID after the content update, so a failed conversion leaves the update in place; GitLab SHALL write the title without the `Draft: ` prefix; Azure DevOps SHALL set `isDraft:false` on an update of a draft request and omit the field on creation. Publication and read-only recovery SHALL require readback showing the request not a draft, and SHALL report a `ready` field with `requested: true` and `status` `complete` or `pending`; a `pending` ready state SHALL keep the request status `pending`, SHALL be reported as a request that stays a draft, and SHALL NOT be retried. Without `ready`, the rule that an open request keeps its draft or ready state SHALL stay in force.
+`to-pr.js` SHALL accept `publish_pr_as_draft: false` on `publish`, in unattended and in interactive publication; the retired `ready` and `draft` fields SHALL be rejected whatever their value. With `publish_pr_as_draft: false` the publisher SHALL create a missing request ready for review, SHALL update an open request and mark a draft one ready for review, and SHALL leave an open ready request ready. GitHub SHALL mark a draft ready with the GraphQL `markPullRequestReadyForReview` mutation and the verified node ID after the content update, so a failed conversion leaves the update in place; GitLab SHALL write the title without the `Draft: ` prefix; Azure DevOps SHALL set `isDraft:false` on an update of a draft request and omit the field on creation. Publication and read-only recovery SHALL require readback showing the request not a draft, and SHALL report `publish_pr_as_draft` with `value: false` and `status` `complete` or `pending`; a `pending` state SHALL keep the request status `pending`, SHALL be reported as a request that stays a draft, and SHALL NOT be retried. With `publish_pr_as_draft` absent or `true`, the rule that an open request keeps its draft or ready state SHALL stay in force.
 
 #### Scenario: GitHub draft is marked ready after the update
 
-- **WHEN** an unattended `ready:true` publication matches one open GitHub draft pull request
+- **WHEN** a `publish_pr_as_draft: false` publication matches one open GitHub draft pull request
 - **THEN** the adapter updates its content and then runs `markPullRequestReadyForReview` with its verified node ID
 
 #### Scenario: GitLab draft loses its prefix
 
-- **WHEN** an unattended `ready:true` publication matches one open GitLab draft merge request
+- **WHEN** a `publish_pr_as_draft: false` publication matches one open GitLab draft merge request
 - **THEN** the wire title carries no `Draft: ` prefix and readback must show `draft` false
 
 #### Scenario: Azure draft is set ready
 
-- **WHEN** an unattended `ready:true` publication updates an Azure DevOps draft pull request
-- **THEN** the update sends `isDraft:false` and recovery reports `ready.status: complete` only when readback shows the request is not a draft
+- **WHEN** a `publish_pr_as_draft: false` publication updates an Azure DevOps draft pull request
+- **THEN** the update sends `isDraft:false` and recovery reports `publish_pr_as_draft.status: complete` only when readback shows the request is not a draft
 
 #### Scenario: Ready and draft together are refused
 
-- **WHEN** a request carries both `draft:true` and `ready:true`
-- **THEN** the tool rejects it before any mutation
+- **WHEN** a request carries a `draft` or a `ready` field, alone or together
+- **THEN** the tool rejects it before any mutation with an error that names `publish_pr_as_draft`
 
 #### Scenario: Interactive publish refuses ready
 
 - **WHEN** `publish` runs with `ready:true` and without `--unattended`
-- **THEN** the tool rejects the request
+- **THEN** the tool rejects the request with an error that names `publish_pr_as_draft`, and the same publication with `publish_pr_as_draft: false` is accepted
 
 ### Requirement: Resolved drafting language for the title subject and description
 
@@ -850,3 +850,32 @@ When `publication.autoApprove` is `true`, `to-pr.js` `push` and `publish` SHALL 
 #### Scenario: Local false overrides a base true
 - **WHEN** `.sai/settings.jsonc` sets `publication.autoApprove` to `true` and `.sai/settings.local.jsonc` sets it to `false`
 - **THEN** `query` and `push-query` return proposals without `auto_approve` and the same confirmation tokens as with the key absent
+
+### Requirement: One boolean request state, publish_pr_as_draft
+
+`sai/tools/to-pr.js` SHALL carry the state of the request it creates or updates in one boolean request field, `publish_pr_as_draft`, in `query` and `publish`, in unattended and in interactive publication, and SHALL pass that value to the GitHub, GitLab, and Azure DevOps adapters. A request without the field SHALL behave exactly as `publish_pr_as_draft: true`. With `true`, a missing request SHALL be created as a draft and an existing request SHALL keep its draft or ready state: a request that is ready for review SHALL NOT be turned back into a draft. With `false`, a missing request SHALL be created ready for review and an existing draft request SHALL be marked ready for review. A non-boolean value SHALL be rejected. A request that sends the retired `draft` or `ready` field SHALL be rejected before any mutation with an error that names `publish_pr_as_draft`. The publication receipt and the results of `publish` and `recover` SHALL report the state in one field, `publish_pr_as_draft: {value, status}`, with `status` `complete` or `pending`, in place of the former `draft` and `ready` fields. The `to-pr` skill SHALL send `publish_pr_as_draft: false` in interactive mode only when the user asks for a request that is ready for review, so interactive `/to-pr` creates a new request as a draft by default, and the proposal the user approves SHALL show the state the request will be created in. Claude Code and opencode SHALL behave identically, because both use the same tool and skill.
+
+#### Scenario: An absent field creates a draft
+
+- **WHEN** `publish` runs with no `publish_pr_as_draft` field and no request exists for the branch
+- **THEN** the request is created as a draft, exactly as with `publish_pr_as_draft: true`
+
+#### Scenario: A draft request keeps an existing ready request ready
+
+- **WHEN** `publish` runs with `publish_pr_as_draft: true` and the branch has one open request that is ready for review
+- **THEN** its content is updated and it stays ready for review
+
+#### Scenario: A retired field is rejected
+
+- **WHEN** a `query` or `publish` request carries a `draft` or `ready` field
+- **THEN** the tool rejects it before any mutation with an error that names `publish_pr_as_draft`
+
+#### Scenario: Interactive ready request on user request
+
+- **WHEN** the user asks `/to-pr` for a request that is ready for review
+- **THEN** the skill sends `publish_pr_as_draft: false` in `query` and `publish`, and the approval proposal shows that the request is created ready for review
+
+#### Scenario: Results report the state in one field
+
+- **WHEN** `publish` or `recover` returns a result
+- **THEN** it carries `publish_pr_as_draft` with its `value` and `status` and no `draft` or `ready` field

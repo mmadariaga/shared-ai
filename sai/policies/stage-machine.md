@@ -109,7 +109,8 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   flagged lines, in the same session-file write as the inventory; a later
   successful document emit replaces the stored documents together with the
   inventory, except that a slice whose document hash equals the stored one keeps
-  its completion and its parked cursor, and the publication answer stays when the
+  its completion and its parked cursor, and the publication answer and the branch
+  strategy stay when the
   set of change names is unchanged (the CLI hands the machine the names whose
   hash is unchanged as `unchanged`). A successful document emit also empties the
   `staleBlocks` list of § Explore movement. The inventory, the document texts,
@@ -284,7 +285,7 @@ the response.
   runs, leaves `closed`. Close concerns `explore-idea@1` alone; the command card
   that closes an exploration also runs `sai-state reset <id> explore-slice@1` and
   `sai-state reset <id> direct-build-run@1` (no route is running then), which drop
-  the slice inventory, the cursors, the publication answer, and the Direct Build
+  the slice inventory, the cursors, the publication answer, the branch strategy, and the Direct Build
   run state, so no stored document can start a route afterwards.
 - **`status`** (`--set intent=status`): reads the exploration and changes nothing,
   in any exploration. The turn check of `sai/commands/explore/body.md` uses it.

@@ -9,6 +9,8 @@ const PLAN_MODE = 'plan';
 const DIRECT_BUILD_STEPS = Object.freeze(['build-implement', 'backfill', 'archive']);
 const PLAN_STEPS = Object.freeze(['sai-1', 'sai-2', 'implement']);
 const PUBLICATION_ANSWERS = Object.freeze(['yes', 'no']);
+// The branch answer of a slice set: one shared branch, one branch per slice, or the current branch.
+const BRANCH_STRATEGIES = Object.freeze(['shared', 'per-slice', 'none']);
 
 const SLICE_STEP = 'sai/commands/explore/steps/slice.md';
 const ROUTE_SELECTOR_STEP = 'sai/commands/explore/steps/route-selector.md';
@@ -63,6 +65,7 @@ const initialState = Object.freeze({
   mode: null,
   parked: {},
   publication: '',
+  branchStrategy: '',
   moves: [],
 });
 
@@ -99,6 +102,11 @@ function clonePublication(value) {
   return PUBLICATION_ANSWERS.indexOf(value) === -1 ? '' : value;
 }
 
+// The set-wide branch strategy: '' until recorded, then one of BRANCH_STRATEGIES.
+function cloneBranchStrategy(value) {
+  return BRANCH_STRATEGIES.indexOf(value) === -1 ? '' : value;
+}
+
 function cloneState(state) {
   const src = state && typeof state === 'object' ? state : {};
   const set = Array.isArray(src.set) ? src.set.slice() : [];
@@ -123,9 +131,10 @@ function cloneState(state) {
   const mode = typeof src.mode === 'string' ? src.mode : null;
   const parked = cloneParked(src.parked);
   const publication = clonePublication(src.publication);
+  const branchStrategy = cloneBranchStrategy(src.branchStrategy);
   const doneEpoch = safeCount(src.doneEpoch);
   const moves = cloneMoves(src.moves);
-  return { stage, set, inventoryReady, inventoryVersion, doneEpoch, blockEmissionTurnClosed, autoContinueReady, active, done, mode, parked, publication, moves };
+  return { stage, set, inventoryReady, inventoryVersion, doneEpoch, blockEmissionTurnClosed, autoContinueReady, active, done, mode, parked, publication, branchStrategy, moves };
 }
 
 function snapshotOf(current) {
@@ -142,14 +151,20 @@ function snapshotOf(current) {
     mode: current.mode,
     parked: cloneParked(current.parked),
     publication: current.publication,
+    branchStrategy: current.branchStrategy,
     moves: cloneMoves(current.moves),
   };
 }
 
-// Identifiers only: the set-wide answer and the accepted moves travel to the
-// coordinators as this view.
+// Identifiers only: the set-wide answers, the pending slice names in order, and
+// the accepted moves travel to the coordinators as this view.
 function viewOf(current) {
-  return { publication: current.publication, moves: cloneMoves(current.moves) };
+  return {
+    publication: current.publication,
+    branch_strategy: current.branchStrategy,
+    pending: pendingOf(current),
+    moves: cloneMoves(current.moves),
+  };
 }
 
 function hintFor(stage, follow) {
@@ -381,12 +396,13 @@ function transition(state, signal) {
   // Inventory recording: a recordedList replaces `set` without moving the
   // Direct Build or Plan cursor of a running slice, and discards every parked
   // cursor, so a re-crystallized slice re-enters at its route's first step.
-  // Slice names persist in stage machine state and never appear on the wire.
+  // Slice names persist in stage machine state; only the `pending` list of the run view carries them.
   if (Array.isArray(sig.recordedList)) {
     const previousSet = current.set;
     const previousDone = current.done;
     const previousParked = current.parked;
     const previousPublication = current.publication;
+    const previousBranchStrategy = current.branchStrategy;
     // A slice whose stored block hash is unchanged (`unchanged`, computed by the
     // CLI from the stored and the new block hashes) keeps its completion and its
     // parked cursor; an event without the list keeps none.
@@ -410,6 +426,7 @@ function transition(state, signal) {
     const sameNames = previousSet.length === current.set.length
       && previousSet.every((name) => current.set.indexOf(name) !== -1);
     current.publication = sameNames ? previousPublication : '';
+    current.branchStrategy = sameNames ? previousBranchStrategy : '';
     // A slice keeps its run state only while it keeps a cursor.
     const dropped = previousSet.concat(current.set)
       .filter((name, i, all) => all.indexOf(name) === i && name !== current.active && !current.parked[name]);
@@ -491,6 +508,26 @@ function transition(state, signal) {
       return outcome(current, 'PUBLICATION_ALREADY_RECORDED');
     }
     current.publication = sig.value;
+    return outcome(current);
+  }
+
+  if (intent === 'branch-strategy') {
+    // The branch answer of the recorded set, recorded like the publication
+    // answer: once per set, cleared by a new inventory, and read back by an
+    // event without `value`.
+    if (sig.value === undefined) {
+      return outcome(current);
+    }
+    if (!current.inventoryReady) {
+      return outcome(current, 'INVENTORY_NOT_READY');
+    }
+    if (BRANCH_STRATEGIES.indexOf(sig.value) === -1) {
+      return outcome(current, 'INVALID_BRANCH_STRATEGY');
+    }
+    if (current.branchStrategy !== '') {
+      return outcome(current, 'BRANCH_STRATEGY_ALREADY_RECORDED');
+    }
+    current.branchStrategy = sig.value;
     return outcome(current);
   }
 

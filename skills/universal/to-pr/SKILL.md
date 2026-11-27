@@ -74,16 +74,18 @@ or use that file's overflow-only managed-comment option on any supported provide
 **Complete when:** the selected location carries one ratings block, stored when `fresh` and otherwise
 computed with its four levels each at or above the tool's floor.
 
-For an explicit request on GitHub, GitLab or Azure DevOps to create a draft or convert an existing PR/MR
-to draft, include `draft:true` in both `query` and `publish`. Omit it otherwise:
-creation keeps current behavior, and updates preserve the current draft state.
+The request state is one boolean, `publish_pr_as_draft`, on GitHub, GitLab and Azure DevOps. Absent or
+`true`, a new PR/MR is created as a draft and an existing one keeps its state (a request that is ready
+is never turned back into a draft). Send `publish_pr_as_draft: false` in both `query` and `publish`
+only when the user asks for a request that is ready for review: it creates a ready PR/MR, or marks an
+existing draft ready. The `draft` and `ready` fields are retired and the tool rejects them.
 On GitLab, supply the Conventional Commits title without a `Draft:` prefix: the tool
-adds that prefix to the approved wire title. The current draft state and conversion
-of any ready request are part of the exact publication approval, never implicit consent.
+adds that prefix to the approved wire title. The state the request will be created in, or the
+conversion of an existing draft to ready, is part of the exact publication approval, never implicit consent.
 
 Run `query` with a YAML request holding `provider`, `repository`, `remote`, `base`, `title`, and
 `description`, plus the risk allocation fields from `description-format.md`, any explicit
-`draft:true`, and the `allow_attribution` exception only as `description-format.md` authorizes:
+`publish_pr_as_draft: false` when the user asked for a request that is ready for review, and the `allow_attribution` exception only as `description-format.md` authorizes:
 
 ```yaml
 provider: github
@@ -109,7 +111,7 @@ existing description with the block just computed, or insert it at its fixed pos
 the existing description has none, without asking for approval of that replacement; the
 rest of the description follows the retention rule above, and the full result is still
 presented for the publication approval in step 3. Updates write title and description,
-the selected managed risk comment, and an explicitly requested draft state.
+the selected managed risk comment, and a requested conversion of a draft to ready.
 Reviewers and all other fields stay unchanged.
 `no_changes` ends without mutation.
 
@@ -135,8 +137,9 @@ updating. Show the complete proposed title and description, not a summary. When
 `proposal.inherent_risk.required` is true, also show the complete comment body,
 its provider/repository and existing request URL (or the new request being created),
 the authenticated author, and whether this creates or updates the managed comment.
-Show an explicitly requested draft state. These operations are part of the same
-approval question: append their exact allocation and draft-state operations to
+Show the state the request will be created in (draft, or ready for review when
+`publish_pr_as_draft` is `false`) and any requested conversion of a draft to ready. These operations are part of the same
+approval question: append their exact allocation and request-state operations to
 the question below when present. For update
 also show the baseline and what changes. Before approval show any
 `proposal.concurrency_warning` verbatim: a reread does not protect the interval
@@ -198,7 +201,7 @@ Run `prepare` with `{harness:"claude"}` or `{harness:"opencode"}` for the active
 harness. It creates a local temporary directory and returns a new absolute receipt
 path. Keep the receipt for recovery; never overwrite it or reuse it for a retry.
 Run `publish` once with the approved query fields (including risk allocation, overflow
-evidence and explicit draft request unchanged, the chosen `labels` and, when
+evidence and the `publish_pr_as_draft` value unchanged, the chosen `labels` and, when
 the proposal has one, its `assignee` object unchanged, and the same authorized
 `allow_attribution: true` when applicable), `approved:true`, the
 `publish token`, and `receipt`. A changed baseline or HEAD blocks publication: return to full review rather than renewing a token silently.
@@ -230,15 +233,17 @@ mode: today `/sai-plan`, through `sai/commands/plan/publication.md`, and `/sai-b
 argument, or the `pr.publishAfterRun` setting recorded the answer. That answer is the held
 confirmation of `safe-operations` for exactly the operations of that command: for `/sai-plan`
 the local plan commit, the non-force push of the current branch, and the creation or update of
-its request as a draft; for `/sai-build` the non-force push of the current branch and the
-creation or update of its request as a request that is ready for review.
+its request as a draft; for `/sai-build` and for a Direct Build slice of `/sai-explore`, the
+non-force push of the current branch and the creation or update of its request, in the state their
+`publish_pr_as_draft` value sets.
 A user's `/to-pr` invocation, a general grant, and any coordinator without a recorded `yes`
 stay on sections 1 to 4: they get no unattended mode.
 
 Run sections 1 and 2 as written, with these changes: ask nothing (an ambiguous remote or
 target branch, an unresolved provider, or a missing plan skips the publication and names the
-fact), and send `draft:true` in `query` and `publish` for `/sai-plan`, or `ready:true` in both
-for `/sai-build` (never both fields). Then add the `--unattended` flag to
+fact), and send `publish_pr_as_draft` in `query` and `publish`: `true` for `/sai-plan`, and the value
+that `sai/commands/build/publication.md` receives from its caller for the build and the Direct Build
+slice (`false` for `/sai-build`). Then add the `--unattended` flag to
 exactly three operations: `plan-commit`, `push`, and `publish`
 (`node <tool-path> <operation> --unattended <registry-path>`; every other operation refuses
 the flag, and a field named `unattended` in the input never enables it). The flag replaces the
@@ -250,13 +255,12 @@ receipt. The tool refuses, with `status: blocked` and a `refusal` field, a force
 (`detached-head`), a publication of a branch that is not at the pushed commit
 (`not-published`), and a branch whose last request was merged or closed and has no open
 one (`request-merged`, `request-closed`; the result's `request` names it, and no request is
-reopened or duplicated). An open request is updated and keeps its draft or ready state;
-`draft:true` decides only the state of a request created now. `ready:true`, which only
-`publish --unattended` accepts (any other publish refuses it), creates a missing request ready
-for review, updates an open request and marks a draft one ready for review, and leaves an open
-ready request ready. Its readback must show the request ready: the `publish` or `recover`
-result carries `ready` with its `status`, and `pending` means the request is still a draft,
-reported as such without a retry. On GitHub the content update runs first and then the
+reopened or duplicated). An open request is updated and keeps its draft or ready state under
+`publish_pr_as_draft: true`, which decides only the state of a request created now. `publish_pr_as_draft: false`
+creates a missing request ready for review, updates an open request and marks a draft one ready for
+review, and leaves an open ready request ready. Its readback must show the request ready: the
+`publish` or `recover` result carries `publish_pr_as_draft` with its `value` and `status`, and
+`pending` on a `false` value means the request is still a draft, reported as such without a retry. On GitHub the content update runs first and then the
 `markPullRequestReadyForReview` mutation, so a failed conversion leaves the update in place.
 
 Report each refusal or failure as the cause of a skipped publication, never retry it, never

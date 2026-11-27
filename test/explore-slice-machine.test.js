@@ -518,21 +518,21 @@ test('auto-continue on an exhausted set rejects with NO_PENDING_SLICE', () => {
 
 test('the set-wide publication answer is recorded once, read back, and cleared with the inventory', () => {
   assert.equal(slice.initialState.publication, '');
-  assert.deepEqual(slice.project(slice.initialState).run, { publication: '', moves: [] });
+  assert.deepEqual(slice.project(slice.initialState).run, { publication: '', branch_strategy: '', pending: [], moves: [] });
 
   const premature = slice.transition(slice.initialState, { intent: 'publication', value: 'yes' });
   assert.equal(premature.rejected, 'INVENTORY_NOT_READY');
   assert.equal(premature.state.publication, '');
 
   const recorded = slice.transition(slice.initialState, { recordedList: ['a', 'b'] });
-  assert.deepEqual(recorded.run, { publication: '', moves: [] });
+  assert.deepEqual(recorded.run, { publication: '', branch_strategy: '', pending: ['a', 'b'], moves: [] });
   assert.equal(slice.transition(recorded.state, { intent: 'publication', value: 'maybe' }).rejected, 'INVALID_PUBLICATION');
   assert.equal(slice.transition(recorded.state, { intent: 'publication', value: '' }).rejected, 'INVALID_PUBLICATION');
 
   const answered = slice.transition(recorded.state, { intent: 'publication', value: 'yes' });
   assert.equal(answered.rejected, undefined);
   assert.equal(answered.state.publication, 'yes');
-  assert.deepEqual(answered.run, { publication: 'yes', moves: [] });
+  assert.deepEqual(answered.run, { publication: 'yes', branch_strategy: '', pending: ['a', 'b'], moves: [] });
   assert.equal(answered.state.blockEmissionTurnClosed, true, 'the answer opens no route gate');
   assert.equal(answered.state.stage, 'waiting');
 
@@ -542,7 +542,7 @@ test('the set-wide publication answer is recorded once, read back, and cleared w
 
   const read = slice.transition(answered.state, { intent: 'publication' });
   assert.equal(read.rejected, undefined);
-  assert.deepEqual(read.run, { publication: 'yes', moves: [] });
+  assert.deepEqual(read.run, { publication: 'yes', branch_strategy: '', pending: ['a', 'b'], moves: [] });
   assert.deepEqual(read.state, answered.state);
 
   // The answer outlives route choices, a running slice, and a finished slice.
@@ -556,12 +556,52 @@ test('the set-wide publication answer is recorded once, read back, and cleared w
   // A new inventory replaces the set, and its answer with it.
   const replaced = slice.transition(state, { recordedList: ['c'] });
   assert.equal(replaced.state.publication, '');
-  assert.deepEqual(replaced.run, { publication: '', moves: [] });
+  assert.deepEqual(replaced.run, { publication: '', branch_strategy: '', pending: ['c'], moves: [] });
+});
+
+test('the set-wide branch strategy is recorded once, read back, and cleared with the inventory, and the view lists the pending slices', () => {
+  const premature = slice.transition(slice.initialState, { intent: 'branch-strategy', value: 'shared' });
+  assert.equal(premature.rejected, 'INVENTORY_NOT_READY');
+
+  const recorded = slice.transition(slice.initialState, { recordedList: ['a', 'b', 'c'] });
+  assert.equal(slice.transition(recorded.state, { intent: 'branch-strategy', value: 'maybe' }).rejected, 'INVALID_BRANCH_STRATEGY');
+  assert.equal(slice.transition(recorded.state, { intent: 'branch-strategy', value: '' }).rejected, 'INVALID_BRANCH_STRATEGY');
+
+  for (const value of ['shared', 'per-slice', 'none']) {
+    const answered = slice.transition(recorded.state, { intent: 'branch-strategy', value });
+    assert.equal(answered.rejected, undefined);
+    assert.equal(answered.state.branchStrategy, value);
+    assert.equal(answered.run.branch_strategy, value);
+    assert.equal(answered.state.blockEmissionTurnClosed, true, 'the answer opens no route gate');
+  }
+
+  const answered = slice.transition(recorded.state, { intent: 'branch-strategy', value: 'shared' });
+  const second = slice.transition(answered.state, { intent: 'branch-strategy', value: 'none' });
+  assert.equal(second.rejected, 'BRANCH_STRATEGY_ALREADY_RECORDED');
+  assert.equal(second.state.branchStrategy, 'shared');
+  const read = slice.transition(answered.state, { intent: 'branch-strategy' });
+  assert.equal(read.rejected, undefined);
+  assert.equal(read.run.branch_strategy, 'shared');
+  assert.deepEqual(read.state, answered.state);
+
+  // The pending names follow the inventory order and drop a slice when it finishes.
+  assert.deepEqual(answered.run.pending, ['a', 'b', 'c']);
+  let state = slice.transition(answered.state, { intent: 'route-choice' }).state;
+  state = slice.transition(state, { intent: 'direct-build' }).state;
+  assert.deepEqual(slice.project(state).run.pending, ['a', 'b', 'c'], 'the running slice is still pending');
+  state = slice.transition(state, { intent: 'fail' }).state;
+  assert.equal(slice.project(state).run.branch_strategy, 'shared');
+
+  // The same names keep the answer; a different set clears it.
+  assert.equal(slice.transition(state, { recordedList: ['c', 'b', 'a'] }).state.branchStrategy, 'shared');
+  const replaced = slice.transition(state, { recordedList: ['d'] });
+  assert.equal(replaced.state.branchStrategy, '');
+  assert.deepEqual(replaced.run.pending, ['d']);
 });
 
 test('a stored state that predates the publication field reads as unanswered', () => {
   const legacy = { stage: 'waiting', set: ['a'], inventoryReady: true, active: null, done: [], mode: null, parked: {} };
-  assert.deepEqual(slice.project(legacy).run, { publication: '', moves: [] });
+  assert.deepEqual(slice.project(legacy).run, { publication: '', branch_strategy: '', pending: ['a'], moves: [] });
   assert.equal(slice.transition(legacy, { intent: 'publication', value: 'no' }).state.publication, 'no');
   assert.equal(slice.project({ stage: 'waiting', set: ['a'], publication: 'bogus' }).run.publication, '');
 });

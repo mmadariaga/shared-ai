@@ -121,22 +121,31 @@ test('Azure description boundaries and UTF-16 units are checked before approval 
     assert.ok(!state.calls.some(call => call.command === 'git' && ['push', 'ls-remote'].includes(call.args[0])));
   }
 });
-test('Azure explicit draft create/conversion is approval-bound, omitted otherwise and verified independently of a response', async () => {
+test('Azure publish_pr_as_draft is approval-bound, defaults to a draft on creation, keeps an existing request state and is verified independently of a response', async () => {
   for (const existing of [false, true]) {
     const { io, state, pr } = fixture();
     if (existing) state.rows = [{ ...pr('old', 'old'), isDraft: false }];
-    const plain = await prs.query(prRequest, io), draft = { ...prRequest, draft: true };
-    const ready = await prs.query(draft, io);
-    assert.notEqual(ready.confirmation, plain.confirmation);
-    await assert.rejects(async () => await prs.publish({ ...draft, approved: true, confirmation: plain.confirmation }, io), /approval/);
+    const plain = await prs.query(prRequest, io), asReady = { ...prRequest, publish_pr_as_draft: false };
+    const ready = await prs.query({ ...prRequest, publish_pr_as_draft: true }, io);
+    assert.equal(ready.confirmation, plain.confirmation, 'an absent value behaves as true');
+    assert.equal(plain.proposal.publish_pr_as_draft, true);
+    assert.notEqual((await prs.query(asReady, io)).confirmation, plain.confirmation);
+    await assert.rejects(async () => await prs.publish({ ...asReady, approved: true, confirmation: plain.confirmation }, io), /approval/);
     const file = receipt();
-    assert.equal((await prs.publish({ ...draft, approved: true, confirmation: ready.confirmation, receipt: file }, io)).status, 'complete');
+    const result = await prs.publish({ ...prRequest, approved: true, confirmation: ready.confirmation, receipt: file }, io);
+    assert.equal(result.status, 'complete');
+    assert.deepEqual(result.publish_pr_as_draft, { value: true, status: 'complete' });
+    if (existing) {
+      assert.equal(Object.hasOwn(state.writes[0].body, 'isDraft'), false, 'an existing request keeps its state');
+      assert.equal(state.rows[0].isDraft, false);
+      continue;
+    }
     assert.equal(state.writes[0].body.isDraft, true);
     assert.equal(state.rows[0].isDraft, true);
     delete state.rows[0].isDraft;
     const unverified = await prs.recover({ receipt: file }, io);
     assert.equal(unverified.status, 'uncertain');
-    assert.equal(unverified.pr.status, 'pending'); assert.equal(unverified.draft.status, 'pending');
+    assert.equal(unverified.pr.status, 'pending'); assert.deepEqual(unverified.publish_pr_as_draft, { value: true, status: 'pending' });
     assert.equal(state.writes.length, 1);
   }
   const { io, state, pr } = fixture();
@@ -146,11 +155,15 @@ test('Azure explicit draft create/conversion is approval-bound, omitted otherwis
   assert.equal(Object.hasOwn(state.writes[0].body, 'isDraft'), false);
   assert.equal(state.rows[0].isDraft, true);
 });
-test('Azure unattended ready:true marks an existing draft ready with isDraft false and verifies the readback', async () => {
+test('Azure rejects the retired draft and ready request fields', async () => {
+  const { io } = fixture();
+  for (const field of ['draft', 'ready']) await assert.rejects(async () => await prs.query({ ...prRequest, [field]: true }, io), /publish_pr_as_draft/);
+});
+test('Azure unattended publish_pr_as_draft:false marks an existing draft ready with isDraft false and verifies the readback', async () => {
   const { io, state, pr } = fixture();
   state.rows = [{ ...pr('old', 'old'), isDraft: true }];
   const file = receipt();
-  const request = { ...prRequest, ready: true, unattended: true, receipt: file };
+  const request = { ...prRequest, publish_pr_as_draft: false, unattended: true, receipt: file };
   assert.equal((await prs.publish(request, io)).status, 'complete');
   assert.equal(state.writes[0].body.isDraft, false);
   assert.equal(state.rows[0].isDraft, false);
@@ -159,14 +172,14 @@ test('Azure unattended ready:true marks an existing draft ready with isDraft fal
   const unverified = await prs.recover({ receipt: file }, io);
   assert.equal(unverified.status, 'uncertain');
   assert.equal(unverified.pr.status, 'pending');
-  assert.equal(unverified.ready.status, 'pending');
+  assert.deepEqual(unverified.publish_pr_as_draft, { value: false, status: 'pending' });
   assert.equal(state.writes.length, 1);
   state.rows[0].isDraft = false;
   assert.equal((await prs.recover({ receipt: file }, io)).status, 'complete');
 });
-test('Azure unattended ready:true creates a ready request and sends no draft flag', async () => {
+test('Azure unattended publish_pr_as_draft:false creates a ready request and sends no draft flag', async () => {
   const { io, state } = fixture();
-  assert.equal((await prs.publish({ ...prRequest, ready: true, unattended: true, receipt: receipt() }, io)).status, 'complete');
+  assert.equal((await prs.publish({ ...prRequest, publish_pr_as_draft: false, unattended: true, receipt: receipt() }, io)).status, 'complete');
   assert.equal(Object.hasOwn(state.writes[0].body, 'isDraft'), false);
   assert.notEqual(state.rows[0].isDraft, true);
 });
@@ -187,7 +200,7 @@ test('Azure risk thread is complete, authored, updated in place and still blocks
     return baseRun(command, args, input);
   };
   const block = '<!-- sai-inherent-risk:start -->\n## Inherent Risk\nComplete ratings\n<!-- sai-inherent-risk:end -->';
-  const request = { ...prRequest, draft: true, risk_placement: 'comment', risk_block: block, description_overflow: { length: 5000, limit: 4000 } };
+  const request = { ...prRequest, publish_pr_as_draft: true, risk_placement: 'comment', risk_block: block, description_overflow: { length: 5000, limit: 4000 } };
   await assert.rejects(async () => await prs.query({ ...request, description: 'x'.repeat(4001) }, io), error => error.code === 'description-too-long');
   const ready = await prs.query(request, io);
   assert.equal((await prs.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: receipt() }, io)).status, 'complete');
@@ -217,7 +230,7 @@ test('E10 I6: the Azure risk comment waits for the verified draft state and is t
     return baseRun(command, args, input);
   };
   const block = '<!-- sai-inherent-risk:start -->\n## Inherent Risk\nComplete ratings\n<!-- sai-inherent-risk:end -->';
-  const request = { ...prRequest, draft: true, risk_placement: 'comment', risk_block: block, description_overflow: { length: 5000, limit: 4000 } };
+  const request = { ...prRequest, publish_pr_as_draft: true, risk_placement: 'comment', risk_block: block, description_overflow: { length: 5000, limit: 4000 } };
   const ready = await prs.query(request, io), file = receipt();
   const first = await prs.publish({ ...request, approved: true, confirmation: ready.confirmation, receipt: file }, io);
   assert.equal(first.status, 'uncertain');
@@ -511,7 +524,7 @@ test('E7 I5 I8: exact fetch/push and branch identity, independent push approval 
   assert.match(fs.readFileSync('skills/universal/to-pr/SKILL.md', 'utf8'), /`push token` in the\s+`confirmation` field/);
   assert.equal((await prs.push({ ...prRequest, approved: true, confirmation: pushReady.confirmation }, io)).status, 'complete');
   assert.equal((await prs.publish({ ...prRequest, approved: true, confirmation: ready.confirmation, receipt: receipt() }, io)).status, 'complete');
-  assert.deepEqual(Object.keys(state.writes[1].body).sort(), ['description', 'sourceRefName', 'targetRefName', 'title']);
+  assert.deepEqual(Object.keys(state.writes[1].body).sort(), ['description', 'isDraft', 'sourceRefName', 'targetRefName', 'title']);
   assert.equal(state.rows[0].description, prRequest.description);
   assert.ok(state.pullRequestCalls.length >= 2);
   assert.ok(state.pullRequestCalls.some(call => call.method === 'GET') && state.pullRequestCalls.some(call => call.method === 'POST'));

@@ -48,8 +48,8 @@ async function mutate(proposal, io) {
   const p = proposal;
   const row = await azure.api(p.target, 'git', 'pullrequests', { project: p.target.project, repositoryId: p.target.id,
     ...(p.existing ? { pullRequestId: p.existing.number } : {}) }, io, p.existing ? 'PATCH' : 'POST', p.existing
-    ? { title: p.title, description: p.description, ...(p.draft === true ? { isDraft: true } : {}), ...(p.ready === true && p.existing.isDraft === true ? { isDraft: false } : {}) }
-    : { title: p.title, description: p.description, sourceRefName: `refs/heads/${p.source}`, targetRefName: `refs/heads/${p.base}`, ...(p.draft === true ? { isDraft: true } : {}) });
+    ? { title: p.title, description: p.description, ...(p.publish_pr_as_draft === false && p.existing.isDraft === true ? { isDraft: false } : {}) }
+    : { title: p.title, description: p.description, sourceRefName: `refs/heads/${p.source}`, targetRefName: `refs/heads/${p.base}`, ...(p.publish_pr_as_draft !== false ? { isDraft: true } : {}) });
   return identity(row, p.target, p.source, p.base);
 }
 async function publicationEvidence(proposal, io) {
@@ -64,13 +64,15 @@ async function recoverPublication(proposal, evidence, io, request) {
   const number = proposal.existing?.number || evidence.result?.number;
   const verified = number ? candidates.filter(row => row.number === number) : candidates.filter(row => row.url === request.requestUrl);
   if (verified.length === 1) {
-    const draft = proposal.draft === true ? { requested: true, status: verified[0].isDraft === true ? 'complete' : 'pending' } : undefined;
-    const ready = proposal.ready === true ? { requested: true, status: verified[0].isDraft === true ? 'pending' : 'complete' } : undefined;
-    const pending = draft?.status === 'pending' || ready?.status === 'pending';
+    const asDraft = proposal.publish_pr_as_draft !== false;
+    // A draft request keeps the state of an existing request; a ready one needs a request that is not a draft.
+    const verifiedState = asDraft ? proposal.existing || verified[0].isDraft === true : verified[0].isDraft !== true;
+    const publish_pr_as_draft = { value: asDraft, status: verifiedState ? 'complete' : 'pending' };
+    const pending = publish_pr_as_draft.status === 'pending';
     return { status: pending ? 'uncertain' : 'complete', request: verified[0], content_status: pending ? 'pending' : 'complete',
-      ...(draft ? { draft } : {}), ...(ready ? { ready } : {}), ...(pending ? { message: 'PR content is verified, but the requested draft or ready state is not confirmed; do not repeat creation.' } : {}) };
+      publish_pr_as_draft, ...(pending ? { message: 'PR content is verified, but the requested publish_pr_as_draft state is not confirmed; do not repeat creation.' } : {}) };
   }
-  return { status: 'uncertain', candidates, ...(proposal.draft === true ? { draft: { requested: true, status: 'pending' } } : {}), ...(proposal.ready === true ? { ready: { requested: true, status: 'pending' } } : {}),
+  return { status: 'uncertain', candidates, publish_pr_as_draft: { value: proposal.publish_pr_as_draft !== false, status: 'pending' },
     message: 'Query-only recovery cannot prove publication. Confirm the actual PR URL; do not repeat creation.' };
 }
 function commentActor(target) { return target.actor; }

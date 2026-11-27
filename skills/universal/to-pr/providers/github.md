@@ -4,12 +4,12 @@ Require `gh` with authenticated access to the selected repository. Supply
 `owner/repository` or its complete github.com URL. The adapter uses `gh api` with
 explicit repository endpoints; it never lets `gh pr create` push implicitly.
 Query open PRs with the exact source repository, source branch and target branch.
-Creation uses REST and writes head, base, title and body, plus `draft:true` only when
-explicitly requested. Update PATCH writes title and body. Explicit conversion of a
-ready PR uses GraphQL `convertPullRequestToDraft` with the verified PR node ID.
-Reuse an existing draft without conversion. Read-back must confirm `draft:true`;
+Creation uses REST and writes head, base, title and body, plus `draft:true` unless the request
+sends `publish_pr_as_draft: false`. Update PATCH writes title and body; an existing PR keeps
+its state and is never converted to a draft. Reuse an existing draft without conversion.
+Read-back of a created draft must confirm `draft:true`;
 unverified draft state is uncertain, never permission to create a duplicate.
-For the unattended `ready:true` request only, a draft PR is marked ready after its content
+For a `publish_pr_as_draft: false` request, a draft PR is marked ready after its content
 update with GraphQL `markPullRequestReadyForReview` and the verified PR node ID; a creation
 sends no `draft` field. Read-back must show `draft:false`, and a failed conversion leaves the
 updated content and reports the ready state as pending.

@@ -7,11 +7,10 @@ resolves the canonical project identity; `glab api --hostname` uses that exact h
 Issue enablement is irrelevant to merge requests. Query open MRs with exact source
 and target project ids and branch names. Creation writes source_branch,
 target_branch, title and description; update PUT writes title and description.
-An explicit draft request uses GitLab's supported `Draft: ` title prefix for both
-creation and conversion, bound to the publication approval. Read-back must confirm
+A new MR with `publish_pr_as_draft` absent or `true` uses GitLab's supported `Draft: ` title
+prefix, bound to the publication approval; an existing MR keeps its state. Read-back must confirm
 `draft` (or the older `work_in_progress`) is true; a title alone is not verification.
-Omitting the draft request preserves existing draft behavior.
-For the unattended `ready:true` request only, the title is written without the `Draft: `
+For a `publish_pr_as_draft: false` request, the title is written without the `Draft: `
 prefix, which marks an existing draft MR ready and creates a new MR ready; read-back must
 show `draft` (or `work_in_progress`) false, and a title alone is not verification.
 For assignment on creation only, the authenticated user (`GET user`) and every page of project labels

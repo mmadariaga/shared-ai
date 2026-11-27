@@ -948,8 +948,8 @@ function commandEmitProgress(id, machineIdArg, eventSource, extraArgs, inputFile
 // one unit: a set with a structural violation, a repeated change name, a
 // dependency that is absent or forms a cycle, a flagged line without a `context`
 // verdict, or a `violation` verdict records nothing. Output always carries
-// `validation`; change names never appear on the wire, so the verdict is
-// projected without them. A delivery failure (`EVENT_UNPARSEABLE`) is an empty
+// `validation`; the verdict is projected without change names (only the `pending`
+// list of the `run` view of `explore-slice@1` carries them). A delivery failure (`EVENT_UNPARSEABLE`) is an empty
 // set or a file that is not one change document; a `Ready to Propose` block is
 // the retired format (`RETIRED_FORMAT`) and is never converted.
 function projectDocumentVerdict(setResult, checks) {

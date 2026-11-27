@@ -83,20 +83,13 @@ async function markReady(proposal, io) {
 }
 async function mutate(proposal, io) {
   const endpoint = `repos/${proposal.target.repository}/pulls`;
-  if (proposal.draft === true && proposal.existing && proposal.existing.isDraft !== true) {
-    if (!proposal.existing.nodeId) throw new Error('Cannot convert a GitHub PR without its verified node ID');
-    await api(proposal.target, 'graphql', io, 'POST', {
-      query: 'mutation($id:ID!){convertPullRequestToDraft(input:{pullRequestId:$id}){pullRequest{id isDraft}}}',
-      variables: { id: proposal.existing.nodeId }
-    });
-  }
   const row = identity(await api(proposal.target, proposal.existing ? `${endpoint}/${proposal.existing.number}` : endpoint, io, proposal.existing ? 'PATCH' : 'POST', proposal.existing
     ? { title: proposal.title, body: proposal.description }
-    : { title: proposal.title, body: proposal.description, head: proposal.source, base: proposal.base, ...(proposal.draft === true ? { draft: true } : {}) }));
+    : { title: proposal.title, body: proposal.description, head: proposal.source, base: proposal.base, ...(proposal.publish_pr_as_draft !== false ? { draft: true } : {}) }));
   if (proposal.existing) {
     // Mark ready, after the content update so that the update stands when the conversion fails; the caller's readback
     // (`recover`) verifies the resulting state.
-    if (proposal.ready === true && proposal.existing.isDraft === true) await markReady(proposal, io);
+    if (proposal.publish_pr_as_draft === false && proposal.existing.isDraft === true) await markReady(proposal, io);
     return row;
   }
   // A pull request has no assignee or label field at creation: a second call on its issue sets them.
