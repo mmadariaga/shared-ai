@@ -289,16 +289,21 @@ When `backlog.provider` is set, the `from-backlog` helper SHALL resolve a bare r
 
 ### Requirement: Offline issue URL detection
 
-`from-backlog.js detect <registry> --input-file <path>`, with JSON `{"reference": ...}` in the input file, SHALL print `{verdict: "issue", provider}` when the trimmed reference is one complete `https://` URL without whitespace whose route matches the issue shape of exactly one provider selected with the same tiers as `resolve` (a positive match wins, otherwise the provider-owned fallbacks), and `{verdict: "none", provider: null}` otherwise. The decision SHALL come from each selected adapter's pure `issueRoute(value)` export (GitHub `/owner/repo/issues/N`, GitLab `/<group…>/<project>/-/issues/N` on any HTTPS host, Azure DevOps `.../_workitems/edit/N`), ignoring the query string and the fragment. `detect` SHALL call no adapter `resolve` or `read`, SHALL start no process, and SHALL use no network or credentials; an adapter without `issueRoute` SHALL never detect. An empty or missing reference SHALL fail with `invalid-reference` and exit 2.
+`from-backlog.js detect <registry> --input-file <path>`, with JSON `{"reference": ...}` in the input file, SHALL print `{verdict: "issue", provider}` when the trimmed reference is one complete `https://` URL without whitespace whose route matches the issue shape of exactly one provider selected with the same tiers as `resolve` (a positive match wins, otherwise the provider-owned fallbacks), and `{verdict: "none", provider: null}` otherwise. The decision SHALL come from each selected adapter's pure `issueRoute(value)` export (GitHub `/owner/repo/issues/N`, GitLab `/<group…>/<project>/-/issues/N` or `/<group…>/<project>/-/work_items/N` with a positive integer `N` on any HTTPS host, Azure DevOps `.../_workitems/edit/N`), ignoring the query string and the fragment. `detect` SHALL call no adapter `resolve` or `read`, SHALL start no process, and SHALL use no network or credentials; an adapter without `issueRoute` SHALL never detect. An empty or missing reference SHALL fail with `invalid-reference` and exit 2.
 
 #### Scenario: Issue URL per provider
 
 - **WHEN** `detect` receives a GitHub, GitLab, or Azure DevOps issue URL, with or without a query string or fragment
 - **THEN** it prints `verdict: issue` with that provider
 
+#### Scenario: GitLab work-item route
+
+- **WHEN** `detect` receives a complete HTTPS GitLab `/-/work_items/N` URL with a positive integer `N`, on gitlab.com or a self-hosted host
+- **THEN** it prints `verdict: issue` with provider `gitlab`
+
 #### Scenario: Non-issue references
 
-- **WHEN** `detect` receives a pull request, merge request, repository, documentation, `http://`, path-only, `#N`, or multi-URL reference
+- **WHEN** `detect` receives a pull request, merge request, repository, documentation, `http://`, path-only, `#N`, multi-URL reference, or a GitLab `/-/work_items/N` route whose `N` is missing, zero, or non-numeric
 - **THEN** it prints `verdict: none` with a null provider
 
 #### Scenario: No process and no CLI
