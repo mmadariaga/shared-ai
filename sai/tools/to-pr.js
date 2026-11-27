@@ -272,26 +272,24 @@ function validateDescription(provider, description, overflowLimit) {
 // `build` rebuilds the proposal around a given assignee and labels, for publish's fallback.
 async function prepareQuery(request, io) {
   if (typeof request.title !== 'string' || /[\r\n]/.test(request.title) || typeof request.description !== 'string' || !request.description.trim()) throw new Error('Single-line title and nonempty description required');
+  // `publish_pr_as_draft` is the one request-state field: absent or true creates a missing request as a draft and keeps the
+  // state of an existing one; false creates a missing request ready for review and marks an existing draft ready.
+  if (request.draft !== undefined || request.ready !== undefined) throw new Error('The draft and ready request fields are retired; send publish_pr_as_draft');
+  if (request.publish_pr_as_draft !== undefined && typeof request.publish_pr_as_draft !== 'boolean') throw new Error('publish_pr_as_draft must be a boolean');
+  const asDraft = request.publish_pr_as_draft !== false;
   const violations = checkPrTitleRules(request.provider === 'gitlab' ? request.title.replace(/^Draft:\s*/i, '') : request.title);
   if (violations.length) throw new Error(`Invalid request title: ${JSON.stringify(violations)}`);
   const selected = await destination(request, io);
   const provider = adapter(request.provider, io);
   const rows = await provider.list(selected.target, selected.source, selected.base, io);
   if (rows.length > 1) throw new Error('Multiple matching requests; resolve ambiguity before publication');
-  // Unattended: `draft:true` asks for a draft creation only. An open request keeps its draft or ready state.
-  if (request.unattended === true && rows[0] && request.draft === true && rows[0].isDraft !== true) request = { ...request, draft: undefined };
   const warning = rows[0] && provider.concurrencyWarning;
   const { description, warnings } = await withClosingBlock(request, selected, io);
   validateDescription(request.provider, description, request.risk_placement === 'comment' ? request.description_overflow?.limit : undefined);
-  if (request.draft !== undefined && request.draft !== true) throw new Error('Only an explicit draft:true request is supported');
-  // `ready:true` is the explicit ready-for-review state of an unattended build publication: it creates a ready request
-  // or marks an existing draft ready, and it never combines with `draft:true`.
-  if (request.ready !== undefined && request.ready !== true) throw new Error('Only an explicit ready:true request is supported');
-  if (request.ready === true && request.draft === true) throw new Error('A request is either draft:true or ready:true, never both');
   // GitLab's supported draft write is its title prefix; bind the actual wire title.
   if (request.provider === 'gitlab') {
-    const draft = request.ready === true ? false : request.draft === true || rows[0]?.isDraft === true;
-    if (/^Draft:\s*/i.test(request.title) && !draft) throw new Error('Draft title requires an explicit draft request');
+    const draft = rows[0] ? asDraft && rows[0].isDraft === true : asDraft;
+    if (/^Draft:\s*/i.test(request.title) && !draft) throw new Error('Draft title requires publish_pr_as_draft: true on a new or draft request');
     if (draft) request = { ...request, title: `Draft: ${request.title.replace(/^Draft:\s*/i, '')}` };
   }
   const inherent_risk = await riskComments.plan(request, description, provider, selected.target, rows[0], io);
@@ -300,10 +298,10 @@ async function prepareQuery(request, io) {
   if (inherent_risk && request.allow_attribution !== true && checkAiAttribution(inherent_risk.body, 'risk comment').length) throw new Error('Invalid risk comment: AI_ATTRIBUTION');
   const applied = rows[0] ? { warnings: [] } : await labelling(request, selected, provider, io);
   const build = (assignee, labels) => ({ provider: request.provider, ...selected, existing: rows[0] ? baseline(rows[0]) : null, title: request.title, description,
-    ...(inherent_risk ? { inherent_risk } : {}), ...(request.draft === true ? { draft: true } : {}), ...(request.ready === true ? { ready: true } : {}),
+    ...(inherent_risk ? { inherent_risk } : {}), publish_pr_as_draft: asDraft,
     ...(assignee ? { assignee } : {}), ...(labels ? { labels } : {}), ...(warning ? { concurrency_warning: warning } : {}), ...approvalField(autoApproved(io)) });
   const proposal = build(applied.assignee, applied.labels);
-  const prMatches = rows[0]?.title === request.title && rows[0]?.description === description && (request.draft !== true || rows[0]?.isDraft === true) && (request.ready !== true || rows[0]?.isDraft !== true);
+  const prMatches = rows[0]?.title === request.title && rows[0]?.description === description && (asDraft || rows[0]?.isDraft !== true);
   const matches = prMatches && (!inherent_risk?.required || inherent_risk.existing?.body === inherent_risk.body);
   const all = [...warnings, ...applied.warnings];
   const ready = { status: matches ? 'no_changes' : 'ready', proposal, confirmation: digest(proposal), ...(applied.available ? { available_labels: applied.available } : {}), ...(all.length ? { warnings: all } : {}) };
@@ -340,7 +338,6 @@ function labellingOutcome(outcome, proposal, result, notices = []) {
 }
 async function publish(request, io) {
   const unattended = request.unattended === true;
-  if (request.ready === true && !unattended) throw new Error('ready:true applies only to an unattended publication');
   if (unattended || autoApproved(io)) await unattendedGuard(request, io);
   const prepared = await prepareQuery(request, io);
   const ready = unattended ? prepared.ready : approvedWithFailedReads(prepared, request);
@@ -370,11 +367,11 @@ async function publish(request, io) {
   } catch (error) { return { status: !submitted && error.rejected ? 'rejected' : 'uncertain', receipt: request.receipt, message: error.message,
     pr: { status: submitted ? 'verification_pending' : error.rejected ? 'rejected' : 'uncertain' }, comment: receipt.comment }; }
 }
-// The request is complete only when its content and any requested draft or ready state are both verified, so a risk comment
+// The request is complete only when its content and the requested publish_pr_as_draft state are both verified, so a risk comment
 // (visible to others) is never written on an unverified state.
 function requestStatus(result) {
   const status = result.content_status || result.status;
-  return status === 'complete' && (result.draft?.status === 'pending' || result.ready?.status === 'pending') ? 'pending' : status;
+  return status === 'complete' && result.publish_pr_as_draft?.status === 'pending' ? 'pending' : status;
 }
 async function recover(request, io) {
   request = { ...request, receipt: receiptPath(request.receipt) };
@@ -390,9 +387,11 @@ async function recover(request, io) {
     if (target.id !== proposal.target.id || target.host !== proposal.target.host) throw new Error('Recovery destination identity changed');
     const rows = await provider.list(target, proposal.source, proposal.base, io);
     const candidates = rows.filter(row => (!proposal.existing || row.number === proposal.existing.number) && row.title === proposal.title && row.description === proposal.description);
-    const draftVerified = (proposal.draft !== true || candidates[0]?.isDraft === true) && (proposal.ready !== true || candidates[0]?.isDraft !== true);
-    const stateField = status => ({ ...(proposal.draft === true ? { draft: { requested: true, status } } : {}), ...(proposal.ready === true ? { ready: { requested: true, status } } : {}) });
-    result = candidates.length === 1 && draftVerified ? { status: 'complete', request: candidates[0], ...stateField('complete') } : { status: 'uncertain', candidates: rows, ...stateField('pending'), message: 'Read-only recovery cannot verify the approved content and draft or ready state; do not repeat creation' };
+    const asDraft = proposal.publish_pr_as_draft !== false;
+    // A draft request keeps the state of an existing request; a ready one needs a request that is not a draft.
+    const draftVerified = asDraft ? proposal.existing || candidates[0]?.isDraft === true : candidates[0]?.isDraft !== true;
+    const stateField = status => ({ publish_pr_as_draft: { value: asDraft, status } });
+    result = candidates.length === 1 && draftVerified ? { status: 'complete', request: candidates[0], ...stateField('complete') } : { status: 'uncertain', candidates: rows, ...stateField('pending'), message: 'Read-only recovery cannot verify the approved content and publish_pr_as_draft state; do not repeat creation' };
   }
   const pr = { status: requestStatus(result), ...(result.request ? { request: result.request } : {}) };
   if (!proposal.inherent_risk?.required) return { ...result, receipt: request.receipt, pr, comment: { status: 'not_required' } };

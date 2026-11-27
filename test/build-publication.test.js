@@ -48,13 +48,15 @@ test('the build publishes once, after the telemetry commit, and a failed publica
   assert.match(build, /End with exactly `Build done\.`/);
 });
 
-test('the build publication card is unattended, skips the plan-commit step, and publishes with ready:true', () => {
+test('the build publication card is unattended, skips the plan-commit step, and publishes the request state its caller hands it, ready by default', () => {
   assert.doesNotMatch(publication, /AskUserQuestion|plan-commit --unattended|plan-query|Commit listed/);
   assert.match(publication, /asks the user nothing, and never stops the run/);
   assert.match(publication, /never creates a commit/);
   assert.match(publication, /`push --unattended`/);
   assert.match(publication, /`publish --unattended`/);
-  assert.match(publication, /explicit `ready:true` request, never `draft:true`/);
+  assert.match(publication, /explicit `publish_pr_as_draft` value: the one the caller hands over, or `false` when it hands none/);
+  assert.match(publication, /`publish --unattended` with `publish_pr_as_draft` and the receipt/);
+  assert.doesNotMatch(publication, /ready:true|draft:true/);
   assert.match(publication, /no force push, no automatic retry/i);
   assert.match(publication, /the request stays a draft: the push and the content update stand/);
   assert.match(publication, /The build still counts as completed/);
@@ -67,7 +69,9 @@ test('the build publication card is unattended, skips the plan-commit step, and 
   assert.equal(fs.existsSync(path.join(root, 'sai/commands/plan/publication.md')), true);
   const plan = read('sai/commands/plan/publication.md');
   assert.match(plan, /never marks a request ready/);
-  assert.doesNotMatch(plan, /ready:true/);
+  assert.doesNotMatch(plan, /ready:true|draft:true/);
+  assert.match(plan, /explicit `publish_pr_as_draft: true` request/);
+  assert.match(plan, /`publish --unattended` with `publish_pr_as_draft: true` and the receipt/);
 });
 
 test('a direct /sai-3-implement run and /sai-deep-review ask, record, and publish nothing', () => {
@@ -125,4 +129,17 @@ test('the machine keeps the answer through the close event that ends a segment a
   const closed = machine.transition(answered.state, { kind: 'close', outcome: 'completed' });
   assert.equal(machine.project(closed.state).run.publication, 'yes', 'a build resumed after segment 1 completed still reads the answer');
   assert.equal(machine.transition(closed.state, { kind: 'start', dir: '/tmp/implement-demo-2' }).run.publication, '');
+});
+
+test('a Direct Build slice hands the request state to the publication card from the branch strategy and the pending slices', () => {
+  const coordinator = read('sai/commands/explore/direct-build-coordinator.md');
+  assert.match(coordinator, /`publish_pr_as_draft: true` when the `branch_strategy` of the same `run` view is `shared` or `none` and its `pending` list holds a slice other than this one/);
+  assert.match(coordinator, /`per-slice`, no recorded strategy, a single-slice set, or no other pending slice\) it is `publish_pr_as_draft: false`/);
+  assert.match(coordinator, /whatever route it takes later/);
+  assert.match(coordinator, /number of slices still pending/);
+  const selector = read('sai/commands/explore/steps/route-selector.md');
+  assert.match(selector, /## Branch strategy record/);
+  assert.match(selector, /--set intent=branch-strategy --set value=<shared\|per-slice\|none>/);
+  assert.match(selector, /BRANCH_STRATEGY_ALREADY_RECORDED/);
+  assert.match(selector, /record the set's branch strategy when it is final/);
 });

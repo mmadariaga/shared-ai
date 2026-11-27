@@ -108,8 +108,10 @@ the suggested bases (three bases plus `More` when there are more than four), and
 crystallized set whether the slices publish a request when their route ends, unless the
 [`pr.publishAfterRun`](../project-settings.md#plan-publication-answer) setting
 answers it. A Plan slice hands the answer to `/sai-plan`, which publishes a draft
-request; a Direct Build slice pushes its branch without force and publishes a
-request ready for review after its telemetry commit; a Manual slice ignores it.
+request; a Direct Build slice pushes its branch without force and publishes its request
+after its telemetry commit, as a draft while later slices of a set that shares one branch
+are still pending and ready for review for the last one (with `per-slice` branches, or
+a single slice, each request is ready for review); a Manual slice ignores it.
 The answer is kept for the whole set, so later slices ask nothing, and a failed
 publication never stops a slice. Standalone `/sai-direct-build` publishes nothing. Each
 answer authorizes only its own action; a missing or ambiguous answer leaves it

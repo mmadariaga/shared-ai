@@ -18,12 +18,11 @@ Keep common full publication approval and **separate** branch-push approval.
 Before approval for an update show `proposal.concurrency_warning`. The reread
 binds the baseline but Azure PATCH leaves an unprotected concurrent-edit interval
 between reread and write, unlike Boards' atomic revision test. Title and
-description are updated; explicit `draft:true` additionally sets `isDraft:true`
-on creation or update, and verification must read back `isDraft:true`. Without
-that request the field is omitted and an existing state is preserved. For the
-unattended `ready:true` request only, an update of a draft request sets
-`isDraft:false`, a creation omits the field, and verification must read back a request
-that is not a draft. Reviewers
+description are updated. `publish_pr_as_draft` (absent means `true`) decides the state: a
+creation with `true` sets `isDraft:true` and verification must read back `isDraft:true`;
+an update with `true` omits the field and preserves the existing state. With `false`, an
+update of a draft request sets `isDraft:false`, a creation omits the field, and
+verification must read back a request that is not a draft. Reviewers
 and other fields stay unchanged. Managed Inherent Risk comments use PR threads
 and update only the authenticated author's uniquely marked comment. Azure Repos
 requests get no assignee (a reviewer means approval, not ownership) and no labels;

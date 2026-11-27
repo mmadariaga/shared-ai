@@ -44,11 +44,14 @@ target. Pending staged, unstaged, and untracked files stay out of the request.
 Relevant OpenSpec documents are optional context, never a substitute for Git
 evidence. An existing open request for the same source and target is updated
 instead of duplicated; multiple matches require clarification. Updates change
-the title and description and preserve unrelated content. An explicit draft request
-can create a draft or convert an existing PR/MR to draft on all three providers;
-without it, existing state is preserved. Conversion is part of the exact approval.
-GitHub creates via REST and converts via GraphQL; GitLab uses its `Draft: ` title
-prefix. Read-back must verify draft state, not just the title or response.
+the title and description and preserve unrelated content. The request state is the one
+boolean `publish_pr_as_draft`: absent or `true` creates a new PR/MR as a draft and leaves an
+existing one in its state, and `false`, which the skill sends only when you ask for a request that
+is ready for review, creates a ready PR/MR or marks an existing draft ready on all three providers.
+The proposal you approve shows the state the request is created in. The retired `draft` and `ready`
+fields are rejected with an error that names `publish_pr_as_draft`.
+GitHub creates via REST and marks ready via GraphQL; GitLab uses its `Draft: ` title
+prefix. Read-back must verify the state, not just the title or response.
 
 AI authorship credits in descriptions are blocked by default for both creation
 and updates. Human coauthor credits are allowed. If you explicitly request AI
@@ -83,8 +86,8 @@ When a description exceeds its provider's limit, the authoring agent may shorten
 other text or move the **complete** Inherent Risk block to a managed comment.
 This option works on all three providers; no new local limits are imposed on
 GitHub or GitLab. Relocation is optional and does not excuse remaining overflow.
-Approval shows the final description, complete comment and destination, and any
-explicit draft request. Changing that allocation requires fresh approval.
+Approval shows the final description, complete comment and destination, and the
+request state. Changing that allocation requires fresh approval.
 The tool reuses the authenticated author's uniquely marked comment and preserves
 other people's comments; ambiguous matches need clarification. Moving the block
 back to the description leaves a location notice in the managed comment.
@@ -141,17 +144,19 @@ which replaces the approval tokens and keeps every other check. Your own `/to-pr
 tool refuses a force push, the provider's default branch, a detached HEAD, a branch that is
 not at the pushed commit, and a branch whose request was merged or closed and has no open
 request; each refusal names its cause and ends the publication with no retry. An open request
-is updated and keeps its draft or ready state; a request created now is a draft. `/sai-build`
-asks for a ready request instead: a request created now is ready for review and an open draft
-request is marked ready for review, with a read-back of the ready state on GitHub, GitLab and
-Azure DevOps. A ready state that the read-back does not show is reported as a request that
-stays a draft, and the push and the content update stand.
+is updated and keeps its draft or ready state; a request created now is a draft
+(`publish_pr_as_draft: true`). `/sai-build` sends `publish_pr_as_draft: false`: a request created
+now is ready for review and an open draft request is marked ready for review, with a read-back of
+the state on GitHub, GitLab and Azure DevOps. A Direct Build slice of `/sai-explore` on a set that
+shares one branch sends `true` while later slices of the set are pending, so the shared request
+stays a draft, and `false` for the last one. A ready state that the read-back does not show is
+reported as a request that stays a draft, and the push and the content update stand.
 
 Publication executes once and reports only a verified request URL or a concrete
 blocker with the local receipt. Recovery from an uncertain response is read-only
 and never automatically repeats creation.
 
-PR content, requested draft state, and risk-comment publication must each
+PR content, the requested `publish_pr_as_draft` state, and risk-comment publication must each
 be verified. A published PR with a failed or unverified comment is not complete
 success. Recovery reports those outcomes separately and never repeats a completed
 push or PR creation. A verified safe pending-comment operation can be resumed
