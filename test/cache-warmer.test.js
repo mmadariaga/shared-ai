@@ -1,7 +1,8 @@
 'use strict';
 
-// `wake_local` is a local time, so pin the suite's zone: the exact assertions below then hold everywhere.
-process.env.TZ = 'UTC';
+// `wake_local` is a local time, so pin the suite's zone: the exact assertions below then hold everywhere. The zone is
+// off UTC by a non-whole hour, so a formatter that read UTC fields instead of local ones would fail them.
+process.env.TZ = 'Asia/Kolkata';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -610,7 +611,7 @@ test('E7 the arm check reuses a live fixed-deadline wait, never moves the deadli
   assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).closing_ms, 600000, 'the check never moves the deadline');
   clock.time = 600000;
   assert.deepEqual(warmer.armCheck(began.chain, check), armResult(false), 'after the deadline nothing is launched');
-  assert.deepEqual(await warmer.warmOnce({ chain: began.chain }, check), { status: 'finished', waited_ms: 0, state: { chain: began.chain }, reminder: REMINDER, wake_local: '00:10' });
+  assert.deepEqual(await warmer.warmOnce({ chain: began.chain }, check), { status: 'finished', waited_ms: 0, state: { chain: began.chain }, reminder: REMINDER, wake_local: '05:40' });
 });
 
 test('I1 a new owner starts its interval only after the previous lease was released or went stale', async t => {
