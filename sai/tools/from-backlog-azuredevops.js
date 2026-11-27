@@ -25,6 +25,16 @@ function address(value) {
   return { organization: `https://dev.azure.com/${organization}`, parts, username: url.username };
 }
 
+// The identity of the work item a relation URL names: its lowercased organization and number, whether or not
+// the URL carries a project segment (GUID or name) before `/_apis/`. A URL that names no work item has none (null).
+function workItemIdentity(value) {
+  const match = /\/_apis\/wit\/workItems\/([1-9][0-9]*)$/i.exec(typeof value === 'string' ? value : '');
+  let parsed;
+  try { parsed = match && address(value); } catch { return null; }
+  if (!parsed || parsed.username || !positive(match[1])) return null;
+  return { organization: parsed.organization.toLowerCase(), number: Number(match[1]) };
+}
+
 function classify(value) {
   if (positive(value)) return 'match';
   try {
@@ -143,13 +153,12 @@ function planningFields(row, reference) {
   if (row.relations != null && !Array.isArray(row.relations)) throw fault('retrieval-failed', 'Incomplete work-item relations');
   const parents = (row.relations || []).filter(link => link.rel === 'System.LinkTypes.Hierarchy-Reverse');
   if (parents.length > 1) throw fault('retrieval-failed', 'Multiple work-item parents');
-  const link = parents[0], match = link && /\/_apis\/wit\/workItems\/([1-9][0-9]*)$/i.exec(link.url || '');
-  const parsed = link && address(link.url);
-  if (link && (!match || !positive(match[1]) || !parsed || parsed.username || parsed.organization.toLowerCase() !== reference.organization.toLowerCase())) throw fault('retrieval-failed', 'Invalid parent identity');
+  const link = parents[0], identity = link && workItemIdentity(link.url);
+  if (link && (!identity || identity.organization !== reference.organization.toLowerCase())) throw fault('retrieval-failed', 'Invalid parent identity');
   const assigned = row.fields['System.AssignedTo'], iteration = row.fields['System.IterationPath'];
   if (assigned != null && (typeof assigned.id !== 'string' || !assigned.id)) throw fault('retrieval-failed', 'Incomplete Azure assignee identity');
   if (iteration != null && typeof iteration !== 'string') throw fault('retrieval-failed', 'Invalid iteration path');
-  return { parent: link ? { id: Number(match[1]), url: link.url } : null, iteration: iteration ?? null,
+  return { parent: link ? { id: identity.number, url: link.url } : null, iteration: iteration ?? null,
     assignment: assigned ? { id: assigned.id, ...(typeof assigned.displayName === 'string' ? { displayName: assigned.displayName } : {}), ...(typeof assigned.uniqueName === 'string' ? { uniqueName: assigned.uniqueName } : {}) } : null };
 }
 
@@ -160,10 +169,9 @@ async function nativeRelations(reference, io) {
   const urls = async rel => {
     const found = [];
     for (const link of (row.relations || []).filter(link => link.rel === rel)) {
-      const match = /\/_apis\/wit\/workItems\/([1-9][0-9]*)$/i.exec(link.url || '');
-      const parsed = address(link.url);
-      if (!match || !positive(match[1]) || !parsed || parsed.username || parsed.organization.toLowerCase() !== reference.organization.toLowerCase()) throw fault('retrieval-failed', 'Invalid native work-item relation identity');
-      const number = Number(match[1]);
+      const identity = workItemIdentity(link.url);
+      if (!identity || identity.organization !== reference.organization.toLowerCase()) throw fault('retrieval-failed', 'Invalid native work-item relation identity');
+      const number = identity.number;
       if (!related.has(number)) {
         // Relation IDs are organization-wide; the selected item's project is not evidence.
         const item = JSON.parse(await execute(io, ['boards', 'work-item', 'show', '--id', String(number), '--organization', reference.organization, '--detect', 'false', '--output', 'json', '--only-show-errors']));
@@ -193,4 +201,4 @@ function issueRoute(value) {
   try { resolveLink(value); return true; } catch { return false; }
 }
 
-module.exports = { classify, issueRoute, resolve, resolveLink, read, readSet, nativeRelations, address, segment };
+module.exports = { classify, issueRoute, resolve, resolveLink, read, readSet, nativeRelations, address, segment, workItemIdentity };

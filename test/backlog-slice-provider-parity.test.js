@@ -30,6 +30,8 @@ function fixture(platform) {
     if (!row) throw new Error('missing item');
     return row;
   }
+  // Azure returns every relation URL with the project GUID between the organization and `/_apis/`.
+  const served = row => JSON.stringify(row.relations ? { ...row, relations: row.relations.map(link => ({ ...link, url: link.url.replace(/^(https:\/\/dev\.azure\.com\/[^/]+)\/_apis\//, '$1/6f3c1d2e-8a4b-4c5d-9e7f-0123456789ab/_apis/') })) } : row);
   const io = { run(command, args, input) {
     state.calls.push({ command, args, input });
     if (!azure) {
@@ -105,9 +107,9 @@ function fixture(platform) {
         }
         row.rev++;
       }
-      return JSON.stringify(row);
+      return served(row);
     }
-    if (args[0] === 'boards') return JSON.stringify(show(Number(args[args.indexOf('--id') + 1])));
+    if (args[0] === 'boards') return served(show(Number(args[args.indexOf('--id') + 1])));
     const resource = args[args.indexOf('--resource') + 1];
     if (resource === 'projects') return JSON.stringify({ id: 'project-id', name: 'Project', visibility: 'private' });
     if (resource === 'workitemtypes') return JSON.stringify({ name: 'Task' });
@@ -181,7 +183,7 @@ for (const platform of ['gitlab', 'azuredevops']) {
     assert.equal(f.state.rows.length, 3);
   });
   test(`${platform}: verified parent/child publication, complete import, identity transport and lookup`, async t => {
-    const f = fixture(platform), { result } = await publish(t, f);
+    const f = fixture(platform), { file, result } = await publish(t, f);
     assert.equal(result.status, 'complete', result.message);
     assert.equal(result.correspondence.platform, platform);
     assert.deepEqual(result.correspondence.slices.map(slice => slice.change_name), ['blocker', 'dependent']);
@@ -212,6 +214,9 @@ for (const platform of ['gitlab', 'azuredevops']) {
     }
     assert.equal((await f.adapter['lookup-slice']({ ...f.request, change_name: 'dependent' }, f.io)).issue, await f.url(3));
     assert.equal(f.state.writes.length, before, 'import and lookup never mutate remote content');
+    const verified = await f.adapter['recover-set']({ receipt: file }, f.io);
+    assert.equal(verified.status, 'complete', verified.message);
+    assert.equal(f.state.writes.length, before, 'recovery recognizes the existing native relations and adds none');
   });
   test(`${platform}: isolated exact-approved assignment, existing responsibility, keep and verification`, async t => {
     const f = fixture(platform); await publish(t, f);

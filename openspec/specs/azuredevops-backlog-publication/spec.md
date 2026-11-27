@@ -409,3 +409,47 @@ The raw-HTML check of an outgoing Markdown description SHALL recognize a tag who
 
 - **WHEN** a description holds `a < b`, `<3`, `<operación>` inside a code span or a fenced code block, and an autolink
 - **THEN** the check returns the description unchanged.
+
+### Requirement: Boards native relations are recognized by work-item identity
+
+The Azure DevOps publication adapter SHALL recognize an existing native relation by its identity: the relation type (`rel`), the organization, and the work-item number. A relation URL SHALL identify the same work item whether or not it carries a project segment (a project GUID or a project name) between the organization and `/_apis/`. The organization SHALL compare case-insensitively, and the legacy host `https://<organization>.visualstudio.com` SHALL be the same organization as `https://dev.azure.com/<organization>`. The work-item number SHALL compare whole. A relation to another organization, a relation with a different `rel`, and a relation URL that names no work item SHALL NOT match; a URL that names no work item SHALL raise no error in the existence check and SHALL NOT block the publication. Slice-set publication (`publish-set`, `continue-set`) and its recovery (`recover-set`) SHALL use this comparison, so an existing relation in the project-segment form SHALL be reported as verified and SHALL NOT be added again. Single-item planning SHALL compare its parent by the same identity in the different-parent guard, in the pending-changes computation, and in the outcome verification. Written relation URLs SHALL keep the `<organization>/_apis/wit/workItems/<n>` form, and planning state SHALL keep the relation URL as Azure returns it, so saved receipt and continuation digests stay valid. One relation-identity extractor SHALL serve both the Azure import and the Azure publication adapters.
+
+#### Scenario: Relation in the project-GUID form is verified
+
+- **WHEN** Azure returns a created Parent/Child or Predecessor relation with the project GUID between the organization and `/_apis/`
+- **THEN** slice-set publication reports the relation as verified, completes with native hierarchy and dependencies, and does not stop with `Native relation not verified`.
+
+#### Scenario: Relation without a project segment still matches
+
+- **WHEN** a relation URL has the form `<organization>/_apis/wit/workItems/<n>` with the same `rel`, organization, and number
+- **THEN** the relation counts as existing.
+
+#### Scenario: Another organization, another rel, or a partial number does not match
+
+- **WHEN** a relation names another organization, carries a different `rel` for the same number, or names work item `120` where `12` is expected
+- **THEN** the relation does not count as existing.
+
+#### Scenario: Organization case and legacy host match
+
+- **WHEN** a relation URL names the same organization in different letter case or through the `https://<organization>.visualstudio.com` host
+- **THEN** the relation identifies the same organization.
+
+#### Scenario: A URL that names no work item is ignored
+
+- **WHEN** a relation URL does not end in `/_apis/wit/workItems/<n>` with a positive whole number
+- **THEN** the existence check treats it as no match, raises no error, and does not block the publication.
+
+#### Scenario: Recovery recognizes existing native relations
+
+- **WHEN** `recover-set` reads a completed slice set whose native relations Azure returns in the project-GUID form
+- **THEN** recovery reports the set as complete and adds no relation.
+
+#### Scenario: Same parent in the project-GUID form completes planning
+
+- **WHEN** single-item planning targets a parent that already exists on the work item in the project-GUID form
+- **THEN** the preflight and the planning write do not treat it as a different parent, the parent is not pending, the outcome is `complete`, and the link is not added again.
+
+#### Scenario: Another parent is still rejected
+
+- **WHEN** single-item planning finds an existing parent that is another work item, with or without a project segment in its URL
+- **THEN** planning is rejected with `A different native parent already exists`.
