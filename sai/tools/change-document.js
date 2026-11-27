@@ -38,6 +38,7 @@
  *   node sai/tools/change-document.js verify-file --document-file <path> --document-hash <sha256>
  *   node sai/tools/change-document.js compare --stored-file <path> --document-file <path>
  *   node sai/tools/change-document.js sections [--origin <issue-url>] [--input-file <path>]  (issue description on stdin without a file)
+ *   node sai/tools/change-document.js compose --input-file <issue> --backlog-origin <issue-url> --output-file <path> [--change-name <name>] [--explore-origin "<harness> <session>" ...] [--specs <value>] [--declared-clean]
  *   node sai/tools/change-document.js split --document-file <path> [--document-hash <sha256>]
  *   node sai/tools/change-document.js set-origin --document-file <path> --origin <issue-url> [--harness <claude|opencode>]
  *   node sai/tools/change-document.js attach-origin [--harness <claude|opencode>] --input-file <path>
@@ -1074,6 +1075,78 @@ function readIssue(text, { origin = null } = {}) {
   }, analyzeIssueSections(map));
 }
 
+/** The issue text without its `## Change` section: the literal text `compose` completes. */
+function withoutChangeSection(text) {
+  const doc = parseIssueSections(text, { lenient: true });
+  const section = doc.first('change');
+  if (!section) return normalize(text);
+  const lines = doc.lines.slice();
+  const start = section.line - 1;
+  const end = section.bodyStart - 1 + section.body.length;
+  lines.splice(start, end - start);
+  return lines.join('\n').replace(/\s+$/, '');
+}
+
+/**
+ * The text with `note` as one paragraph at the end of `## Additional notes`:
+ * appended to the existing section, or written with a new section before the
+ * next agreed section (in the section order of the issue format).
+ */
+function withAdditionalNote(text, note) {
+  const doc = parseIssueSections(text, { lenient: true });
+  const lines = doc.lines.slice();
+  const section = doc.first('additional notes');
+  if (section) {
+    if (section.body.some((line) => line.trim() === note)) return lines.join('\n');
+    let end = section.bodyStart - 1 + section.body.length;
+    while (end > section.bodyStart - 1 && lines[end - 1].trim() === '') end -= 1;
+    lines.splice(end, 0, '', note);
+    return lines.join('\n');
+  }
+  const rank = new Map(SECTIONS.map((entry, index) => [entry.name.toLowerCase(), index]));
+  const own = rank.get('additional notes');
+  const anchor = doc.sections.find((entry) => rank.has(entry.key) && rank.get(entry.key) > own);
+  const insertAt = anchor ? anchor.line - 1 : lines.length;
+  const separator = insertAt > 0 && lines[insertAt - 1].trim() !== '' ? [''] : [];
+  lines.splice(insertAt, 0, ...separator, '## Additional notes', '', note, '');
+  return lines.join('\n');
+}
+
+/**
+ * Compose the change document of a mature issue: the literal issue text with
+ * the `## Change` lines the intake settled on. It reads no repository and no
+ * clock; the caller supplies every value. `--explore-origin` entries keep the
+ * order given; `--declared-clean` adds the intake's declared-clean note to
+ * `## Additional notes`. A `Depends on:` line the issue already carries is
+ * preserved, because no compose flag names it.
+ */
+function composeChangeDocument(text, { backlogOrigin, exploreOrigins = [], specs = null, changeName = null, declaredClean = false } = {}) {
+  const usage = (message) => Object.assign(new Error(message), { usage: true });
+  if (typeof backlogOrigin !== 'string' || !canonicalBacklogOrigin(backlogOrigin)) {
+    throw usage('--backlog-origin must be a canonical GitHub, GitLab or Azure DevOps issue URL');
+  }
+  const source = isHtmlDescription(text) ? issueToMarkdown(text) : normalize(text);
+  const existing = readIssue(source).change;
+  const name = changeName || existing.name;
+  if (!name || !KEBAB_CASE.test(name)) throw usage('--change-name must be kebab-case (or the issue must carry a valid Change name)');
+  let exploreOrigin = null;
+  if (exploreOrigins.length > 0) {
+    exploreOrigin = exploreOrigins.join(', ');
+    if (!parseExploreOrigin(exploreOrigin)) throw usage('--explore-origin reads "<harness> <session>", harness opencode or claude');
+  }
+  if (specs !== null) {
+    const declaration = SPECS_NONE.exec(specs);
+    if (!declaration || declaration[1].trim() === '') throw usage('--specs reads "none — <reason>"');
+  }
+  const depends = existing.depends_on.length > 0 ? existing.depends_on.join(', ') : 'None';
+  const changeLines = ['## Change', '', `- Change name: ${name}`, `- Depends on: ${depends}`, `- Backlog origin: ${backlogOrigin}`];
+  if (exploreOrigin) changeLines.push(`- Explore origin: ${exploreOrigin}`);
+  if (specs !== null) changeLines.push(`- Specs: ${specs}`);
+  let output = withoutChangeSection(source);
+  if (declaredClean) output = withAdditionalNote(output, DECLARED_CLEAN_NOTE);
+  return `${output.replace(/\s+$/, '')}\n\n${changeLines.join('\n')}\n`;
+}
+
 const HARNESSES = ['claude', 'opencode'];
 const CD = 'node sai/tools/change-document.js';
 
@@ -1120,6 +1193,16 @@ const USAGE = {
       examples: [`${CD} sections --origin https://github.com/owner/repo/issues/12 --input-file issue.md`],
       flags: { '--origin': true, '--input-file': true, '--json': false },
     },
+    compose: {
+      usage: [`${CD} compose --input-file <issue> --backlog-origin <issue-url> --output-file <path> [--change-name <name>] [--explore-origin "<harness> <session>" ...] [--specs <value>] [--declared-clean]`],
+      notes: ['Writes the literal issue text with the settled Change lines as one change document, and prints its path and hash. It reads no repository; --explore-origin is repeatable and keeps the order given.'],
+      examples: [
+        `${CD} compose --input-file issue.md --backlog-origin https://github.com/owner/repo/issues/12 --change-name greeting-banner --output-file document.md`,
+        `${CD} compose --input-file issue.md --backlog-origin https://github.com/owner/repo/issues/12 --change-name greeting-banner --explore-origin "claude 88a1341a-aab7-4efe-82d8-58de66098f65" --specs "none — documentation only" --declared-clean --output-file document.md`,
+      ],
+      flags: { '--input-file': true, '--backlog-origin': true, '--output-file': true, '--change-name': true, '--explore-origin': true, '--specs': true, '--declared-clean': false, '--json': false },
+      required: ['--input-file', '--backlog-origin', '--output-file'],
+    },
     split: {
       usage: [`${CD} split --document-file <path> [--document-hash <sha256>]`],
       notes: ['Prints the title line and the description of a verified document: the issue title and description of its publication.'],
@@ -1148,10 +1231,11 @@ function usage() {
   return usageKit.render(USAGE);
 }
 
-const VALUE_FLAGS = ['--document-file', '--document-hash', '--verdicts-file', '--stored-file', '--input-file', '--origin', '--harness'];
+const VALUE_FLAGS = ['--document-file', '--document-hash', '--verdicts-file', '--stored-file', '--input-file', '--origin', '--harness',
+  '--backlog-origin', '--explore-origin', '--specs', '--change-name', '--output-file'];
 
 function parseArgs(argv) {
-  const opts = { command: null, help: false, slice: false, documents: [] };
+  const opts = { command: null, help: false, slice: false, declaredClean: false, exploreOrigins: [], documents: [] };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--help' || arg === '-h') {
@@ -1160,10 +1244,13 @@ function parseArgs(argv) {
       // Always JSON.
     } else if (arg === '--slice') {
       opts.slice = true;
+    } else if (arg === '--declared-clean') {
+      opts.declaredClean = true;
     } else if (VALUE_FLAGS.includes(arg)) {
       if (i + 1 >= argv.length || argv[i + 1].startsWith('--')) return { error: `${arg} requires a value` };
       const value = argv[++i];
       if (arg === '--document-file') opts.documents.push(value);
+      else if (arg === '--explore-origin') opts.exploreOrigins.push(value);
       else opts[arg.slice(2)] = value;
     } else if (arg.startsWith('--')) {
       return { error: `unknown flag: ${arg}` };
@@ -1250,6 +1337,19 @@ function main(argv, readStdin = () => fs.readFileSync(0, 'utf8')) {
       emit(Object.assign({ ok: true }, readIssue(input, { origin: opts.origin || null })));
       return 0;
     }
+    if (opts.command === 'compose') {
+      const input = inputReader.readInputFile(opts['input-file']);
+      const output = composeChangeDocument(input, {
+        backlogOrigin: opts['backlog-origin'],
+        exploreOrigins: opts.exploreOrigins,
+        specs: opts.specs === undefined ? null : opts.specs,
+        changeName: opts['change-name'] || null,
+        declaredClean: opts.declaredClean,
+      });
+      fs.writeFileSync(opts['output-file'], output, 'utf8');
+      emit({ document_file: opts['output-file'], hash: hashDocument(output) });
+      return 0;
+    }
     if (opts.command === 'split') {
       const file = single();
       const text = opts['document-hash'] ? verifyDocumentFile(file, opts['document-hash']) : readDocument(file);
@@ -1291,7 +1391,7 @@ function main(argv, readStdin = () => fs.readFileSync(0, 'utf8')) {
     process.stderr.write(`${error.message}\n`);
     return 2;
   }
-  process.stderr.write(`sub-command "check", "check-set", "hash", "verify-file", "compare", "sections", "split", "set-origin" or "attach-origin" required.\n${usage()}\n`);
+  process.stderr.write(`sub-command "check", "check-set", "hash", "verify-file", "compare", "sections", "compose", "split", "set-origin" or "attach-origin" required.\n${usage()}\n`);
   return 2;
 }
 
@@ -1324,6 +1424,7 @@ module.exports = {
   readIssue,
   issueToMarkdown,
   isHtmlDescription,
+  composeChangeDocument,
   parseExploreOrigin,
   main,
   USAGE,

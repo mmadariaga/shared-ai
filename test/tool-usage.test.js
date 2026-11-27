@@ -28,7 +28,8 @@ const TOOLS = [
   { name: 'backfill-no-specs', file: 'sai/tools/backfill-no-specs.js', kind: 'json', keep: { ok: false }, subcommands: ['compose'] },
   { name: 'worker-report-validator', file: 'sai/tools/worker-report-validator.js', kind: 'text', subcommands: ['validate'] },
   { name: 'risk-signals', file: 'sai/tools/risk-signals.js', kind: 'json', keep: { status: 'blocked' }, subcommands: ['compute', 'validate'] },
-  { name: 'change-document', file: 'sai/tools/change-document.js', kind: 'text', subcommands: ['check', 'check-set', 'hash', 'verify-file', 'compare', 'sections', 'split', 'set-origin', 'attach-origin'] },
+  { name: 'change-document', file: 'sai/tools/change-document.js', kind: 'text', subcommands: ['check', 'check-set', 'hash', 'verify-file', 'compare', 'sections', 'compose', 'split', 'set-origin', 'attach-origin'] },
+  { name: 'issue-precheck', file: 'sai/tools/issue-precheck.js', kind: 'text', subcommands: ['check'] },
   { name: 'change-telemetry', file: 'sai/tools/change-telemetry.js', kind: 'json', keep: {}, errorKeys: ['error'], subcommands: ['collect', 'explore-origin'] },
   { name: 'decision-records', file: 'sai/tools/decision-records.js', kind: 'text', subcommands: ['inventory'] },
   { name: 'tool-access', file: 'sai/tools/tool-access.js', kind: 'text', subcommands: ['verify', 'notices'] },
@@ -83,9 +84,9 @@ const declarationOf = tool => {
   return loaded.get(tool.name);
 };
 
-test('E11 the fixed list names the 36 agent-facing tools', () => {
-  assert.equal(TOOLS.length, 36);
-  assert.equal(new Set(TOOLS.map(tool => tool.name)).size, 36);
+test('E11 the fixed list names the 37 agent-facing tools', () => {
+  assert.equal(TOOLS.length, 37);
+  assert.equal(new Set(TOOLS.map(tool => tool.name)).size, 37);
 });
 
 test('E11 every tool exports a usage declaration whose subcommands are the ones its parser accepts, and whose examples use only declared subcommands and flags', () => {

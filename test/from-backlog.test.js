@@ -351,5 +351,17 @@ test('explore loads the issue URL import only on an invocation turn, after detec
   const step = body.slice(body.indexOf('Issue URL import:'));
   assert.ok(body.indexOf('Chat language:') < body.indexOf('Issue URL import:'), 'runs after the resets and the chat language read');
   for (const pattern of [/only on an invocation turn/, /a recovery load never runs it/, /exactly one `https:\/\/` URL/, /detect <registry> --input-file <path>/, /no network, provider CLI, or credentials/, /`verdict` alone decides/, /announces the import/, /@skills\/from-backlog\/SKILL\.md/, /`work`\/`context` question of `steps\/issue-intake\.md`/, /`retry` and `stop`/, /`continue without import`/, /starts no route/]) assert.match(step, pattern);
+  assert.match(step, /skips the skill's §3 full presentation and §4 project assessment/);
+  assert.match(step, /reports `ready_to_propose_form: true`/);
+  assert.match(step, /`change-document\.js sections`/);
   assert.match(intake, /issue URL that the load of `body\.md` imported/);
+});
+
+test('the mature issue fast path skips the from-backlog presentation and assessment but the skill keeps its own flow', () => {
+  const body = fs.readFileSync(path.join(root, 'sai/commands/explore/body.md'), 'utf8');
+  const skill = fs.readFileSync(path.join(root, 'skills/universal/from-backlog/SKILL.md'), 'utf8');
+  assert.match(body, /Every other issue keeps the skill's §3 and §4/);
+  assert.match(body, /the full issue text appears once, in the final document/);
+  assert.match(skill, /## 3\. Incorporate with provenance/);
+  assert.match(skill, /## 4\. Assess against the current project/);
 });

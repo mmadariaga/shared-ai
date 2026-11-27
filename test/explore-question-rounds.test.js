@@ -258,6 +258,41 @@ test('to-backlog and new-change-branch stay caller-agnostic and expose preparati
   assert.match(read('skills/universal/to-backlog/slice-set.md'), /sai-backlog-slices@1/);
 });
 
+test('the issue intake asks the work question and the drift check in one round for a mature issue', () => {
+  const intake = read('sai/commands/explore/steps/issue-intake.md');
+  const body = read('sai/commands/explore/body.md');
+  assert.match(intake, /Ask the work question and the drift check as one round of `@sai\/policies\/question-rounds\.md`, in that order; the round closes the turn/);
+  assert.match(intake, /The drift check is a conditional question, included only when the seed leaves at least one section `agreed`/);
+  assert.match(intake, /A message that already states the intent to work on the issue answers the work question with `work`; the round then carries the drift check alone/);
+  assert.match(intake, /On `context`, the drift answer is not applicable: nothing is seeded and no document is composed/);
+  assert.match(intake, /Ask it once the intake reading is complete/);
+  assert.match(intake, /Read maturity from the reading's `ready_to_propose_form`, never from your own judgment/);
+  assert.doesNotMatch(intake, /Read the `Maturity` section yourself/);
+  assert.match(body, /`work`\/`context` question of `steps\/issue-intake\.md` with the drift check in one round of `sai\/policies\/question-rounds\.md`/);
+  assert.match(body, /skips the skill's §3 full presentation and §4 project assessment/);
+});
+
+test('the mature fast path runs a deterministic precheck and composes the document with the tool', () => {
+  const intake = read('sai/commands/explore/steps/issue-intake.md');
+  const crystallization = read('sai/commands/explore/steps/crystallization-protocol.md');
+  assert.match(intake, /ready_to_propose_form` is `true`/);
+  assert.match(intake, /sai\/tools\/issue-precheck\.js/);
+  assert.match(intake, /read `missing`, never the exit code/);
+  assert.match(intake, /Before the round, show each `missing` entry/);
+  assert.match(intake, /The precheck informs and never decides/);
+  assert.match(intake, /When `sections` fails, report it in one line, run no fast path/);
+  assert.match(intake, /Present the issue as a summary: link, state, title, `Goal`, the counts of edge cases, implementation notes, and decisions, and every comment in full with its author/);
+  assert.match(intake, /the drift check ended `declared-clean` or `validate` with no mismatch, the exploration continues at `Crystallize`/);
+  assert.match(intake, /Any section left open, and any drift mismatch, means no document is composed here/);
+  assert.match(intake, /a re-imported published change document \(the reading returns `change\.name`\) skips it/);
+  assert.match(crystallization, /\*\*Tool-composed intake \(fast path\)\.\*\*/);
+  assert.match(crystallization, /Skip the open-decision check below/);
+  assert.match(crystallization, /`change-document\.js compose`|`compose --input-file/);
+  assert.match(crystallization, /--declared-clean` follows a `declared-clean` drift answer/);
+  assert.match(crystallization, /The Source language level of `crystallization-language-gates\.md` item 8 applies/);
+  assert.match(crystallization, /fall back to the ordinary model composition below[\s\S]*do not stop the run/);
+});
+
 test('implementation start verifies an advance assignment approval instead of asking again', () => {
   const start = read('sai/policies/backlog-implementation-start.md');
   assert.match(start, /\*\*Advance approval\.\*\*/);

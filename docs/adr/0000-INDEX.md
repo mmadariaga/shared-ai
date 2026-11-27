@@ -232,6 +232,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0218 — Cache warming reuses the live wait through a foreground arm check](./0218-cache-warming-reuses-the-live-wait-through-an-arm-check.md) — **Amends** 0212
 - [0225 — Explore machines guard preconditions, not paths](./0225-explore-machines-guard-preconditions-not-paths.md)
 - [0226 — Direct Build run state lives in the store on the explore route only](./0226-direct-build-run-state-in-store-on-explore-route.md) — Refs 0225
+- [0237 — The issue precheck informs and never decides](./0237-issue-precheck-informs-never-decides.md)
+- [0238 — The slicing assessment is skipped only for a re-imported published change document](./0238-slicing-skip-published-change-document.md)
 
 ### `/sai-backfill`
 
