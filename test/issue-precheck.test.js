@@ -92,7 +92,8 @@ test('a newly proposed symbol is listed without an error, and the check informs 
     const result = spawnSync(process.execPath, [toolPath, 'check', '--input-file', issueFile, '--cwd', cwd], { encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr);
     const payload = JSON.parse(result.stdout);
-    assert.deepEqual(Object.keys(payload).sort(), ['checked', 'missing']);
+    assert.deepEqual(Object.keys(payload).sort(), ['checked', 'missing', 'unchecked']);
+    assert.equal(payload.unchecked, 0);
     assert.ok(payload.missing.some((entry) => entry.ref === 'NewWidget' && entry.kind === 'symbol' && entry.section === 'Scope'));
     assert.ok(payload.missing.every((entry) => entry.kind && entry.ref && entry.section));
     fs.writeFileSync(outputFile, result.stdout);
@@ -187,6 +188,57 @@ test('the issue format of a composed document keeps its parse after the precheck
     ].join('\n');
     assert.equal(checkDocument(text).dispatchable, true);
     assert.deepEqual(precheck.checkIssue(text, { cwd }).missing, []);
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test('a path outside the project is reported missing and never read, even when it exists', () => {
+  const cwd = makeRepository();
+  try {
+    const outside = path.relative(cwd, path.join(root, 'package.json'));
+    const text = ['# Outside', '', '## Problem', `\`${outside}:1\` and \`${path.join(root, 'package.json')}\` and \`../package.json\`.`, ''].join('\n');
+    const result = precheck.checkIssue(text, { cwd });
+    assert.deepEqual(result.missing.map((entry) => entry.kind).sort(), ['path', 'path', 'path-line']);
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test('a bare filename matches a tracked file of exactly that name, not a suffix of another name', () => {
+  const cwd = makeRepository();
+  try {
+    fs.writeFileSync(path.join(cwd, 'src', 'mywidget.ts'), 'export {};\n');
+    git(cwd, ['add', '-A']);
+    const text = ['# Names', '', '## Problem', '`widget.ts` is not `mywidget.ts`, and `widget.js:2` is.', ''].join('\n');
+    const result = precheck.checkIssue(text, { cwd });
+    assert.deepEqual(result.missing.map((entry) => entry.ref), ['widget.ts']);
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test('symbols git cannot search are counted as unchecked, never as found', () => {
+  const cwd = temporaryDirectory('issue-precheck-norepo-');
+  try {
+    const text = ['# No repository', '', '## Problem', '`fooBarBaz` and `other_thing` and `fooBarBaz`.', ''].join('\n');
+    const result = precheck.checkIssue(text, { cwd });
+    assert.deepEqual(result, { checked: 0, unchecked: 2, missing: [] });
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test('a repeated reference is checked once and listed once per section', () => {
+  const cwd = makeRepository();
+  try {
+    const text = ['# Repeats', '', '## Problem', '`QuoteStatus`, `QuoteStatus`, and `src/widget.js:2:7`.', '', '## Goal', '`QuoteStatus` again.', ''].join('\n');
+    const result = precheck.checkIssue(text, { cwd });
+    assert.equal(result.checked, 2);
+    assert.deepEqual(result.missing, [
+      { kind: 'symbol', ref: 'QuoteStatus', section: 'Problem' },
+      { kind: 'symbol', ref: 'QuoteStatus', section: 'Goal' },
+    ]);
   } finally {
     fs.rmSync(cwd, { recursive: true, force: true });
   }

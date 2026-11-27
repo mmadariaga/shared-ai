@@ -38,7 +38,7 @@
  *   node sai/tools/change-document.js verify-file --document-file <path> --document-hash <sha256>
  *   node sai/tools/change-document.js compare --stored-file <path> --document-file <path>
  *   node sai/tools/change-document.js sections [--origin <issue-url>] [--input-file <path>]  (issue description on stdin without a file)
- *   node sai/tools/change-document.js compose --input-file <issue> --backlog-origin <issue-url> --output-file <path> [--change-name <name>] [--explore-origin "<harness> <session>" ...] [--specs <value>] [--declared-clean]
+ *   node sai/tools/change-document.js compose --input-file <issue> --output-file <path> [--backlog-origin <issue-url>] [--change-name <name>] [--explore-origin "<harness> <session>" ...] [--specs <value>] [--declared-clean]
  *   node sai/tools/change-document.js split --document-file <path> [--document-hash <sha256>]
  *   node sai/tools/change-document.js set-origin --document-file <path> --origin <issue-url> [--harness <claude|opencode>]
  *   node sai/tools/change-document.js attach-origin [--harness <claude|opencode>] --input-file <path>
@@ -1116,13 +1116,15 @@ function withAdditionalNote(text, note) {
  * Compose the change document of a mature issue: the literal issue text with
  * the `## Change` lines the intake settled on. It reads no repository and no
  * clock; the caller supplies every value. `--explore-origin` entries keep the
- * order given; `--declared-clean` adds the intake's declared-clean note to
+ * order given; without `--backlog-origin` (an issue that was pasted or read
+ * from a file, with no issue URL) the document carries no `Backlog origin:`
+ * line; `--declared-clean` adds the intake's declared-clean note to
  * `## Additional notes`. A `Depends on:` line the issue already carries is
  * preserved, because no compose flag names it.
  */
-function composeChangeDocument(text, { backlogOrigin, exploreOrigins = [], specs = null, changeName = null, declaredClean = false } = {}) {
+function composeChangeDocument(text, { backlogOrigin = null, exploreOrigins = [], specs = null, changeName = null, declaredClean = false } = {}) {
   const usage = (message) => Object.assign(new Error(message), { usage: true });
-  if (typeof backlogOrigin !== 'string' || !canonicalBacklogOrigin(backlogOrigin)) {
+  if (backlogOrigin !== null && backlogOrigin !== undefined && (typeof backlogOrigin !== 'string' || !canonicalBacklogOrigin(backlogOrigin))) {
     throw usage('--backlog-origin must be a canonical GitHub, GitLab or Azure DevOps issue URL');
   }
   const source = isHtmlDescription(text) ? issueToMarkdown(text) : normalize(text);
@@ -1139,7 +1141,8 @@ function composeChangeDocument(text, { backlogOrigin, exploreOrigins = [], specs
     if (!declaration || declaration[1].trim() === '') throw usage('--specs reads "none — <reason>"');
   }
   const depends = existing.depends_on.length > 0 ? existing.depends_on.join(', ') : 'None';
-  const changeLines = ['## Change', '', `- Change name: ${name}`, `- Depends on: ${depends}`, `- Backlog origin: ${backlogOrigin}`];
+  const changeLines = ['## Change', '', `- Change name: ${name}`, `- Depends on: ${depends}`];
+  if (backlogOrigin) changeLines.push(`- Backlog origin: ${backlogOrigin}`);
   if (exploreOrigin) changeLines.push(`- Explore origin: ${exploreOrigin}`);
   if (specs !== null) changeLines.push(`- Specs: ${specs}`);
   let output = withoutChangeSection(source);
@@ -1194,14 +1197,14 @@ const USAGE = {
       flags: { '--origin': true, '--input-file': true, '--json': false },
     },
     compose: {
-      usage: [`${CD} compose --input-file <issue> --backlog-origin <issue-url> --output-file <path> [--change-name <name>] [--explore-origin "<harness> <session>" ...] [--specs <value>] [--declared-clean]`],
+      usage: [`${CD} compose --input-file <issue> --output-file <path> [--backlog-origin <issue-url>] [--change-name <name>] [--explore-origin "<harness> <session>" ...] [--specs <value>] [--declared-clean]`],
       notes: ['Writes the literal issue text with the settled Change lines as one change document, and prints its path and hash. It reads no repository; --explore-origin is repeatable and keeps the order given.'],
       examples: [
         `${CD} compose --input-file issue.md --backlog-origin https://github.com/owner/repo/issues/12 --change-name greeting-banner --output-file document.md`,
         `${CD} compose --input-file issue.md --backlog-origin https://github.com/owner/repo/issues/12 --change-name greeting-banner --explore-origin "claude 88a1341a-aab7-4efe-82d8-58de66098f65" --specs "none — documentation only" --declared-clean --output-file document.md`,
       ],
       flags: { '--input-file': true, '--backlog-origin': true, '--output-file': true, '--change-name': true, '--explore-origin': true, '--specs': true, '--declared-clean': false, '--json': false },
-      required: ['--input-file', '--backlog-origin', '--output-file'],
+      required: ['--input-file', '--output-file'],
     },
     split: {
       usage: [`${CD} split --document-file <path> [--document-hash <sha256>]`],
@@ -1340,7 +1343,7 @@ function main(argv, readStdin = () => fs.readFileSync(0, 'utf8')) {
     if (opts.command === 'compose') {
       const input = inputReader.readInputFile(opts['input-file']);
       const output = composeChangeDocument(input, {
-        backlogOrigin: opts['backlog-origin'],
+        backlogOrigin: opts['backlog-origin'] || null,
         exploreOrigins: opts.exploreOrigins,
         specs: opts.specs === undefined ? null : opts.specs,
         changeName: opts['change-name'] || null,

@@ -112,7 +112,7 @@ not carry: what a result means.
   merge-base, fingerprint, and floors, or with the stored block's `state`; or
   `status: blocked` with a `message`.
 - `change-document.js` always prints one JSON verdict and takes no `--cwd`; `compose` prints `{document_file, hash}`.
-- `issue-precheck.js` always prints one JSON object `{checked, missing}` and exits 0 whether or not references are missing; exit 2 is a usage or I/O error. It informs and never decides.
+- `issue-precheck.js` always prints one JSON object `{checked, unchecked, missing}` (`unchecked`: the symbols git could not search) and exits 0 whether or not references are missing; exit 2 is a usage or I/O error. It informs and never decides.
 - `change-telemetry.js` always prints one JSON line (`written` or `skipped`),
   takes no `--json`, and exits 2 only for a usage error. `explore-origin` prints
   `{"outcome": "found", "session": <explore root session>}` or
