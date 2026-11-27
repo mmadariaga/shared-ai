@@ -382,6 +382,13 @@ test('compose replaces an existing Change section, keeps its Depends on, and omi
   assert.match(appended, /## Additional notes\nExisting context\.\n\nThe user declared that the issue has no drift from the current code without validating it\./);
 });
 
+test('compose without a backlog origin writes no Backlog origin line, for an issue pasted or read from a file', () => {
+  const composed = doc.composeChangeDocument(documentText({ Change: null }), { changeName: 'greeting-banner' });
+  assert.match(composed, /- Change name: greeting-banner\n- Depends on: None\n$/);
+  assert.doesNotMatch(composed, /Backlog origin:/);
+  assert.equal(doc.checkDocument(composed).dispatchable, true);
+});
+
 test('compose rejects an invalid origin, name, Explore origin, and Specs value as usage errors', () => {
   const issue = documentText({ Change: null });
   const usage = (options) => assert.throws(() => doc.composeChangeDocument(issue, options), (error) => error.usage === true);
@@ -390,6 +397,7 @@ test('compose rejects an invalid origin, name, Explore origin, and Specs value a
   usage({ backlogOrigin: 'https://github.com/owner/repo/issues/12', changeName: 'greeting-banner', exploreOrigins: ['claude not-a-uuid'] });
   usage({ backlogOrigin: 'https://github.com/owner/repo/issues/12', changeName: 'greeting-banner', specs: 'none' });
   usage({ backlogOrigin: 'https://github.com/owner/repo/issues/12', changeName: 'greeting-banner', specs: 'none —' });
+  usage({ backlogOrigin: 'https://github.com/owner/repo/issues/12', changeName: 'greeting-banner', specs: 'Specs: none — documentation only' });
 });
 
 test('issue-format.md defines the change document format the tool enforces', () => {

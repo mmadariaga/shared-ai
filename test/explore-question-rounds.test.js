@@ -277,7 +277,8 @@ test('the mature fast path runs a deterministic precheck and composes the docume
   const crystallization = read('sai/commands/explore/steps/crystallization-protocol.md');
   assert.match(intake, /ready_to_propose_form` is `true`/);
   assert.match(intake, /sai\/tools\/issue-precheck\.js/);
-  assert.match(intake, /read `missing`, never the exit code/);
+  assert.match(intake, /read `missing` and `unchecked`, never the exit code/);
+  assert.match(intake, /when `unchecked` is above zero, add one line/);
   assert.match(intake, /Before the round, show each `missing` entry/);
   assert.match(intake, /The precheck informs and never decides/);
   assert.match(intake, /When `sections` fails, report it in one line, run no fast path/);
@@ -289,6 +290,9 @@ test('the mature fast path runs a deterministic precheck and composes the docume
   assert.match(crystallization, /Skip the open-decision check below/);
   assert.match(crystallization, /`change-document\.js compose`|`compose --input-file/);
   assert.match(crystallization, /--declared-clean` follows a `declared-clean` drift answer/);
+  assert.match(crystallization, /pass `--specs "none — <reason>"` \(the value alone, without the `Specs:` key\)/);
+  assert.match(crystallization, /pass `--backlog-origin` only when it holds a value/);
+  assert.match(crystallization, /On a `compose` call that exits non-zero/);
   assert.match(crystallization, /The Source language level of `crystallization-language-gates\.md` item 8 applies/);
   assert.match(crystallization, /fall back to the ordinary model composition below[\s\S]*do not stop the run/);
 });
