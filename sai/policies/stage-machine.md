@@ -1,5 +1,7 @@
 # Stage Machine — Common Operational Policy
 
+Fetch `@sai/policies/tool-call-notes.md`
+
 Single source for `sai-state` operations: verbs, responses, event delivery,
 corrective retry, `next.follow` loading, degraded mode, and linear
 step-machine consumption.
@@ -32,14 +34,15 @@ the initial state.
 ## Verbs
 
 Resolve the CLI path per `@sai/policies/tool-resolution.md` § `bin/sai-state.js`
-copy. Below, `sai-state <verb>` is shorthand for `node <tool-path> <verb>`; the
-verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
-(exit 2).
+copy. Below, `sai-state <verb>` is shorthand for the spelled invocation
+`node <sai-state-path> <verb> --note "<short action label>"` of
+`@sai/policies/tool-call-notes.md`; the verbs take neither `--json` nor `--cwd`.
+A missing argument is a usage error (exit 2).
 
-- **Spawn**: `sai-state spawn --key <stable-key>` initializes or locates the
+- **Spawn**: `node <sai-state-path> spawn --note "open the session" --key <stable-key>` initializes or locates the
   session for that key and returns `{received_at, id}`. Derive the key from the harness
   session identifier; the same key always yields the same id.
-- **Emit**: `sai-state emit <id> <machineId> --set <field>=<id> ...` builds one
+- **Emit**: `node <sai-state-path> emit --note "record the event" <id> <machineId> --set <field>=<id> ...` builds one
   identifier event from flags (§ Event delivery), sends it to one machine, and
   returns
   `{received_at, stage, next: {follow, hint}, rejected?, warnings?}`. The flags:
@@ -52,19 +55,19 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   or by both `--set` and `--add`, or a flag combined with `--input-file`, stdin
   `-`, `--progress`, or `--document-file` is a usage error (exit 2) that
   changes no state; a rejected path names `--input-file` as the alternative.
-  `sai-state emit <id> <machineId> --input-file <path>` reads one event as JSON
+  `node <sai-state-path> emit --note "read the event" <id> <machineId> --input-file <path>` reads one event as JSON
   from the input file instead, for an event that holds free text or a path the
   flags reject. The stdin form `emit <id> <machineId> -` stays accepted, so
   older instructions keep working; event JSON passed as an argument is a usage
   error (exit 2). A missing, unreadable, or empty input file exits 2 naming the
   path and changes no state.
-- **Progress emit**: `sai-state emit <id> <machineId> --progress --report-dir <dir> --report-file <path> --report-hash <sha256>`
+- **Progress emit**: `node <sai-state-path> emit --note "advance the step machine" <id> <machineId> --progress --report-dir <dir> --report-file <path> --report-hash <sha256>`
   takes the worker's progress report as a reference: it verifies the reference
   once (directory, containment, symbolic links, sha256), validates those same
   bytes, and advances the machine from them, so a report outside the directory
   or with a different hash is refused (`validation.outcome` `delivery-failed`)
   and the machine does not advance; the coordinator runs no separate
-  `validate`. `sai-state emit <id> <machineId> --progress --input-file <path>`
+  `validate`. `node <sai-state-path> emit --note "advance the step machine" <id> <machineId> --progress --input-file <path>`
   reads one worker progress payload
   (`{event: "progress", step_ids, changed_files}`) as JSON from the input file
   (or from stdin with `-`) instead
@@ -89,7 +92,7 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   clock module found in neither location exits 2 naming the tried paths. Every
   stdout JSON response, machine errors (exit 1) included, carries `received_at`
   as its first key; stderr carries no time.
-- **Document emit**: `sai-state emit <id> explore-slice@1 --document-file <path> [--verdicts-file <path>] [--document-file <path> [--verdicts-file <path>] ...]`
+- **Document emit**: `node <sai-state-path> emit --note "register the change documents" <id> explore-slice@1 --document-file <path> [--verdicts-file <path>] [--document-file <path> [--verdicts-file <path>] ...]`
   reads the complete set of change documents, one file per document in display
   order, and the bounded-judgment verdicts of each document
   (`@sai/policies/block-hygiene-judgment.md`) as a JSON array from the
@@ -140,7 +143,7 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   this check. On any other machine, or combined with `--progress`, the option is
   a usage error (exit 2). A document tool or validator module found in neither
   location relative to the CLI exits 2 naming the tried paths.
-- **Document amend**: `sai-state emit <id> explore-slice@1 --amend <change-name> --document-file <path> [--verdicts-file <path>]`
+- **Document amend**: `node <sai-state-path> emit --note "amend the change document" <id> explore-slice@1 --amend <change-name> --document-file <path> [--verdicts-file <path>]`
   reads exactly one change document from the file, in the document emit's
   delivery form and with the same verdicts file. It validates the document
   exactly as the document emit does, then requires its `Change name:` to equal
@@ -168,7 +171,7 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   nothing. The option is accepted only with `--document-file` on
   `explore-slice@1`; otherwise it is a usage error (exit 2).
   Both registration and amendment use the `--document-file <path> [--verdicts-file <path>]` form on both harnesses, with no content through a shell command; the per-line `validation` of a document comes from `change-document.js check --document-file <path>` (`@sai/policies/issue-format.md` § Change document (Transport)).
-- **Block**: `sai-state block <id> <change-name>` returns
+- **Block**: `node <sai-state-path> block --note "read the change document" <id> <change-name>` returns
   `{received_at, hash, text}` for one recorded slice: the exact validated change
   document text and its sha256 hash as the document emit (or the latest
   amendment) stored them. When the session, the stored documents, or that change
@@ -177,13 +180,13 @@ verbs take neither `--json` nor `--cwd`. A missing argument is a usage error
   slice's document by an Explore route, take document text only from this verb,
   never from conversation. The receiving worker runs `verify-file` on the
   exported `document_file` (`@sai/policies/issue-format.md` § Change document
-  (Transport)). For worker delivery use `sai-state block <id> <change-name> --export --harness <claude|opencode>` instead: it checks the stored hash and writes the text directly through `transfer.js` into a private file. It returns `{received_at, hash, document_file, transfer_dir}` without text. An export failure returns `BLOCK_EXPORT_FAILED` and its reason (exit 1); a missing document still returns `BLOCK_NOT_FOUND`. The harness is mandatory for export (exit 2 on omission or invalid value). Refresh and retain these references per the change document transport policy.
-- **Reset**: `sai-state reset <id> <machineId>` clears that one machine's state
+  (Transport)). For worker delivery use `node <sai-state-path> block --note "export the change document" <id> <change-name> --export --harness <claude|opencode>` instead: it checks the stored hash and writes the text directly through `transfer.js` into a private file. It returns `{received_at, hash, document_file, transfer_dir}` without text. An export failure returns `BLOCK_EXPORT_FAILED` and its reason (exit 1); a missing document still returns `BLOCK_NOT_FOUND`. The harness is mandatory for export (exit 2 on omission or invalid value). Refresh and retain these references per the change document transport policy.
+- **Reset**: `node <sai-state-path> reset --note "reset the machine" <id> <machineId>` clears that one machine's state
   and returns `{received_at, reset: <machineId>}`; other machines in the session keep theirs.
   A linear step machine (§ Step machines) also returns
   `{stage, next: {follow, hint}}` for its first filed step, the first step
   whose `follow` is a file. Other machines return only `{received_at, reset}`.
-- **Close**: `sai-state close <id>` deletes the session file and returns
+- **Close**: `node <sai-state-path> close --note "close the session" <id>` deletes the session file and returns
   `{received_at, closed: id}`; the same id then starts from the initial state. Close the
   session when the run closes.
 
@@ -193,10 +196,10 @@ Canonical example (the only full spelling; consuming commands name intents
 without re-spelling the verbs):
 
 ```text
-sai-state spawn --key <stable-key>
-sai-state reset <id> security-steps@1
-node <tool-path> emit <id> explore-idea@1 --set intent=next-step
-sai-state close <id>
+node <sai-state-path> spawn --note "open the session" --key <stable-key>
+node <sai-state-path> reset --note "reset the step machine" <id> security-steps@1
+node <sai-state-path> emit --note "record the intent" <id> explore-idea@1 --set intent=next-step
+node <sai-state-path> close --note "close the session" <id>
 ```
 
 ## Explore movement
@@ -253,7 +256,7 @@ the response.
   slice cursor: `goto` to `pending`, a `content` amendment, a reopened slice, and a
   re-registration that drops the slice's cursor discard it, a metadata amendment, `fail`,
   `cancel`, and `resume-direct-build` keep it, a Direct Build slice that starts fresh
-  clears every earlier one, and `sai-state reset <id> direct-build-run@1` (run beside
+  clears every earlier one, and `node <sai-state-path> reset --note "reset the Direct Build run" <id> direct-build-run@1` (run beside
   the explore resets at each `/sai-explore` invocation) clears it all. `/sai-direct-build`
   writes none of it, and a failed store write leaves the run state in the conversation.
 - **Stale blocks**: an accepted backward `goto` of `explore-idea@1` from
@@ -281,10 +284,10 @@ the response.
 - **`close-explore`** (`--set intent=close-explore`): `exploration` becomes `closed`
   and the stage, sections, lists, and moves return to their initial values. The
   session file stays, so the mark survives a context compaction. Only
-  `sai-state reset <id> explore-idea@1`, which every new `/sai-explore` invocation
+  `node <sai-state-path> reset --note "reset the idea machine" <id> explore-idea@1`, which every new `/sai-explore` invocation
   runs, leaves `closed`. Close concerns `explore-idea@1` alone; the command card
-  that closes an exploration also runs `sai-state reset <id> explore-slice@1` and
-  `sai-state reset <id> direct-build-run@1` (no route is running then), which drop
+  that closes an exploration also runs `node <sai-state-path> reset --note "reset the slice machine" <id> explore-slice@1` and
+  `node <sai-state-path> reset --note "reset the Direct Build run" <id> direct-build-run@1` (no route is running then), which drop
   the slice inventory, the cursors, the publication answer, the branch strategy, and the Direct Build
   run state, so no stored document can start a route afterwards.
 - **`status`** (`--set intent=status`): reads the exploration and changes nothing,
@@ -352,7 +355,7 @@ An event that holds free text, or a path the flags reject, travels as an input
 file, never as an argument, a stdin pipe, or a heredoc. Prepare it in this order
 on both Claude Code and opencode:
 
-1. Run `transfer.js` as `node <tool-path> open --harness <claude|opencode>` once
+1. Run `transfer.js` as `node <transfer-path> open --note "open the event directory" --harness <claude|opencode>` once
    per session. It creates one private directory under the SAI temp root and
    returns its absolute `dir`; reuse it for every later event.
 2. Write the event JSON as UTF-8 to a unique file in `<dir>` (for example
@@ -387,7 +390,7 @@ on both Claude Code and opencode. Write each document exactly as it will be
 displayed:
 
 ```text
-node <tool-path> emit <id> explore-slice@1 --document-file <path> --verdicts-file <path> --document-file <path> --verdicts-file <path>
+node <sai-state-path> emit --note "register the change documents" <id> explore-slice@1 --document-file <path> --verdicts-file <path> --document-file <path> --verdicts-file <path>
 ```
 
 Each verdicts file holds one JSON array: the verdicts the hygiene judgment

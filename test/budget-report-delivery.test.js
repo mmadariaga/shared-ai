@@ -40,7 +40,7 @@ test('the transport policy defines one delivery mode for the three budget agents
 test('E1, E3, E4: the final message holds the reference and the warming line; a missing line or a failed save gets one line', () => {
   const agent = budgetSection().split('### Dispatcher side')[0];
   assert.match(agent, /A task without `--report-dir` gets no work: reply with one line that names the missing line/);
-  assert.match(agent, /put --dir <report-dir> --path <unique-name>\.md --exclusive --input-file <draft>/);
+  assert.match(agent, /put --note "[^"]*" --dir <report-dir> --path <unique-name>\.md --exclusive --input-file <draft>/);
   assert.match(agent, /`\{path, sha256\}` that `put` printed and then the `warming: true\|false` line, and nothing else/);
   assert.match(agent, /no wording that points at earlier text, such as "the report above"/);
   assert.match(agent, /so the final message follows your last tool call/);
@@ -50,13 +50,13 @@ test('E1, E3, E4: the final message holds the reference and the warming line; a 
 
 test('E2, E5-E10: the dispatcher opens, tags, accepts, recovers, and closes the report directory', () => {
   const dispatcher = budgetSection().split('### Dispatcher side')[1];
-  assert.match(dispatcher, /`transfer\.js open --harness <claude\|opencode>`/);
+  assert.match(dispatcher, /`node <transfer-path> open --note "[^"]*" --harness <claude\|opencode>`/);
   assert.match(dispatcher, /first line `--report-dir <dir>` of every task message to a budget agent, continuations included/);
   assert.match(dispatcher, /adds `--harness claude` as the second line, for all three agents/);
   assert.match(dispatcher, /Parallel helpers share the directory, and each saves under its own name/);
   assert.match(dispatcher, /A worker that dispatches helpers uses the helper directory its coordinator gives it, or creates and closes its own/);
   assert.match(dispatcher, /main session in budget mode outside an SAI command creates the directory at its first budget dispatch and reuses it while that agent stays alive/);
-  assert.match(dispatcher, /accept --dir <report-dir> --path <path> --sha256 <sha256>[\s\S]{0,40}before you read the report/);
+  assert.match(dispatcher, /accept --note "[^"]*" --dir <report-dir> --path <path> --sha256 <sha256>[\s\S]{0,40}before you read the report/);
   assert.match(dispatcher, /`already: true` marks a reference you already accepted/);
   assert.match(dispatcher, /text after the reference other than the `warming:` line/);
   assert.match(dispatcher, /run the scan on the helper directory and accept any saved report it lists\. Only when it lists none, ask that agent once/);

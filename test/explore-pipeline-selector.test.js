@@ -194,7 +194,7 @@ test('the shared crystallization close records inventory before presenting route
   assert.doesNotMatch(close, /The final `---` starts this close/i, 'the final-separator trigger is retired');
   assert.doesNotMatch(close, /three conditions/i, 'the three ordered conditions are retired');
   assert.match(close, /The documents are composed inside the document emit, never printed first/i);
-  assert.match(close, /`sai-state emit <id> explore-slice@1 --document-file <path> \[--verdicts-file <path>\] \[--document-file <path> \.\.\.\]`/);
+  assert.match(close, /`node <sai-state-path> emit --note "register the change documents" <id> explore-slice@1 --document-file <path> \[--verdicts-file <path>\] \[--document-file <path> \.\.\.\]`/);
   assert.doesNotMatch(close, /heredoc|here-string|--ready-to-propose/i);
   assert.match(close, /never compose a `recordedList` by hand/i);
   assert.match(close, /Print each document exactly as sent in step 2/i);
@@ -311,7 +311,7 @@ test('panel errors never block the close; validation, delivery, store, and step-
   assert.match(close, /load the returned `next\.follow` file under policy, whatever it names/i);
   assert.match(close, /The picker presentation is not a choice: do not emit `route-choice`, `plan`, or `direct-build`[\s\S]{0,220}until the user returns one valid option/i);
   assert.match(stageMachine, /\*\*Document emits are the one exception\.\*\*[\s\S]*?travels as files[\s\S]*?never\s+through a shell command/i);
-  assert.match(stageMachine, /node <tool-path> emit <id> explore-slice@1 --document-file <path> --verdicts-file <path>/);
+  assert.match(stageMachine, /node <sai-state-path> emit --note "register the change documents" <id> explore-slice@1 --document-file <path> --verdicts-file <path>/);
   assert.doesNotMatch(stageMachine, /SAI_BLOCKS|here-string|quoted\s+heredoc/i);
   assert.match(stageMachine, /there is no stdin fallback/i);
   assert.match(stageMachine, /A follow-load failure or an emit error stops the run/i);

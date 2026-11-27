@@ -361,7 +361,7 @@ test('every worker card that spells the report put command saves with --exclusiv
   for (const file of ['sai/policies/worker-report-transport.md', 'sai/commands/implement/worker-common.md',
     'sai/commands/plan/worker-common.md', 'sai/commands/review/worker.md', 'sai/commands/audit/worker-common.md',
     'sai/commands/commit/worker.md', 'sai/commands/merge/worker.md']) {
-    assert.match(read(file), /transfer\.js put --dir <report-dir> --path <[^>]+>(\.yaml|\.json)? --exclusive --input-file/, file);
+    assert.match(read(file), /node <transfer-path> put --note "[^"]*" --dir <report-dir> --path <[^>]+>(\.yaml|\.json)? --exclusive --input-file/, file);
   }
   for (const file of ['sai/commands/archive/worker.md', 'sai/commands/backfill/worker.md', 'sai/commands/merge/steps/common.md']) {
     assert.match(read(file), /transfer\.js put --exclusive/, file);

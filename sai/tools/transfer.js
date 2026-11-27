@@ -706,87 +706,88 @@ function close(dir, { io = fs } = {}) {
 
 const TR = 'node sai/tools/transfer.js';
 const ONCE = { once: true };
+const NOTE = { once: true };
 const HARNESS = { values: ['claude', 'opencode'], once: true };
-const SHA256_FLAGS = { '--dir': ONCE, '--path': ONCE, '--sha256': ONCE };
+const SHA256_FLAGS = { '--dir': ONCE, '--path': ONCE, '--sha256': ONCE, '--note': NOTE };
 
 const USAGE = {
   subcommands: {
     open: {
-      usage: [`${TR} open --harness <claude|opencode>`],
-      examples: [`${TR} open --harness claude`],
-      flags: { '--harness': HARNESS },
+      usage: [`${TR} open [--note <text>] --harness <claude|opencode>`],
+      examples: [`${TR} open --note "open the report directory" --harness claude`],
+      flags: { '--harness': HARNESS, '--note': NOTE },
       required: ['--harness'],
     },
     put: {
-      usage: [`${TR} put --dir <dir> --path <relative> [--exclusive] [--input-file <path>] [--harness <claude|opencode>]`],
-      notes: ['The content comes from the input file, else from stdin. --exclusive refuses an existing name.'],
-      examples: [`${TR} put --dir /path/to/report-dir --path report.json --exclusive --input-file report.draft.json`],
-      flags: { '--dir': ONCE, '--path': ONCE, '--exclusive': false, '--input-file': ONCE, '--harness': HARNESS },
+      usage: [`${TR} put [--note <text>] --dir <dir> --path <relative> [--exclusive] [--input-file <path>] [--harness <claude|opencode>]`],
+      notes: ['The content comes from the input file, else from stdin. --exclusive refuses an existing name. --note is display-only.'],
+      examples: [`${TR} put --note "save the worker report" --dir /path/to/report-dir --path report.json --exclusive --input-file report.draft.json`],
+      flags: { '--note': NOTE, '--dir': ONCE, '--path': ONCE, '--exclusive': false, '--input-file': ONCE, '--harness': HARNESS },
       required: ['--dir', '--path'],
     },
     verify: {
-      usage: [`${TR} verify --dir <dir> --path <absolute> --sha256 <hex>`],
-      examples: [`${TR} verify --dir /path/to/report-dir --path /path/to/report-dir/report.json --sha256 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`],
+      usage: [`${TR} verify [--note <text>] --dir <dir> --path <absolute> --sha256 <hex>`],
+      examples: [`${TR} verify --note "check a saved report" --dir /path/to/report-dir --path /path/to/report-dir/report.json --sha256 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`],
       flags: SHA256_FLAGS,
       required: ['--dir', '--path', '--sha256'],
     },
     materialize: {
-      usage: [`${TR} materialize --dir <dir> --path <absolute> --sha256 <hex> --destination <path> [--cwd <root>]`],
-      examples: [`${TR} materialize --dir /path/to/transfer-dir --path /path/to/transfer-dir/proposal.md --sha256 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef --destination openspec/changes/my-change/proposal.md`],
+      usage: [`${TR} materialize [--note <text>] --dir <dir> --path <absolute> --sha256 <hex> --destination <path> [--cwd <root>]`],
+      examples: [`${TR} materialize --note "write the validated draft" --dir /path/to/transfer-dir --path /path/to/transfer-dir/proposal.md --sha256 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef --destination openspec/changes/my-change/proposal.md`],
       flags: { ...SHA256_FLAGS, '--destination': ONCE, '--cwd': ONCE },
       required: ['--dir', '--path', '--sha256', '--destination'],
     },
     accept: {
-      usage: [`${TR} accept --dir <dir> --path <path> --sha256 <hex> [--check]`],
+      usage: [`${TR} accept [--note <text>] --dir <dir> --path <path> --sha256 <hex> [--check]`],
       notes: ['A relative --path resolves against --dir.'],
-      examples: [`${TR} accept --check --dir /path/to/report-dir --path report.json --sha256 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`],
+      examples: [`${TR} accept --note "accept the helper report" --check --dir /path/to/report-dir --path report.json --sha256 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`],
       flags: { ...SHA256_FLAGS, '--check': false },
       required: ['--dir', '--path', '--sha256'],
     },
     receive: {
-      usage: [`${TR} receive --dir <dir> --path <path> --sha256 <hex> --kind <terminal|progress> [--command <name>] [--paths-file <paths>] [--cwd <root>]`],
+      usage: [`${TR} receive [--note <text>] --dir <dir> --path <path> --sha256 <hex> --kind <terminal|progress> [--command <name>] [--paths-file <paths>] [--cwd <root>]`],
       notes: [
         'Checks the ledger, validates a terminal report, and records the reference in one call. --command is required for --kind terminal and names a command of worker-report-validator.js.',
         'A relative --path resolves against --dir. The answer names the watch command of --dir; --paths-file and --cwd fill its placeholders.',
         'Exit 1 when the report is invalid or its delivery failed.',
       ],
-      examples: [`${TR} receive --dir /path/to/report-dir --path report.json --sha256 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef --kind terminal --command implement`],
+      examples: [`${TR} receive --note "receive the worker report" --dir /path/to/report-dir --path report.json --sha256 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef --kind terminal --command implement`],
       flags: { ...SHA256_FLAGS, '--kind': { values: ['terminal', 'progress'], once: true }, '--command': ONCE, '--paths-file': ONCE, '--cwd': ONCE },
       required: ['--dir', '--path', '--sha256', '--kind'],
     },
     status: {
-      usage: [`${TR} status --dir <dir> --input-file <paths> [--cwd <root>] [--since <time>] [--handle <id>] [--role <name>]`],
+      usage: [`${TR} status [--note <text>] --dir <dir> --input-file <paths> [--cwd <root>] [--since <time>] [--handle <id>] [--role <name>]`],
       notes: [
         '--input-file is required, as for watch: a JSON array of the paths the worker may write ([] is valid).',
         '--since is the time the worker was sent its message (ISO 8601 or epoch milliseconds); `line` is the activity line to print.',
       ],
-      examples: [`${TR} status --dir /path/to/report-dir --input-file writable-paths.json --cwd /path/to/project --role design`],
-      flags: { '--dir': ONCE, '--input-file': ONCE, '--cwd': ONCE, '--since': ONCE, '--handle': ONCE, '--role': ONCE },
+      examples: [`${TR} status --note "show the worker activity" --dir /path/to/report-dir --input-file writable-paths.json --cwd /path/to/project --role design`],
+      flags: { '--note': NOTE, '--dir': ONCE, '--input-file': ONCE, '--cwd': ONCE, '--since': ONCE, '--handle': ONCE, '--role': ONCE },
       required: ['--dir', '--input-file'],
     },
     watch: {
-      usage: [`${TR} watch --dir <dir> --input-file <paths> [--settle <duration>] [--max <duration>] [--poll <duration>] [--silent-after <minutes>] [--cwd <root>]`],
+      usage: [`${TR} watch [--note <text>] --dir <dir> --input-file <paths> [--settle <duration>] [--max <duration>] [--poll <duration>] [--silent-after <minutes>] [--cwd <root>]`],
       notes: ['--input-file is required: a JSON array of the paths the worker may write ([] is valid).'],
-      examples: [`${TR} watch --dir /path/to/report-dir --input-file writable-paths.json --cwd /path/to/project`],
-      flags: { '--dir': ONCE, '--input-file': ONCE, '--settle': ONCE, '--max': ONCE, '--poll': ONCE, '--silent-after': ONCE, '--cwd': ONCE },
+      examples: [`${TR} watch --note "watch for undelivered reports" --dir /path/to/report-dir --input-file writable-paths.json --cwd /path/to/project`],
+      flags: { '--note': NOTE, '--dir': ONCE, '--input-file': ONCE, '--settle': ONCE, '--max': ONCE, '--poll': ONCE, '--silent-after': ONCE, '--cwd': ONCE },
       required: ['--dir', '--input-file'],
     },
     'retire-handle': {
-      usage: [`${TR} retire-handle --dir <dir> --handle <id>`],
-      examples: [`${TR} retire-handle --dir /path/to/report-dir --handle agent-0123456789`],
-      flags: { '--dir': ONCE, '--handle': ONCE },
+      usage: [`${TR} retire-handle [--note <text>] --dir <dir> --handle <id>`],
+      examples: [`${TR} retire-handle --note "retire the worker handle" --dir /path/to/report-dir --handle agent-0123456789`],
+      flags: { '--note': NOTE, '--dir': ONCE, '--handle': ONCE },
       required: ['--dir', '--handle'],
     },
     live: {
-      usage: [`${TR} live --dir <dir> [--harness <claude|opencode>]`],
-      examples: [`${TR} live --dir /path/to/report-dir`],
-      flags: { '--dir': ONCE, '--harness': HARNESS },
+      usage: [`${TR} live [--note <text>] --dir <dir> [--harness <claude|opencode>]`],
+      examples: [`${TR} live --note "check the worker is live" --dir /path/to/report-dir`],
+      flags: { '--note': NOTE, '--dir': ONCE, '--harness': HARNESS },
       required: ['--dir'],
     },
     close: {
-      usage: [`${TR} close --dir <dir>`],
-      examples: [`${TR} close --dir /path/to/report-dir`],
-      flags: { '--dir': ONCE },
+      usage: [`${TR} close [--note <text>] --dir <dir>`],
+      examples: [`${TR} close --note "close the report directory" --dir /path/to/report-dir`],
+      flags: { '--note': NOTE, '--dir': ONCE },
       required: ['--dir'],
     },
   },
@@ -799,7 +800,7 @@ function usageResponse(found) {
     : { ok: false, command: null, error: found.cause, usage: found.usage, examples: found.examples };
 }
 
-const FLAGS = { '--harness': 'harness', '--dir': 'dir', '--path': 'path', '--sha256': 'sha256', '--destination': 'destination', '--cwd': 'cwd', '--input-file': 'inputFile', '--handle': 'handle', '--settle': 'settle', '--max': 'max', '--poll': 'poll', '--silent-after': 'silentAfter', '--kind': 'kind', '--command': 'workerCommand', '--paths-file': 'pathsFile', '--since': 'since', '--role': 'role' };
+const FLAGS = { '--harness': 'harness', '--dir': 'dir', '--path': 'path', '--sha256': 'sha256', '--destination': 'destination', '--cwd': 'cwd', '--input-file': 'inputFile', '--handle': 'handle', '--settle': 'settle', '--max': 'max', '--poll': 'poll', '--silent-after': 'silentAfter', '--kind': 'kind', '--command': 'workerCommand', '--paths-file': 'pathsFile', '--since': 'since', '--role': 'role', '--note': 'note' };
 
 function parseArgs(argv) {
   const opts = { command: null };
@@ -812,6 +813,13 @@ function parseArgs(argv) {
     }
     if (arg === '--check') {
       opts.check = true;
+      continue;
+    }
+    if (arg === '--note') {
+      // The note is display-only, but a note that swallowed the next flag would hide a real usage error.
+      if (i + 1 >= argv.length || argv[i + 1].startsWith('--')) return { error: 'missing value for --note' };
+      if (opts.note !== undefined) return { error: '--note accepts one value' };
+      opts.note = argv[++i];
       continue;
     }
     if (FLAGS[arg]) {

@@ -166,7 +166,7 @@ test('round 3 carries the publication question once per set and records it in ex
   assert.match(publication, /get pr\.publishAfterRun --json --cwd <project-root>/);
   assert.match(publication, /A returned `yes` or `no` is the answer/);
   assert.match(publication, /`ask`, an absent key, an invalid value, and a tool that cannot run leave the question normal/);
-  assert.match(publication, /emit <id> explore-slice@1 --set intent=publication --set value=<yes\|no>/);
+  assert.match(publication, /node <sai-state-path> emit --note "record the publication answer" <id> explore-slice@1 --set intent=publication --set value=<yes\|no>/);
   assert.match(publication, /PUBLICATION_ALREADY_RECORDED/);
   assert.match(publication, /clears it together with the slice inventory/);
   assert.match(publication, /A declined, cancelled, or non-committal answer to this question resolves `no`/);

@@ -527,12 +527,27 @@ const DOCUMENT_FLAGS = new Set(['document-file', 'verdicts-file']);
 const EVENT_FLAGS = new Set(['set', 'add', 'set-path']);
 
 function parseArgs(argv) {
-  const out = { command: null, positional: [], named: {}, eventFlags: [], documents: [], orphanVerdicts: false };
+  const out = { command: null, positional: [], named: {}, eventFlags: [], documents: [], orphanVerdicts: false, flagError: null };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg.startsWith('--')) {
       const eqIdx = arg.indexOf('=');
       const flagName = eqIdx > 0 ? arg.slice(2, eqIdx) : arg.slice(2);
+      if (flagName === 'note') {
+        let value = null;
+        if (eqIdx > 0) value = arg.slice(eqIdx + 1);
+        else if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) value = argv[++i];
+        if (out.named.note !== undefined) {
+          out.flagError = '--note accepts one value';
+          return out;
+        }
+        if (value === null || value === '' || value.startsWith('--')) {
+          out.flagError = '--note requires a value that does not start with --';
+          return out;
+        }
+        out.named.note = value;
+        continue;
+      }
       if (DOCUMENT_FLAGS.has(flagName)) {
         let value = null;
         if (eqIdx > 0) value = arg.slice(eqIdx + 1);
@@ -1303,7 +1318,8 @@ function commandClose(id) {
 }
 
 const SS = 'node bin/sai-state.js';
-const EMIT_SOURCES = { '--input-file': { once: true }, '--set': true, '--add': true, '--set-path': true, '--progress': false,
+const NOTE_FLAG = '--note <text> is optional and display-only: it changes no event, report reference, or state.';
+const EMIT_SOURCES = { '--note': { once: true }, '--input-file': { once: true }, '--set': true, '--add': true, '--set-path': true, '--progress': false,
   '--report-dir': { once: true }, '--report-file': { once: true }, '--report-hash': { once: true },
   '--document-file': true, '--verdicts-file': true, '--amend': { once: true },
   '--ready-to-propose': true, '--block-file': true };
@@ -1311,20 +1327,20 @@ const EMIT_SOURCES = { '--input-file': { once: true }, '--set': true, '--add': t
 const USAGE = {
   subcommands: {
     spawn: {
-      usage: [`${SS} spawn --key <stable-key>`],
-      notes: ['Opens (or finds) the store session of the stable key.'],
-      examples: [`${SS} spawn --key implement-my-change`],
-      flags: { '--key': { once: true } },
+      usage: [`${SS} spawn [--note <text>] --key <stable-key>`],
+      notes: ['Opens (or finds) the store session of the stable key.', NOTE_FLAG],
+      examples: [`${SS} spawn --note "open the implement session" --key implement-my-change`],
+      flags: { '--key': { once: true }, '--note': { once: true } },
       lenient: true,
     },
     emit: {
       usage: [
-        `${SS} emit <id> <machineId> --input-file <path>`,
-        `${SS} emit <id> <machineId> --set <field>=<id> [--add <field>=<id> ...] [--set-path <field>="<path>"]`,
-        `${SS} emit <id> <machineId> --progress --report-dir <dir> --report-file <path> --report-hash <sha256>`,
-        `${SS} emit <id> <machineId> --progress --input-file <path>`,
-        `${SS} emit <id> explore-slice@1 --document-file <path> [--verdicts-file <path>] [--document-file <path> ...]`,
-        `${SS} emit <id> explore-slice@1 --amend <change-name> --document-file <path> [--verdicts-file <path>]`,
+        `${SS} emit [--note <text>] <id> <machineId> --input-file <path>`,
+        `${SS} emit [--note <text>] <id> <machineId> --set <field>=<id> [--add <field>=<id> ...] [--set-path <field>="<path>"]`,
+        `${SS} emit [--note <text>] <id> <machineId> --progress --report-dir <dir> --report-file <path> --report-hash <sha256>`,
+        `${SS} emit [--note <text>] <id> <machineId> --progress --input-file <path>`,
+        `${SS} emit [--note <text>] <id> explore-slice@1 --document-file <path> [--verdicts-file <path>] [--document-file <path> ...]`,
+        `${SS} emit [--note <text>] <id> explore-slice@1 --amend <change-name> --document-file <path> [--verdicts-file <path>]`,
       ],
       notes: [
         'Each line is one shape of emit, and the shapes do not combine:',
@@ -1334,37 +1350,38 @@ const USAGE = {
         '  --progress --input-file: the worker progress payload JSON is in the input file.',
         '  --document-file: one change document file per change, each optionally followed by its --verdicts-file.',
         '  --amend: the one amended change document of the named change.',
+        NOTE_FLAG,
       ],
       examples: [
-        `${SS} emit implement-my-change implement-run@1 --input-file event.json`,
-        `${SS} emit implement-my-change implement-run@1 --set stage=green --add done=step-1`,
-        `${SS} emit review-my-change review-steps@1 --progress --report-dir /path/to/report-dir --report-file progress-1.yaml --report-hash 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`,
-        `${SS} emit review-my-change review-steps@1 --progress --input-file progress.json`,
-        `${SS} emit explore-session explore-slice@1 --document-file document.md --verdicts-file verdicts.json`,
-        `${SS} emit explore-session explore-slice@1 --amend my-change --document-file document.md`,
+        `${SS} emit --note "record the step result" implement-my-change implement-run@1 --input-file event.json`,
+        `${SS} emit --note "record the green stage" implement-my-change implement-run@1 --set stage=green --add done=step-1`,
+        `${SS} emit --note "advance the review step" review-my-change review-steps@1 --progress --report-dir /path/to/report-dir --report-file progress-1.yaml --report-hash 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`,
+        `${SS} emit --note "advance the review step" review-my-change review-steps@1 --progress --input-file progress.json`,
+        `${SS} emit --note "register the change document" explore-session explore-slice@1 --document-file document.md --verdicts-file verdicts.json`,
+        `${SS} emit --note "amend the change document" explore-session explore-slice@1 --amend my-change --document-file document.md`,
       ],
       flags: EMIT_SOURCES,
       lenient: true,
     },
     block: {
-      usage: [`${SS} block <id> <change-name> [--export --harness <claude|opencode>]`],
-      notes: ['Reads the stored change document of the change; --export writes it to a private file for the named harness.'],
-      examples: [`${SS} block explore-session my-change --export --harness claude`],
-      flags: { '--export': false, '--harness': true },
+      usage: [`${SS} block [--note <text>] <id> <change-name> [--export --harness <claude|opencode>]`],
+      notes: ['Reads the stored change document of the change; --export writes it to a private file for the named harness.', NOTE_FLAG],
+      examples: [`${SS} block --note "export the change document" explore-session my-change --export --harness claude`],
+      flags: { '--export': false, '--harness': true, '--note': { once: true } },
       lenient: true,
     },
     reset: {
-      usage: [`${SS} reset <id> <machineId>`],
-      notes: ['Resets one machine of the session to its initial state; a step machine answers with the pointer of its first filed step.'],
-      examples: [`${SS} reset review-my-change review-steps@1`],
-      flags: {},
+      usage: [`${SS} reset [--note <text>] <id> <machineId>`],
+      notes: ['Resets one machine of the session to its initial state; a step machine answers with the pointer of its first filed step.', NOTE_FLAG],
+      examples: [`${SS} reset --note "reset the review step machine" review-my-change review-steps@1`],
+      flags: { '--note': { once: true } },
       lenient: true,
     },
     close: {
-      usage: [`${SS} close <id>`],
-      notes: ['Removes the session from the store.'],
-      examples: [`${SS} close implement-my-change`],
-      flags: {},
+      usage: [`${SS} close [--note <text>] <id>`],
+      notes: ['Removes the session from the store.', NOTE_FLAG],
+      examples: [`${SS} close --note "close the implement session" implement-my-change`],
+      flags: { '--note': { once: true } },
       lenient: true,
     },
   },
@@ -1383,6 +1400,31 @@ function main(argv) {
     return;
   }
   const parsed = parseArgs(argv);
+  if (parsed.flagError) {
+    usageFailure(parsed.command !== null && Object.hasOwn(USAGE.subcommands, parsed.command) ? parsed.command : null, parsed.flagError);
+    process.exitCode = 2;
+    return;
+  }
+  if (parsed.command === 'spawn' && parsed.positional.length > 0) {
+    usageFailure('spawn', 'spawn takes --key <stable-key> and no positional argument');
+    process.exitCode = 2;
+    return;
+  }
+  if (parsed.command === 'reset' && parsed.positional.length > 2) {
+    usageFailure('reset', 'reset takes <id> <machineId> and no other argument');
+    process.exitCode = 2;
+    return;
+  }
+  if (parsed.command === 'close' && parsed.positional.length > 1) {
+    usageFailure('close', 'close takes <id> and no other argument');
+    process.exitCode = 2;
+    return;
+  }
+  if (parsed.command === 'block' && parsed.positional.length > 2) {
+    usageFailure('block', 'block takes <id> <change-name> and no other argument');
+    process.exitCode = 2;
+    return;
+  }
   if (['spawn', 'emit', 'reset', 'close', 'block'].includes(parsed.command)) {
     const clock = loadReceivedAt();
     if (!clock || typeof clock.generateReceivedAt !== 'function') {

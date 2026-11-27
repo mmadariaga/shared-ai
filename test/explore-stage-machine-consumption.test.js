@@ -22,9 +22,9 @@ test('CLI invocation surface: instructions.md fetches the common policy and name
   assert.doesNotMatch(instructions, /sai-state spawn/);
   assert.doesNotMatch(instructions, /sai-state emit/);
   assert.doesNotMatch(instructions, /sai-state close/);
-  assert.match(policy, /sai-state spawn/);
-  assert.match(policy, /sai-state emit/);
-  assert.match(policy, /sai-state close/);
+  assert.match(policy, /node <sai-state-path> spawn/);
+  assert.match(policy, /node <sai-state-path> emit/);
+  assert.match(policy, /node <sai-state-path> close/);
 });
 
 test('store-owned state cycle: the policy owns the durable store and stage events emit on the load receipt id', () => {
@@ -37,8 +37,8 @@ test('store-owned state cycle: the policy owns the durable store and stage event
 
   // The operational detail lives in the policy.
   assert.match(policy, /durable store/);
-  assert.match(policy, /sai-state spawn/);
-  assert.match(policy, /sai-state emit/);
+  assert.match(policy, /node <sai-state-path> spawn/);
+  assert.match(policy, /node <sai-state-path> emit/);
   assert.match(policy, /\{received_at, stage, next: \{follow, hint\}, rejected\?, warnings\?\}/);
   assert.match(policy, /never travels in a request or a response/i);
   assert.match(policy, /SESSION_FILE_CORRUPT/);

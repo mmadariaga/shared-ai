@@ -161,7 +161,7 @@ the same command-execution tool, before step 0:
   `@sai/policies/tool-resolution.md`; its `--input-file` holds the change name,
   the transfer directory, and the references). A changed fingerprint writes
   nothing and returns `failed` naming the fingerprint check, so the coordinator
-  repeats its validation. When it holds, run `transfer.js materialize --dir
+  repeats its validation. When it holds, run `node <transfer-path> materialize --note "write the validated draft" --dir
   <transfer_dir> --path <path> --sha256 <sha256> --destination <destination>` for
   each reference, which copies the verified bytes and creates only the parent
   directories those destinations need, and add both destinations to
