@@ -55,7 +55,7 @@ test('the card follows the explore Direct Build card as its run and keeps its si
 
 test('the explore card keeps exporting the document from the store and its two-commit grant', () => {
   const explore = read('sai/commands/explore/direct-build-coordinator.md');
-  assert.match(explore, /sai-state block <id> <change-name> --export --harness <claude\|opencode>/);
+  assert.match(explore, /node <sai-state-path> block --note "[^"]*" <id> <change-name> --export --harness <claude\|opencode>/);
   assert.match(explore, /pre-authorized exactly two local commits for this slice: the archived change and its change telemetry/);
 });
 

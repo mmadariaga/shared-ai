@@ -354,7 +354,7 @@ test('the run state, review, and report: merge-run@1, review-delta, and the goal
   assert.match(card, /The `merge-run@1` machine in `sai-state` is your memory outside the conversation/);
   assert.match(card, /key `merge-\{worktree_id\}-\{branch\}`/);
   assert.match(card, /`temp-root\.js mkdtemp --harness <claude\|opencode> --prefix merge-`/);
-  assert.match(card, /Remove the run directory with `temp-root\.js remove --harness <claude\|opencode> --dir <run directory>`, remove the simulation directory the same way, and close the report directory with `transfer\.js close --dir <report directory>`, only when the run completed/);
+  assert.match(card, /Remove the run directory with `temp-root\.js remove --harness <claude\|opencode> --dir <run directory>`, remove the simulation directory the same way, and close the report directory with `node <transfer-path> close --note "close the report directory" --dir <report directory>`, only when the run completed/);
   assert.match(card, /A stopped, escalated, or unanswered run keeps its directories/);
   assert.match(card, /A run that finalized the integration ends with exactly `Merge done\.`/);
   const close = section(card, '## Close', null);

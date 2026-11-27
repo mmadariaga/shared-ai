@@ -446,8 +446,8 @@ test('I1: the catalogue labels the screen keys, carries no unread section metada
 
 test('I7: the explore load reads explore.chatPublicLanguage after spawn and its resets, and leaves the shared policies alone', () => {
   const body = fs.readFileSync(path.join(root, 'sai/commands/explore/body.md'), 'utf8');
-  const spawn = body.indexOf('Run `sai-state spawn');
-  const reset = body.indexOf('sai-state reset <id> explore-slice@1');
+  const spawn = body.indexOf('Run `node <sai-state-path> spawn');
+  const reset = body.indexOf('reset --note "reset the slice machine" <id> explore-slice@1');
   const chat = body.indexOf('get explore.chatPublicLanguage --json');
   assert.ok(spawn > 0 && reset > spawn && chat > reset, 'the chat language read follows the spawn and its resets');
   assert.match(body, /let's talk in <value>/);

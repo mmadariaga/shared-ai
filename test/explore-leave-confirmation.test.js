@@ -138,7 +138,7 @@ test('I3: the leave rule is written once in instructions.md and the other surfac
   assert.match(rule, /no route of the current slice is running/, 'the window is every turn without a running route');
   assert.match(rule, /back in `waiting` with the route selector presented for a later or a parked slice/, 'the selector shown again for a later slice stays covered');
   assert.match(rule, /`route-choice`\), and running Plan and Direct Build routes keep their own/, 'a started route leaves the rule');
-  assert.match(rule, /sai-state reset <id> explore-slice@1` and `sai-state reset <id> direct-build-run@1`/, 'Close also resets the slice machine and the run state');
+  assert.match(rule, /reset --note "[^"]*" <id> explore-slice@1` and `.*reset --note "[^"]*" <id> direct-build-run@1`/, 'Close also resets the slice machine and the run state');
   assert.match(rule, /read-only rule too/, 'the selector text states that a pause suspends read-only');
   assert.match(rule, /cancelled, dismissed, or ambiguous answer counts as Stay/);
   assert.match(rule, /`resume-explore`/);
@@ -159,7 +159,7 @@ test('I3: the leave rule is written once in instructions.md and the other surfac
   assert.match(common, /route selector pending[\s\S]*present the picker again/);
 
   const policy = read('sai/policies/stage-machine.md');
-  assert.match(policy, /sai-state reset <id> explore-slice@1` and\s+`sai-state reset <id> direct-build-run@1`/, 'the policy documents the close resets');
+  assert.match(policy, /node <sai-state-path> reset --note "reset the slice machine" <id> explore-slice@1` and\s+`node <sai-state-path> reset --note "reset the Direct Build run" <id> direct-build-run@1`/, 'the policy documents the close resets');
   for (const literal of ['`pause`', '`resume`', '`close-explore`', 'EXPLORATION_PAUSED', 'EXPLORATION_CLOSED', 'NOT_PAUSED']) {
     assert.ok(policy.includes(literal), literal + ' is documented with the machine intents');
   }

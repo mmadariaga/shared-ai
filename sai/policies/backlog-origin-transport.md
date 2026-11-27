@@ -12,7 +12,7 @@ Fetch `@sai/policies/block-hygiene-judgment.md` for amendment validation.
 
 1. Require the verified publication result's complete `correspondence`, with
    one child URL per recorded change name and the parent URL separately. Read
-   every corresponding original document through `sai-state block <id> <name> --export --harness <claude|opencode>`;
+   every corresponding original document through `node <sai-state-path> block --note "export the change document" <id> <name> --export --harness <claude|opencode>`;
    a missing document or conflicting origin stops transport before route dispatch.
 2. Call `change-document.js attach-origin --harness <claude|opencode>` with JSON
    `{document_files: [{document_file, hash}], correspondence}` in `--input-file <path>` per `@sai/policies/tool-resolution.md` § Invocation (structured input is an input file). Supply all
@@ -26,7 +26,7 @@ Fetch `@sai/policies/block-hygiene-judgment.md` for amendment validation.
    mappings or any other conflicting origin.
 3. Validate each returned file with the dispatchable contract and bounded
    hygiene judgment. Save its verdicts in a separate JSON-array file and use
-   `sai-state emit <id> explore-slice@1 --amend <name> --document-file <new path> --verdicts-file <path>`
+   `node <sai-state-path> emit --note "amend the change document" <id> explore-slice@1 --amend <name> --document-file <new path> --verdicts-file <path>`
    operation. Preserve the inventory and route state. The store recomputes the
    hashes; never patch the session file or reuse an old hash/verdict line number.
 4. Export every amended document again. Require its file bytes/hash to equal the tool's amended

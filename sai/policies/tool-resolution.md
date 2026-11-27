@@ -1,5 +1,7 @@
 # Tool Resolution
 
+Fetch `@sai/policies/tool-call-notes.md`
+
 Single source for tool-location resolution. Every command that runs
 `sai/tools/*.js` or `bin/sai-state.js` fetches this file and SHALL NOT
 restate the order inline — commands only reference it with a filename
@@ -49,6 +51,11 @@ Run the tool as follows, the same way on both harnesses:
   macOS `/Users/<user>/...`; a `CLAUDE_CONFIG_DIR` or an opencode config
   directory elsewhere shows up in the printed path and nowhere else.
 
+In a spelled call, `<tool-path>` stands for that run form of the tool the
+instruction names. Two tools have their own marker: `<transfer-path>` is the
+run form of `sai/tools/transfer.js` and `<sai-state-path>` that of
+`sai/bin/sai-state.js`.
+
 A call whose block carries `error:` for a subpath resolved nothing for it: the
 message names the paths tried, and that subpath is unresolved.
 
@@ -61,16 +68,17 @@ a message, a block, an issue description) takes it with `--input-file <path>`,
 never from a stdin pipe, heredoc, here-string, or command argument: those forms
 fail on at least one harness for JSON (Claude Code rejects a heredoc whose body
 has a brace beside a quote; opencode rejects the `echo` pipe and corrupts heredoc
-JSON). Open one private directory with `transfer.js` as `node <tool-path> open
---harness <claude|opencode>`, write the input as UTF-8 to a unique file in the
-returned `dir` with the harness-native file-write tool (`Write` on Claude Code,
-`write` on opencode), and pass that absolute path. Each call uses its own file,
+JSON). Open one private directory with `transfer.js` as
+`node <transfer-path> open --note "open the transfer directory" --harness <claude|opencode>`,
+write the input as UTF-8 to a unique file in the returned `dir` with the
+harness-native file-write tool (`Write` on Claude Code, `write` on opencode),
+and pass that absolute path. Each call uses its own file,
 so parallel calls never share one, and input files stay inside the SAI temp root,
 outside the repository. A request that carries model-written free text, such as the title and description of `to-pr.js` and `to-backlog.js`, may be written as YAML in a `.yaml` file, with the Markdown in a `|` block scalar of the YAML subset of `sai/tools/yaml-subset.js`; a file whose first non-blank character is `{` is read as JSON. The tool receives the bytes exactly and exits 2 naming
 the path, changing no state, when the file is missing, unreadable, or empty.
 `--input-file` wins over stdin; the `-` stdin form stays accepted only so
 instructions installed before the input file keep working. Close the directory
-with `transfer.js close --dir <dir>` when the work no longer needs it. Every
+with `node <transfer-path> close --note "close the transfer directory" --dir <dir>` when the work no longer needs it. Every
 command profile that hands structured input to a tool can write there: its
 native write is limited to the SAI temp root.
 

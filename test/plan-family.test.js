@@ -360,16 +360,16 @@ test('plan-run@1 records the research directory of the research hand-over, and t
   const cycle = read('sai/commands/plan/cycle.md');
   const section = cycle.slice(cycle.indexOf('## Research hand-over'), cycle.indexOf('## Mechanical checks'));
   assert.match(section, /emits `record` \(`research-dir`\)/);
-  assert.match(section, /transfer\.js verify --dir <research directory> --path <path> --sha256 <sha256>/);
+  assert.match(section, /node <transfer-path> verify --note "[^"]*" --dir <research directory> --path <path> --sha256 <sha256>/);
   assert.match(section, /`research-files\.json` in the run directory/);
   assert.match(section, /Research hand-over: \{n\} of \{m\} saved research files were unusable/);
   assert.match(cycle, /in the spec segment of a run that holds a research directory, that directory/);
-  assert.match(cycle, /`transfer\.js close --dir \{research directory\}`/);
+  assert.match(cycle, /`node <transfer-path> close --note "close the research directory" --dir \{research directory\}`/);
   assert.match(read('sai/commands/plan/coordinator.md'), /also open the research directory of the cycle's Research hand-over/);
   assert.match(read('sai/commands/spec/coordinator.md'), /`research_dir`/);
   const specWorker = read('sai/commands/spec/worker.md');
   assert.match(specWorker, /`--report-dir <research_dir>`/);
-  assert.match(specWorker, /transfer\.js put --dir <research_dir> --path spec-annotations\.md --exclusive/);
+  assert.match(specWorker, /node <transfer-path> put --note "save the spec annotations" --dir <research_dir> --path spec-annotations\.md --exclusive/);
   for (const kind of ['corrected', 'rejected', 'own-read', 'gap']) assert.match(specWorker, new RegExp(`\`${kind}\``));
   assert.match(read('sai/commands/spec/steps/common.md'), /Open each explorer task with the\s+line `--report-dir <dir>`[\s\S]{0,260}`<dir>`\s+is `research_dir` when your brief names it/);
   assert.match(read('sai/commands/design/coordinator.md'), /`inherited research:`/);
@@ -483,7 +483,7 @@ test('the Plan route of explore is a thin step that follows /sai-plan', () => {
   const plan = read('sai/commands/explore/steps/pipeline-plan-unattended.md');
   assert.ok(plan.length < 9000, `the Plan step stays thin (${plan.length} bytes)`);
   assert.match(plan, /Fetch `@sai\/commands\/plan\/coordinator\.md` and follow it exactly/);
-  assert.match(plan, /sai-state block <id> <change-name> --export --harness <claude\|opencode>/);
+  assert.match(plan, /node <sai-state-path> block --note "[^"]*" <id> <change-name> --export --harness <claude\|opencode>/);
   assert.match(plan, /BLOCK_NOT_FOUND/);
   assert.match(plan, /@sai\/policies\/obstacle-escalation\.md/);
   assert.match(plan, /writes the run directory through the budget executor/);

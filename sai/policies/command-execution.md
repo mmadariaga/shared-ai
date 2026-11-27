@@ -28,14 +28,14 @@ governs how to invoke a resolved path and deliver its input.
 ## Deliver literal commit messages
 
 `commit.js apply` takes the message as an input file. Open a private directory
-with `transfer.js open --harness <claude|opencode>` (`<tool-path>` per
+with `node <transfer-path> open --note "open the message directory" --harness <claude|opencode>` (`<tool-path>` per
 `@sai/policies/tool-resolution.md`), write the complete message as UTF-8 to a
 unique file in the returned `dir` with the harness-native file-write tool
 (`Write` on Claude Code, `write` on opencode), and run `commit.js apply
 --input-file <dir>/<file>` with the other arguments. The file keeps every
 character and the exact final-LF state; no message text passes through a shell
 command, so no quoting or shell form applies. Use its own file per call; close
-the directory with `transfer.js close --dir <dir>` once the commit has run.
+the directory with `node <transfer-path> close --note "close the message directory" --dir <dir>` once the commit has run.
 
 A direct Git commit (`git commit -F -`) has no input-file form.
 Pass the complete message on standard input. Do not put message text in a

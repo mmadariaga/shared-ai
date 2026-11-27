@@ -303,6 +303,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0181 — Explore-stage, first hosted machine scope](./0181-explore-stage-first-hosted-machine-scope.md)
 - [0182 — CLI-based state machine with single-writer invariant](./0182-cli-state-machine-single-writer-invariant.md) — Supersedes 0176, 0177, 0180
 - [0189 — The first step pointer travels with the task disclosure](./0189-first-step-pointer-travels-with-the-task.md) — **Amends** 0172c, Refs 0188
+- [0236 — Keep transfer and sai-state call notes display-only](./0236-keep-transfer-and-sai-state-call-notes-display-only.md)
 
 ### `npx shared-ai` (install / setup / uninstall / doctor)
 

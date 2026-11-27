@@ -101,7 +101,7 @@ test('the explorer saves every report through the budget-agent transport, and ma
   assert.doesNotMatch(policy, /answered in text/);
   assert.match(policy, /and the `transfer\.js put` call of § Saved report/);
   const transport = fs.readFileSync(path.join(repoRoot, 'sai/policies/worker-report-transport.md'), 'utf8');
-  assert.match(transport, /put --dir <report-dir> --path <unique-name>\.md --exclusive --input-file <draft>/);
+  assert.match(transport, /put --note "[^"]*" --dir <report-dir> --path <unique-name>\.md --exclusive --input-file <draft>/);
   assert.match(transport, /A name that already exists makes `put` fail and changes nothing: save under another name/);
   for (const harness of ['claude', 'opencode']) {
     const skill = fs.readFileSync(path.join(repoRoot, `skills/${harness}/budget-explorer/SKILL.md`), 'utf8');

@@ -38,7 +38,7 @@ test('the transport policy owns the reception rules in one section', () => {
   assert.match(text, /`receive` \(§ Receiver boundary\) records each reference it handles, in the same call that checks and validates it/);
   assert.match(text, /a reference in the ledger is not processed again/);
   assert.match(text, /run `receive`\. When it answers `already: true`, treat the reference like a wake acknowledgement: validate nothing, emit nothing, spend no attempt, send no continuation/);
-  assert.match(text, /watch --dir <report-dir> --input-file <paths-file> --cwd <project-root>` in the background \(Claude Code `Bash` with `run_in_background: true`[\s\S]{0,120}opencode shell with `background: true`\)/);
+  assert.match(text, /watch --note "[^"]*" --dir <report-dir> --input-file <paths-file> --cwd <project-root>` in the background \(Claude Code `Bash` with `run_in_background: true`[\s\S]{0,120}opencode shell with `background: true`\)/);
   assert.doesNotMatch(text, /with its defaults/);
   assert.match(text, /`--input-file` is required: a watch without it exits 2 naming the flag and starts nothing, and the relaunch with the file spends no obstacle attempt/);
   assert.match(text, /`\[\]` is valid when the report directory is the only place the worker writes/);
@@ -117,7 +117,7 @@ test('every report-receiving coordinator states the writable paths of its worker
   }
   for (const file of ['sai/commands/review/coordinator.md', 'sai/commands/audit/coordinator.md']) {
     assert.match(read(file), /scratch folder/, `${file} opens a scratch folder`);
-    assert.match(read(file), /transfer\.js open/, file);
+    assert.match(read(file), /transfer\.js open|node <transfer-path> open/, file);
   }
   assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /`Scratch folder: <path>` line/);
 });
@@ -138,7 +138,7 @@ test('every report-receiving coordinator points to receive instead of the paired
     assert.doesNotMatch(text, /validate --kind terminal --command [^\n]*--report-dir/, `${file} runs no separate validate call for a worker report`);
   }
   for (const file of COORDINATORS) {
-    assert.match(read(file), /`receive`|receive --kind|`transfer\.js receive/, `${file} names receive`);
+    assert.match(read(file), /`receive`|receive --kind|receive --note|`transfer\.js receive/, `${file} names receive`);
   }
 });
 
@@ -146,7 +146,7 @@ test('the waiting rules live in the transport policy: roles named, status on req
   const policy = read(POLICY).replace(/\s+/g, ' ');
   assert.match(policy, /\*\*Waiting messages\.\*\* Every message you print about a wait names the role of the worker it waits on: spec, design, plan RED, fix RED, GREEN, review, security, performance, accessibility, commit, archive, backfill, merge, or Direct Build implementer/);
   assert.match(policy, /This rule is the only statement of it; a card does not repeat it/);
-  assert.match(policy, /\*\*Status\.\*\* To show whether a worker is still working, run the one-shot `node <tool-path> status --dir <report-dir> --input-file <paths-file> --cwd <project-root> --role <role>/);
+  assert.match(policy, /\*\*Status\.\*\* To show whether a worker is still working, run the one-shot `node <transfer-path> status --note "[^"]*" --dir <report-dir> --input-file <paths-file> --cwd <project-root> --role <role>/);
   assert.match(policy, /on each of your own cache-warm wakes while you wait/);
   assert.match(policy, /several workers waited on at once take several calls in one same-turn batch and print one line each, every line naming its own role/);
   assert.match(policy, /When `unledgered` lists a report, run `receive` on it in the same turn/);

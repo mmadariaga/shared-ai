@@ -18,7 +18,7 @@ Locate `sai/tools/new-change-branch.js` through `sai/policies/tool-resolution.md
 § `sai/tools/*.js` copies, read from the harness root holding this skill.
 Run `node <tool-path> <operation> --input-file <path>` in the target repository, with one JSON object
 in the input file; it returns JSON. Quote the tool path separately and write the JSON with the
-native file-write tool, never executable interpolation of input. Write each input file as UTF-8 with the native file-write tool in a directory from `transfer.js open --harness <claude|opencode>`, one unique file per call, per `sai/policies/tool-resolution.md` § Invocation (structured input is an input file); never use a stdin pipe or heredoc.
+native file-write tool, never executable interpolation of input. Write each input file as UTF-8 with the native file-write tool in a directory from `node <transfer-path> open --note "open the input directory" --harness <claude|opencode>`, one unique file per call, per `sai/policies/tool-resolution.md` § Invocation (structured input is an input file); never use a stdin pipe or heredoc.
 Run `inspect` once with `{}`; it refreshes every remote (`git fetch --prune`,
 non-interactive, 30-second limit per remote) before it lists the bases, so a
 repeated base question or a later page reuses the list without another fetch.

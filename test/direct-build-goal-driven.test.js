@@ -57,7 +57,7 @@ test('E9: a missing or unexportable block stops before dispatch and offers the s
 test('I4: the pipeline step keeps the export, the card fetch, its arguments, and what is explore\'s own', () => {
   const pipeline = read(PIPELINE);
   assert.match(pipeline, /Fetch `@sai\/commands\/explore\/direct-build-coordinator\.md` and follow it exactly/);
-  assert.match(pipeline, /sai-state block <id> <change-name> --export --harness <claude\|opencode>/);
+  assert.match(pipeline, /node <sai-state-path> block --note "[^"]*" <id> <change-name> --export --harness <claude\|opencode>/);
   assert.match(pipeline, /--document-file <absolute path returned by export>\n {2}--document-hash <sha256 returned by export>/);
   assert.match(pipeline, /Direct Build `--no-specs` profile \(POC\)/);
   assert.match(pipeline, /Successful slice completion transition/);

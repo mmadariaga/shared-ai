@@ -29,7 +29,7 @@ issue. If the document was already prepared, export it from the store, run
 existing value, and returns a new private file and its hash), run the existing
 dispatchable check and bounded hygiene judgment on that file, then submit it through
 `sai-state emit`'s existing `--amend <name> --document-file <path>` operation.
-Re-read the amended document with `sai-state block <id> <change-name> --export
+Re-read the amended document with `node <sai-state-path> block --note "export the amended document" <id> <change-name> --export
 --harness <claude|opencode>` and check its extracted origin and the refreshed `hash`
 it returns before dispatch; when the export returns `BLOCK_EXPORT_FAILED` or
 `BLOCK_NOT_FOUND`, stop before dispatch. Never patch the session file or reuse a

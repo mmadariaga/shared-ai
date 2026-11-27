@@ -279,8 +279,8 @@ test('E9 the help of emit gives each distinct shape of the command its own usage
   const state = TOOLS.find(tool => tool.name === 'sai-state');
   const help = run(state, ['emit', '--help']);
   assert.equal(help.status, 0);
-  const lines = help.stdout.slice(help.stdout.indexOf('Usage: '), help.stdout.indexOf('Examples:')).split('\n').filter(line => /emit </.test(line));
-  const shapes = [/emit <id> <machineId> --input-file <path>$/, /--set <field>=<id>/, /--progress --report-dir <dir> --report-file <path> --report-hash <sha256>/, /--progress --input-file <path>$/, /explore-slice@1 --document-file <path>/, /explore-slice@1 --amend <change-name>/];
+  const lines = help.stdout.slice(help.stdout.indexOf('Usage: '), help.stdout.indexOf('Examples:')).split('\n').filter(line => /emit (?:<|\[--note <text>\] <)/.test(line));
+  const shapes = [/emit \[--note <text>\] <id> <machineId> --input-file <path>$/, /--set <field>=<id>/, /--progress --report-dir <dir> --report-file <path> --report-hash <sha256>/, /--progress --input-file <path>$/, /explore-slice@1 --document-file <path>/, /explore-slice@1 --amend <change-name>/];
   for (const shape of shapes) assert.equal(lines.filter(line => shape.test(line)).length, 1, String(shape));
   const examples = help.stdout.slice(help.stdout.indexOf('Examples:')).split('\n').filter(line => /emit /.test(line));
   for (const shape of [/--input-file event/, /--set /, /--report-hash /, /--progress --input-file/, /--document-file /, /--amend /]) {

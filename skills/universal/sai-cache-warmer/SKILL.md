@@ -19,7 +19,7 @@ configuration stay unchanged; no subagent or session API is involved.
 Use `wait.js` beside this installed skill. Run `node "<script-path>" prepare --input-file <path>`
 with a JSON object in the input file: `{"arguments":"30 min 18:00"}`. Pass the user's
 arguments unchanged through the file written with the native file-write tool, never shell
-interpolation. Write each input file as UTF-8 with the native file-write tool in a directory from `transfer.js open --harness <claude|opencode>`, one unique file per call, per `sai/policies/tool-resolution.md` § Invocation (structured input is an input file); never use a stdin pipe or heredoc. Empty arguments are allowed. The script accepts a positive
+interpolation. Write each input file as UTF-8 with the native file-write tool in a directory from `node <transfer-path> open --note "open the input directory" --harness <claude|opencode>`, one unique file per call, per `sai/policies/tool-resolution.md` § Invocation (structured input is an input file); never use a stdin pipe or heredoc. Empty arguments are allowed. The script accepts a positive
 interval (seconds, minutes or hours; a bare number means minutes), a local
 `HH:mm` target, `YYYY-MM-DD HH:mm`, or `now + 1h` (also 2h and 3h).
 Named `interval` and `target` JSON fields override their respective arguments.

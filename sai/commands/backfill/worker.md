@@ -132,7 +132,7 @@ do not replace receiver-side CLI validation.
 
 The worker never returns draft content in a message. After composing the drafts
 (instruction Phase 6), write each one with
-`node <tool-path> put --dir <transfer-dir> --path <relative> --input-file <path>`
+`node <transfer-path> put --note "save a backfill draft" --dir <transfer-dir> --path <relative> --input-file <path>`
 (the content first written with the native file-write tool to a unique file in
 the SAI temp root), resolving `transfer.js` per
 `@sai/policies/tool-resolution.md` and writing the transfer file at the path
@@ -188,7 +188,7 @@ Fetch `@sai/policies/backfill-draft-validation.md` and follow its worker boundar
 with the receiver's accepted fingerprint and complete reference set. A missing
 fingerprint or failed freshness check writes nothing and returns the diagnostic
 for repeated receiver validation. Only when all checks pass, it
-runs `transfer.js materialize --dir <transfer-dir> --path <path> --sha256
+runs `node <transfer-path> materialize --note "write the validated draft" --dir <transfer-dir> --path <path> --sha256
 <sha256> --destination <destination>` for each, which copies the verified bytes
 byte-for-byte and creates only the parent directories those destinations need.
 It reports every realized destination in the invocation-scoped `changed_files`

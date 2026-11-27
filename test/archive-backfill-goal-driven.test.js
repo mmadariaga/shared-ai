@@ -129,7 +129,7 @@ test('the archive worker writes the no-specs drafts before the archive move, fro
   const materialization = execution.indexOf('**Draft materialization**');
   assert.ok(materialization > 0 && materialization < execution.indexOf('0. **Retirement declaration**'));
   assert.match(execution.slice(materialization), /validate-backfill-drafts\.js check --fingerprint/);
-  assert.match(execution.slice(materialization), /transfer\.js materialize --dir\n {2}<transfer_dir> --path <path> --sha256 <sha256> --destination <destination>/);
+  assert.match(execution.slice(materialization), /node <transfer-path> materialize --note "write the validated draft" --dir\n {2}<transfer_dir> --path <path> --sha256 <sha256> --destination <destination>/);
   assert.match(execution, /before the\n {2}CLI archive and the commit, and returns `failed` naming each destination\n {2}already written, which stays uncommitted/);
   assert.match(worker, /a draft section that names any\nother destination is an altered envelope/);
   // The plan tool reads the drafts in place of the change files that no backfill worker wrote yet.

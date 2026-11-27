@@ -213,7 +213,7 @@ test('load receipt: wrappers carry only the pointer and body.md owns the rule (I
 
 test('load receipt: sai-state spawn is the final load step and stage events emit on the receipt id (I2)', () => {
   const body = source('sai/commands/explore/body.md');
-  const spawn = body.indexOf('Run `sai-state spawn --key <stable-key>`');
+  const spawn = body.indexOf('Run `node <sai-state-path> spawn --note "open the exploration session" --key <stable-key>`');
   assert.ok(spawn > body.indexOf('Fetch `@sai/policies/remember.md`'), 'spawn must follow the instruction loads');
   assert.ok(spawn < body.indexOf('## Run'), 'spawn must precede the Run section');
   const instructions = source('sai/commands/explore/instructions.md');

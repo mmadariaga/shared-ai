@@ -324,7 +324,7 @@ changes nothing, and `compare --stored-file <path> --document-file <path>` repor
 `## Change` changed and `content` otherwise. `change-document.js` is resolved per
 `@sai/policies/tool-resolution.md`.
 
-- **Preparing a document.** Run `transfer.js open --harness <claude|opencode>`; it
+- **Preparing a document.** Run `node <transfer-path> open --note "open the document directory" --harness <claude|opencode>`; it
   creates one private directory under the SAI temp root and returns its absolute
   `dir`. Write each document as UTF-8 to its own file in `dir`, exactly as it will be
   displayed, with the harness-native file-write tool (`Write` on Claude Code,
@@ -333,16 +333,16 @@ changes nothing, and `compare --stored-file <path> --document-file <path>` repor
   no repository file. Run `check`, judge each flagged line, write the verdicts as one
   JSON array (`[]` when no line is flagged), and run `check` again with
   `--verdicts-file` to confirm `dispatchable: true`.
-- **Registering.** `sai-state emit <id> explore-slice@1 --document-file <path>
+- **Registering.** `node <sai-state-path> emit --note "register the change documents" <id> explore-slice@1 --document-file <path>
   [--verdicts-file <path>] …` takes one repeatable `--document-file` per document,
   each optionally followed by its own `--verdicts-file`, and stores `{text, hash,
   verdicts}` per `Change name`. An amendment (`--amend <name> --document-file
   <path>`) takes exactly one document. A document without a `# <title>` first line,
   or a `Ready to Propose` block, is rejected (`RETIRED_FORMAT`), never converted.
-  Close the directory with `transfer.js close --dir <dir>` once the registration or
+  Close the directory with `node <transfer-path> close --note "close the document directory" --dir <dir>` once the registration or
   amendment is recorded.
 - **Dispatching.** Plan - Unattended and Direct Build - Unattended dispatch a document
-  only from the `sai-state` store. Run `sai-state block <id> <change-name> --export
+  only from the `sai-state` store. Run `node <sai-state-path> block --note "export the change document" <id> <change-name> --export
   --harness <claude|opencode>` and send the returned `document_file` and `hash`
   together as `--document-file <absolute path>` and `--document-hash <sha256>`
   envelope lines. The tool writes the stored text into a private transfer file; no
