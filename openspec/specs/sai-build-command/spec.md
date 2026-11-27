@@ -109,7 +109,7 @@ Build SHALL preserve the implementation segment's escalation stops, its three-at
 
 ### Requirement: Final navigation is apply completion
 
-When the run completes, build SHALL print the finding counts from the review's `Summary:` tally by category, then the Fixed, Excluded, Left open, and Questions lists where they have entries, then the review's `## Recommended Audits` block verbatim, and end with exactly `Build done.`. It SHALL run no audit and SHALL NOT chain another segment. The resolved change name SHALL replace `{name}` wherever it appears. Before `Build done.`, a completed close with changes SHALL print the next command for a new chat: `/sai-archive {name} --push yes` when the publication answer is `yes` or `draft` and the publication step confirmed the push of this branch, and `/sai-archive {name} --push no` otherwise. An `outcome: no-changes` close SHALL print no archive hint. A run that stops SHALL end without `Build done.`.
+When the run completes, build SHALL print the finding counts from the review's `Summary:` tally by category, then the Fixed, Excluded, Left open, and Questions lists where they have entries, then the review's `## Recommended Audits` block verbatim, and end with exactly `Build done.`. It SHALL run no audit and SHALL NOT chain another segment. The resolved change name SHALL replace `{name}` wherever it appears. Before `Build done.`, a completed close with changes SHALL print the next command for a new chat, whatever the review's finding counts: `/sai-archive {name} --push yes` when the publication answer is `yes` or `draft` and the publication step confirmed the push of this branch, and `/sai-archive {name} --push no` otherwise. An `outcome: no-changes` close SHALL print no archive hint. A run that stops SHALL end without `Build done.`, and a run whose fix segment failed, was stopped, or ended blocked SHALL print neither the archive hint nor `Build done.`.
 
 #### Scenario: Successful build closes at review navigation
 
@@ -145,6 +145,16 @@ When the run completes, build SHALL print the finding counts from the review's `
 
 - **WHEN** a completed build with changes holds the answer `no`, skipped its publication, or did not confirm its push
 - **THEN** the close prints `/sai-archive {name} --push no`
+
+#### Scenario: A build with zero findings still names the archive command
+
+- **WHEN** a completed build with changes has a review with zero findings
+- **THEN** the close prints the archive hint before `Build done.`
+
+#### Scenario: A stopped fix segment prints no archive hint
+
+- **WHEN** the fix segment of a build failed, was stopped, or ended blocked
+- **THEN** the close prints the fix segment's report, no archive hint, and no `Build done.`
 
 #### Scenario: No-changes close prints no archive hint
 

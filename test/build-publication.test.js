@@ -53,9 +53,16 @@ test('the build publishes once, after the telemetry commit, and a failed publica
 });
 
 test('the build close prints the archive hint with its push value only on the completed close with changes', () => {
-  const close = build.slice(build.indexOf('- **Segment 2 completed**'));
-  assert.ok(close.indexOf('**Archive hint.**') > 0);
-  assert.ok(close.indexOf('**Archive hint.**') < close.indexOf('End with exactly `Build done.`'));
+  const close = build.slice(build.indexOf('- **Segment 2 completed**'), build.indexOf('- **Segment 2 found no changes against the parent branch**'));
+  const lists = close.slice(0, close.indexOf('Then close by the outcome of segment 3, whatever the findings:'));
+  assert.ok(lists.length > 0 && lists.length < close.length, 'the close by segment 3 outcome follows the finding lists');
+  assert.doesNotMatch(lists, /Archive hint|Build done/, 'the zero-findings rule of the lists never suppresses the archive hint or the closing line');
+  const completed = close.slice(close.indexOf('- **Segment 3 completed or did not run**'), close.indexOf('- **Segment 3 failed, was stopped, or ended blocked**'));
+  assert.ok(completed.indexOf('**Archive hint**') > 0);
+  assert.ok(completed.indexOf('**Archive hint**') < completed.indexOf('End with exactly `Build done.`'));
+  const stopped = close.slice(close.indexOf('- **Segment 3 failed, was stopped, or ended blocked**'));
+  assert.match(stopped, /end the run with no archive hint and no closing line/);
+  assert.doesNotMatch(stopped, /--push yes|--push no|End with exactly/);
   assert.match(close, /`\/sai-archive \{name\} --push yes` when the answer is `yes` or `draft` and the publication step confirmed the push of this branch/);
   assert.match(close, /otherwise `\/sai-archive \{name\} --push no`/);
   assert.match(close, /an answer of `no`, a skipped publication, a refused or failed push, and a `draft` whose push did not complete give `--push no`/);
