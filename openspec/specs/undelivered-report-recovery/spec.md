@@ -233,7 +233,7 @@ Every message a coordinator prints about a wait SHALL name the role of the worke
 
 ### Requirement: Activity line on request and on coordinator wakes during a worker wait
 
-To show whether a waited-on worker is still working, the coordinator SHALL run the one-shot `transfer.js status --dir <report-dir> --input-file <paths-file> --cwd <project-root> --role <role> [--since <time>] [--handle <handle>]`, with the same writable-paths file as the watch of that worker, and SHALL print its `line` when the user asks for the status of a wait and on each of its own cache-warm wakes while it waits for a worker. Several workers waited on at once SHALL take one `status` call each, in one same-turn batch. When `unledgered` lists a report, the coordinator SHALL run `receive` on it in the same turn. The coordinator SHALL never send the worker a status request. With cache warming off, the activity line SHALL appear only when the user asks for it, and a wake with no worker being waited on SHALL keep the main-session literal.
+To show whether a waited-on worker is still working, the coordinator SHALL run the one-shot `transfer.js status --dir <report-dir> --input-file <paths-file> --cwd <project-root> --role <role> [--since <time>] [--handle <handle>]`, with the same writable-paths file as the watch of that worker, and SHALL print its `line` when the user asks for the status of a wait and on each of its own cache-warm wakes while it waits for a worker. Several workers waited on at once SHALL take one `status` call each, in one same-turn batch. When `unledgered` lists a report, the coordinator SHALL run `receive` on it in the same turn. The coordinator SHALL never send the worker a status request. With cache warming off, the activity line SHALL appear only when the user asks for it, and a wake with no worker being waited on SHALL keep the main-session literal, printed as its template `➡️ Warming context cache up - <wake_local>.` with the time the result carries, or its no-time form `➡️ Warming context cache up.` when the result carries no `wake_local`. The activity line SHALL stay unchanged by the time-bearing template and SHALL carry no time.
 
 #### Scenario: User asks for the status of a wait
 - **WHEN** the user asks whether the waited-on worker is still working
@@ -245,4 +245,4 @@ To show whether a waited-on worker is still working, the coordinator SHALL run t
 
 #### Scenario: Wake with no worker being waited on
 - **WHEN** a coordinator cache-warm wake opens a turn while no worker is being waited on and there is nothing to handle
-- **THEN** the coordinator prints the main-session literal `➡️ Warming context cache up.`
+- **THEN** the coordinator prints the main-session literal `➡️ Warming context cache up - <wake_local>.` with the `wake_local` of its wait result, or the no-time form `➡️ Warming context cache up.` when the result carries none

@@ -27,7 +27,7 @@ const AGENT_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const INSTALL_ROOT = [path.resolve(__dirname, '..', '..'), path.resolve(__dirname, '..', '..', '..')]
   .find(root => fs.existsSync(path.join(root, 'sai', 'tools', 'temp-root.js'))) ?? path.resolve(__dirname, '..', '..');
 const STDIN_GRACE_MS = 2000;
-const CONTINUATION_REMINDER = 'If you are the main session, check for an unhandled user response or actionable authorized work. Handle it before ending the turn; otherwise preserve the current wait or completed state, and when nothing is left to handle reply with exactly `➡️ Warming context cache up.`. If you are a subagent, follow your existing warming protocol: reply to a wake with exactly `warming context cache up`, and to `dispose` and every wake after it with exactly `cache warming stopped`.';
+const CONTINUATION_REMINDER = 'If you are the main session, check for an unhandled user response or actionable authorized work. Handle it before ending the turn; otherwise preserve the current wait or completed state, and when nothing is left to handle reply with exactly `➡️ Warming context cache up - HH:mm.`, with the `wake_local` of the result in place of `HH:mm`, or with exactly `➡️ Warming context cache up.` when the result carries no `wake_local`. If you are a subagent, follow your existing warming protocol: reply to a wake with exactly `warming context cache up`, and to `dispose` and every wake after it with exactly `cache warming stopped`.';
 
 /** A misuse of the command line (exit 2); every other failure exits 1. */
 class UsageError extends Error {}
@@ -61,6 +61,12 @@ const localTime = date => {
   if (!date.getSeconds() && !date.getMilliseconds()) return minutes;
   const seconds = `${minutes}:${pad(date.getSeconds())}`;
   return date.getMilliseconds() ? `${seconds}.${String(date.getMilliseconds()).padStart(3, '0')}` : seconds;
+};
+
+/** The `HH:mm` local form of a warm result's production instant (`wake_local`): minute precision, never seconds. */
+const clockMinutes = ms => {
+  const date = new Date(ms);
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 
 function resolveTarget(value, date, now) {
@@ -578,7 +584,8 @@ async function wakeOnce(state, io) {
 async function warmOnce(input, io = {}) {
   if (input.state === undefined && input.chain === undefined) throw new UsageError('warm needs --chain <id> from begin, or --state <token> from a wake.');
   const result = await (input.state !== undefined ? wakeOnce(input.state, io) : armOnce(input.chain, io));
-  return { ...result, reminder: CONTINUATION_REMINDER };
+  // One clock read once the result resolves: `wake_local` dates the wake, not the reply, and no return path reads again.
+  return { ...result, reminder: CONTINUATION_REMINDER, wake_local: clockMinutes((io.now ?? Date.now)()) };
 }
 
 /**
