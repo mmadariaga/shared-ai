@@ -318,3 +318,19 @@ test('the slice branch chain is reachable from the selector, the slice step and 
   assert.doesNotMatch(machine, /slice_branches|sliceBranches/);
   assert.match(selector, /`slice_branches` and the chain live in conversation state only/);
 });
+
+test('every context-settled question lives in the file that owns it and adds no step', () => {
+  const owned = {
+    'route-selector.md': ['**Published state.**', '**Settled decisions notice.**', '**Omitted when the context settles it.**'],
+    'review-loop.md': ['start it directly as on the token path and ask nothing'],
+    'common.md': ['is never answered with the maturity question or this selector'],
+    'artifact-review-language-gate.md': ['**Explicit language statement**'],
+  };
+  for (const [file, markers] of Object.entries(owned)) {
+    const text = fs.readFileSync(path.join(explorerStepsDir, file), 'utf8');
+    for (const marker of markers) assert.ok(text.includes(marker), `${file}: ${marker}`);
+  }
+  const policy = fs.readFileSync(path.join(__dirname, '..', 'sai', 'policies', 'question-rounds.md'), 'utf8');
+  assert.match(policy, /A no-op answer recorded from the surrounding context resolves its question/);
+  assert.ok(fs.readFileSync(path.join(__dirname, '..', 'sai', 'policies', 'backlog-implementation-start.md'), 'utf8').includes('sole-self-assignee no-op keep'));
+});

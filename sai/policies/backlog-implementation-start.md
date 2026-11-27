@@ -24,7 +24,8 @@ names a concrete user and binds either an existing selected issue or the
 publication proposal whose issue the caller then created, and only when the
 user explicitly chose one of: assign that user, keep the current responsibility
 (naming its assignees), replace the current responsibility with that user
-(naming the previous assignees), or Skip. An advance approval names every issue it
+(naming the previous assignees), or Skip; the sole-self-assignee no-op keep
+below is the one form that needs no explicit choice. An advance approval names every issue it
 covers, authorizes only those assignments, and is consumed per issue: each
 implementation stretch uses only the approval for its own selected issue, and
 the same-stretch retention rules above apply to it. Without a valid advance approval, steps 1–4 below ask
@@ -43,6 +44,15 @@ as written. With one, this owner runs only the checks, with no new question:
 - on any conflict, a lapsed approval (its proposal was never published), or a
   changed identity or responsibility, ask again for that authorization only,
   through steps 2–3, and wait.
+
+A **sole-self-assignee no-op keep** is a valid advance approval that needs no
+explicit choice: `inspect-assignment` returned the authenticated user (`actor`)
+as the only assignee of a non-parent selected issue, so keeping responsibility
+changes nothing and mutates nothing. The caller stores the observed assignee set
+and calls no `assign`; the checks above run `propose-assignment` with
+`choice: "keep"` and the keep verification read-only. A changed assignee set, a
+parent issue, or a different authenticated user is not a no-op keep and asks
+again through steps 2–3.
 
 **Set-level answer.** A caller that crystallized a set of slices may collect one
 assignment answer for the whole set, in the earlier question round, and keep it in

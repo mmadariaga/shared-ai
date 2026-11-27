@@ -30,7 +30,7 @@ After the existing maturity question, `sai-explore` MAY present a harness-native
 
 ### Requirement: The maturity selector offers localized review or iteration choices
 
-The maturity selector SHALL offer, in this order, a choice equivalent to `Revisar edge cases`, a choice equivalent to `Seguir iterando`, and a free-text path. In a Spanish conversation, the labels SHALL be `Revisar edge cases` and `Seguir iterando`; in every other conversation, the labels and selector prose SHALL be translated to the conversation language while retaining the same meanings and order. The selector SHALL be conversation-only and SHALL not itself agree to any edge-case list.
+The maturity selector SHALL offer, in this order, a choice equivalent to `Revisar edge cases`, a choice equivalent to `Seguir iterando`, and a free-text path. In a Spanish conversation, the labels SHALL be `Revisar edge cases` and `Seguir iterando`; in every other conversation, the labels and selector prose SHALL be translated to the conversation language while retaining the same meanings and order. The selector SHALL be conversation-only and SHALL not itself agree to any edge-case list. A turn recognized by **Staged progression advancement**, including an explicit request to review edge cases, SHALL never be answered with the maturity question or this selector: the turn SHALL be served by advancing, and a pending approach comparison SHALL neither block that recognition nor reopen the offer; a decline SHALL keep the stage at `Explore change`.
 
 #### Scenario: Spanish maturity selector has the required options
 
@@ -42,6 +42,17 @@ The maturity selector SHALL offer, in this order, a choice equivalent to `Revisa
 - **WHEN** the conversation language is not Spanish
 - **THEN** the maturity selector's question, labels, and surrounding prose follow that conversation language
 - **AND** the option meanings and order remain equivalent to review-edge-cases, keep-iterating, and free text
+
+#### Scenario: staged progression turn never receives the maturity offer
+
+- **WHEN** a turn is recognized by staged progression advancement, including an explicit request to review edge cases
+- **THEN** the turn is served by advancing and neither the maturity question nor the maturity selector is presented
+- **AND** a pending approach comparison neither blocks that recognition nor reopens the offer
+
+#### Scenario: a decline keeps the stage at Explore change
+
+- **WHEN** the user declines the maturity offer on a turn that is not served by advancement
+- **THEN** the stage stays at `Explore change`
 
 ### Requirement: Reviewing edge cases exits ask mode and waits for explicit advancement
 
