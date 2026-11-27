@@ -24,7 +24,7 @@
 
 - `build-publication`: `/sai-build` parses the optional value and the bare flag, resolves and stores `draft`, and publishes a draft request while leaving a ready request ready.
 - `plan-terminal-close`: the plan coordinator prints the only build hint, carrying the build publication flag, and the Explore close refers to it without printing a second command.
-- `sai-build-command`: the completed build close prints the archive hint with its `--push` value, and the no-changes close prints none.
+- `sai-build-command`: the completed build close prints the archive hint with its `--push` value whatever the finding counts, and the no-changes close and a build whose fix segment failed, stopped, or ended blocked print none.
 - `explore-publication`: the Plan route hands `--build-publish` to the plan coordinator from the set's publication answer, branch strategy, and pending slices.
 - `plan-command`: `/sai-plan` accepts the optional `--publish` value and `--build-publish`, and its closing line carries the build publication flag.
 - `explore-pipeline-supervision`: the Plan - Unattended route hands the derived `--build-publish` value to the plan coordinator.

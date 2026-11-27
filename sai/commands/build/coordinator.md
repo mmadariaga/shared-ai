@@ -69,7 +69,9 @@ After the last segment that ran ends, print the report of each segment. A segmen
   - **Left open by the fix segment**: each selected finding that segment 3 did not fix and left without a mark (its fix rounds ran out, it judged the finding mistaken, or the run stopped on an obstacle), with the reason from segment 3's report. Never list it as excluded.
   - **Questions**: say that Questions stay open until the user answers them, because the fix segment applies only fixable findings.
   - With zero findings, report the zero counts and print none of these lists.
-  - **Archive hint.** Before `Build done.`, print the next command for a new chat: `/sai-archive {name} --push yes` when the answer is `yes` or `draft` and the publication step confirmed the push of this branch; otherwise `/sai-archive {name} --push no`. The push counts as confirmed only when the publication step's result reports the branch pushed; an answer of `no`, a skipped publication, a refused or failed push, and a `draft` whose push did not complete give `--push no`.
-  - End with exactly `Build done.`
+
+  Then close by the outcome of segment 3, whatever the findings:
+  - **Segment 3 completed or did not run**: print the **Archive hint**. End with exactly `Build done.` The **Archive hint** is the next command for a new chat: `/sai-archive {name} --push yes` when the answer is `yes` or `draft` and the publication step confirmed the push of this branch; otherwise `/sai-archive {name} --push no`. The push counts as confirmed only when the publication step's result reports the branch pushed; an answer of `no`, a skipped publication, a refused or failed push, and a `draft` whose push did not complete give `--push no`.
+  - **Segment 3 failed, was stopped, or ended blocked**: print segment 3's report and end the run with no archive hint and no closing line.
 - **Segment 2 found no changes against the parent branch** (its accepted report carries `outcome: no-changes`; read the field, never the summary text): say that no review ran, because there was nothing to review, and end with exactly `Build done.`
 - **Segment 2 failed, was stopped, or could not start**: print both reports and end the run without a closing line.
