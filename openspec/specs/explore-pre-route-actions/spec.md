@@ -9,6 +9,8 @@ Define the optional backlog and local branch preparation workflows offered after
 
 After every block in the recorded crystallized proposal set is visible and a pending slice exists, `sai-explore` SHALL ask the backlog question, the branch question, and the conditional assignment question together in round 1, then the applicable publication approval in round 2, and only then present the implementation route picker as round 3, which also carries the conditional branch base question, each round presented under `sai/policies/question-rounds.md`. The one exception SHALL be a `publish-stop` backlog answer, which ends the invocation after its publication without round 3. It SHALL ask in the user's language with concise context naming the crystallized work and each question's action. Claude Code SHALL use `AskUserQuestion` with its automatic free-text Other entry; opencode SHALL use `question` with custom/free-text input enabled. The backlog question SHALL offer three options in this order, with these stable values: `Publish and continue with implementation` (`publish-continue`), `Publish and stop` (`publish-stop`), and `Do not publish and continue with implementation` (`skip-continue`), with the same labels, order, and stable values on Claude Code and opencode. It SHALL offer no `Do not publish and stop` option. `publish-continue` SHALL behave as the former Yes and `skip-continue` as the former No. The remaining round 1 and round 2 questions that have no options of their own SHALL keep Yes then No with stable values `yes` and `no`. All questions SHALL remain explicit under `--fast-track`.
 
+The backlog question SHALL be left out, and `skip-continue` SHALL be recorded without preparing or publishing anything, only when a linked issue exists, the published state exists, the set's ordered change names equal the published ones, and for every document the current hash equals the published hash or `change-document.js compare --stored-file <published document_file> --document-file <current document file>` reports `amend_kind: metadata`. A missing published state (including a failed or cancelled last publication), a different set membership or order, or `amend_kind: content` SHALL present the question, and with no linked issue the question SHALL always be presented; the comparison SHALL never read the remote issue.
+
 The branch question SHALL be chosen by the size of the recorded `explore-slice@1` inventory, not the pending remainder. When the inventory has one change, Explore SHALL ask whether to create and switch to a local change branch, offering Yes then No with stable values `yes` and `no`. When the inventory has more than one change (a slice set), Explore SHALL instead ask one three-choice question for the whole set, localized from “Would you like to create a new branch?” (Spanish example: “¿Quieres crear una nueva rama?”), offering in this order: one branch for the main issue (`shared`; Spanish “Sí, crea una única para la issue principal”), one branch per slice (`per-slice`; Spanish “Crear una rama por slice”), and no branch (`none`; Spanish “No crear nada”). Labels and descriptions SHALL be localized and the stable values SHALL NOT be. The question SHALL say that no branch is published.
 
 The backlog question and its option descriptions SHALL retain the word `backlog` in every language. The descriptions of the two publish options SHALL identify creating or updating the backlog, and the `skip-continue` description SHALL identify skipping the backlog action. One `Publish` meaning SHALL cover creation and update, because `to-backlog` resolves creation versus update. The labels SHALL be localized and the stable values SHALL NOT be. The Spanish example SHALL be “¿Quieres crear o actualizar el backlog con esta propuesta?”, with the Spanish labels `Publicar y continuar con la implementación`, `Publicar y parar`, and `No publicar y continuar con la implementación`.
@@ -21,7 +23,7 @@ The backlog question and its option descriptions SHALL retain the word `backlog`
 #### Scenario: Fast-track preserves both questions on both harnesses
 
 - **WHEN** Claude Code or opencode runs Explore with `--fast-track` and reaches the optional actions
-- **THEN** every round question, including the three-option backlog question and the slice-set three-choice branch question, remains explicit with free-text support rather than receiving automatic answers
+- **THEN** every round question that remains applicable, including the three-option backlog question and the slice-set three-choice branch question, remains explicit with free-text support rather than receiving automatic answers
 
 #### Scenario: Localized backlog question retains recognizable terminology
 
@@ -47,6 +49,16 @@ The backlog question and its option descriptions SHALL retain the word `backlog`
 
 - **WHEN** Explore presents the backlog question
 - **THEN** it offers exactly the three options `publish-continue`, `publish-stop`, and `skip-continue`, and no `Do not publish and stop` option
+
+#### Scenario: Backlog question is omitted against a matching local published state
+
+- **WHEN** a linked issue exists, the published state exists, the set's ordered change names equal the published ones, and every document's hash either equals the published hash or differs only by a metadata-only amendment
+- **THEN** Explore leaves the backlog question out, records `skip-continue`, and prepares or publishes nothing
+
+#### Scenario: A missing or changed published state asks the backlog question
+
+- **WHEN** no published state exists, a failed or cancelled last publication left it absent, the set membership or order differs from the published one, a document changed in content, or no issue is linked
+- **THEN** Explore presents the backlog question and never reads the remote issue to decide
 
 ### Requirement: Resolve optional action replies without selecting an implementation route
 

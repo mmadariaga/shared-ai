@@ -196,3 +196,9 @@ test('direct-looking imperative inputs mature as ideas without early implementat
   assert.match(source, /never dispatches implementation before the crystallization-close route picker receives an explicit user answer/i);
   assert.match(source, /explicit artifact-review deliverable keeps its existing review path/);
 });
+
+test('a turn recognized by staged progression advancement is never answered with the maturity question or selector', () => {
+  const source = readArtifact('sai/commands/explore/steps/common.md');
+  assert.match(source, /A turn recognized by \*\*Staged progression advancement\*\* above — including an explicit request to review edge cases — is never answered with the maturity question or this selector/);
+  assert.match(source, /it is served by advancing, and a pending approach comparison neither blocks that recognition nor reopens the offer; a decline keeps the stage at `Explore change`/);
+});

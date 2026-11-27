@@ -939,3 +939,16 @@ test('E4/E5/E6/E7: the slice branch chain grows only from completed slices and s
   assert.match(spec('sai/commands/explore/steps/pipeline-direct-build.md'), /an `auto_continue` first prepares the next slice's branch[\s\S]*before `\{intent: auto-continue\}` is emitted and before any worker dispatch/);
   assert.match(spec('sai/commands/explore/instructions.md'), /choosing `per-slice` in the slice-set branch question is that acceptance in advance/);
 });
+
+test('the downstream review invitation is omitted when entering the loop is the dominant intent', () => {
+  const loop = fs.readFileSync(path.join(repoRoot, 'sai/commands/explore/steps/review-loop.md'), 'utf8');
+  assert.match(loop, /when the turn's dominant intent is to enter this loop, start it directly as on the token path and ask nothing/);
+  assert.match(loop, /the dominant-intent test is the token path's own, applied in any language/);
+  assert.match(loop, /a natural-language request to review the downstream artifacts of the changes crystallized in this chat starts the loop without a question/);
+  assert.match(loop, /A vague mention, a negation, a quotation, or a discussion of the review keeps this invitation/);
+  assert.match(loop, /A request to review a specific artifact is served first under the artifact-review gate, and its appended invitation follows the same condition/);
+  assert.match(loop, /an empty tracked set uses the token path's one-line acknowledgment/);
+  assert.match(loop, /The token path and a semantic-path turn whose dominant intent is entering the loop behave identically: the global question is skipped/);
+  assert.doesNotMatch(loop, /ONLY in that the global question is skipped/);
+  assert.doesNotMatch(loop, /which still asks the global question/);
+});

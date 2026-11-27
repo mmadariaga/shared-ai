@@ -220,3 +220,19 @@ test('load receipt: sai-state spawn is the final load step and stage events emit
   assert.match(instructions, /emits against the owning machine on the receipt id from the load/);
   assert.doesNotMatch(instructions, /spawn-then-emit/);
 });
+
+test('question conditioning: the untouched questions keep their text, order, and stable values', () => {
+  const selector = source('sai/commands/explore/steps/route-selector.md');
+  for (const literal of [
+    '`Plan - Unattended`. Description: Create the spec/design plan and stop for your review. Stable identity: `plan-unattended`.',
+    '`Direct Build - Unattended`. Description: Implement, update specs, archive, and authorize two local commits. Stable identity: `direct-build-unattended`.',
+    '`Manual`. Description: Take this document to a new chat with `/sai-1-spec`; start no worker. Stable identity: `manual`.',
+    '(`publish-continue`', '(`publish-stop`', '(`skip-continue`',
+    '(`shared`', '(`per-slice`', '(`none`',
+    '(`assign`', '(`keep`', '(`replace`', '(`skip`',
+  ]) assert.ok(selector.includes(literal), literal);
+  assert.match(selector, /Would you like to create or update a backlog item for this crystallized proposal\?/);
+  assert.match(selector, /If an issue is linked or will be created, should it be assigned when implementation starts\?/);
+  assert.match(source('sai/commands/explore/steps/artifact-review-language-gate.md'), /English \(Recommended\)/);
+  assert.match(source('sai/commands/explore/steps/handoff-warming.md'), /30 min \(Recommended\)/);
+});

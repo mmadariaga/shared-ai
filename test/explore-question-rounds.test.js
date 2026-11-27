@@ -315,3 +315,51 @@ test('implementation start verifies an advance assignment approval instead of as
     assert.match(read(caller), /Fetch `@sai\/policies\/backlog-implementation-start\.md`/, `${caller} keeps invoking it`);
   }
 });
+
+test('the backlog question is omitted only against a matching local published state', () => {
+  const backlog = round1.slice(round1.indexOf('1. **Backlog question:**'), round1.indexOf('2. **Branch question:**'));
+  assert.match(backlog, /\*\*Omitted when the context settles it\.\*\*/);
+  assert.match(backlog, /record `skip-continue` without preparing or publishing anything/);
+  assert.match(backlog, /a linked issue exists, the published state exists, the set's ordered change names equal the published ones/);
+  assert.match(backlog, /the current hash equals the published hash or `change-document\.js compare --stored-file <published document_file> --document-file <current document file>` reports `amend_kind: metadata`/);
+  assert.match(backlog, /A missing published state \(including a failed or cancelled last publication\), a different set membership or order, or `amend_kind: content` presents the question/);
+  assert.match(backlog, /With no linked issue it is always presented/);
+  assert.match(backlog, /The comparison never reads the remote issue/);
+  assert.match(actions, /\*\*Published state\.\*\*/);
+  assert.match(actions, /the ordered change names of the set, the publication correspondence, and per document the re-exported `document_file` and `hash` from step 4 of `backlog-origin-transport\.md`/);
+  assert.match(afterRound2, /complete the origin transport above and keep the resulting published state \(above\)/);
+});
+
+test('the round-1 assignment question is omitted only for a verified sole-self-assignee set', () => {
+  const assignment = round1.slice(round1.indexOf('3. **Assignment question:**'));
+  assert.match(assignment, /\*\*Omitted when the context settles it\.\*\*/);
+  assert.match(assignment, /every document of the set has an existing linked issue, `inspect-assignment` completes for each \(a parent fails it\), and its `actor` is the only assignee of each/);
+  assert.match(assignment, /record the observed set as the set-level `keep` answer with nothing mutated/);
+  assert.match(assignment, /any document has no linked issue, or any issue has another assignee, is a parent, or fails inspection, the question is presented and names every affected issue/);
+  assert.match(assignment, /with no linked issue and a possible `publish-continue`, its intent form is presented as today/);
+  assert.match(assignment, /The recorded answer is the `sole-self-assignee no-op keep` of `backlog-implementation-start\.md` § Advance approval/);
+  assert.match(assignment, /no `assign` runs now or at implementation start/);
+  assert.match(actions, /Resolve every document's own linked issue the same way/);
+});
+
+test('one notice names the decisions settled from context and an explicit request reopens them', () => {
+  assert.match(actions, /\*\*Settled decisions notice\.\*\*/);
+  assert.match(actions, /when the context settled the backlog or the assignment decision, print one line in the user's language naming every decision it settled/);
+  assert.match(actions, /The line states each recorded no-op answer so a user can correct it/);
+  assert.match(actions, /An explicit request to publish or to change the assignment, made before the route answer, discards that recorded answer and presents its question/);
+});
+
+test('a recorded no-op answer resolves its question for the completion gate and authorizes only its no-op', () => {
+  assert.match(rounds, /A no-op answer recorded from the surrounding context resolves its question for the completion gate and authorizes only its no-op\. It is not an explicit answer and grants no other action/);
+  assert.match(actions, /a no-op answer recorded from the surrounding context resolves its question and authorizes only its no-op/);
+  assert.match(actions, /explicitly skipped, or recorded as a no-op from context/);
+});
+
+test('the implementation-start policy accepts the sole-self-assignee no-op keep as an advance approval', () => {
+  const start = read('sai/policies/backlog-implementation-start.md');
+  assert.match(start, /A \*\*sole-self-assignee no-op keep\*\* is a valid advance approval that needs no\s+explicit choice/);
+  assert.match(start, /`inspect-assignment` returned the authenticated user \(`actor`\)\s+as the only assignee of a non-parent selected issue/);
+  assert.match(start, /The caller stores the observed assignee set\s+and calls no `assign`/);
+  assert.match(start, /A changed assignee set, a\s+parent issue, or a different authenticated user is not a no-op keep and asks\s+again through steps 2–3/);
+  assert.match(start, /the sole-self-assignee no-op keep\s+below is the one form that needs no explicit choice/);
+});

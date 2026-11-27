@@ -17,5 +17,6 @@ A **conditional question** is included when its condition can still hold before 
 
 - Collect every answer of the round before acting on any of them.
 - Each answer authorizes only its own action. Only an explicit answer authorizes: a missing, cancelled, or ambiguous answer leaves its action pending and never counts as consent for another question.
+- A no-op answer recorded from the surrounding context resolves its question for the completion gate and authorizes only its no-op. It is not an explicit answer and grants no other action.
 - Cancelling the whole round leaves every action of that round pending.
 - A correction, a clarification, or a failure may add an interaction outside the round; it re-asks only the affected question.

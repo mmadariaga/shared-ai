@@ -24,12 +24,18 @@ The language gate SHALL apply only within `sai-explore`. No other `sai-*` comman
 
 ### Requirement: English input skips the gate
 
-When the user's input language for the review turn is English, the agent SHALL NOT ask the language question and SHALL proceed directly to the review in English.
+The gate SHALL evaluate its language inputs in this order. An explicit language statement for the artifact set SHALL settle the gate: the agent SHALL use that language and SHALL ask no question. The statement SHALL bind to the artifact set it names, or to the set of the review turn it is made in, and SHALL be reused for that set; a different set SHALL evaluate again, and a statement that covers the whole downstream review loop SHALL bind to every set of that loop. Then, when the user's input language for the review turn is English, the agent SHALL NOT ask the language question and SHALL proceed directly to the review in English. Otherwise the non-English gate SHALL ask.
 
 #### Scenario: English reviewer gets no question
 
 - **WHEN** the user requests an artifact review while writing in English
 - **THEN** the agent produces the review directly in English without asking which language to use
+
+#### Scenario: an explicit language statement settles the gate
+
+- **WHEN** the user states a language for the artifact set under review, or for the set of the review turn
+- **THEN** the agent produces the review in that language without asking the gate question
+- **AND** the statement is reused for that set, and a different set evaluates again
 
 ### Requirement: Non-English input gates the review on a language choice
 
@@ -71,7 +77,7 @@ The gate SHALL present exactly two options. The question text and the non-Englis
 
 ### Requirement: Gate re-fires when the review target changes
 
-The gate SHALL fire at the start of each review of a given artifact or set of artifacts. The agent SHALL track the artifact(s) referenced in the most recent review turn (by filename or path). WHEN the user starts a new review that references a different artifact or set of artifacts than the one(s) most recently reviewed, the agent SHALL re-ask the gate question before producing review content for the new target. WHEN the user asks follow-up questions about the same artifact(s) most recently reviewed, the agent SHALL reuse the previously chosen language and SHALL NOT re-ask. Persistence is behavioral (the agent holds the choice and the current review target in-conversation); it SHALL NOT be implemented as stored or config state.
+The gate SHALL fire at the start of each review of a given artifact or set of artifacts unless an explicit language statement binds that set. The agent SHALL track the artifact(s) referenced in the most recent review turn (by filename or path). WHEN the user starts a new review that references a different artifact or set of artifacts than the one(s) most recently reviewed, the agent SHALL evaluate the gate for the new target: an explicit language statement for that set SHALL be used without a question, and otherwise the agent SHALL re-ask the gate question before producing review content for the new target. WHEN the user asks follow-up questions about the same artifact(s) most recently reviewed, the agent SHALL reuse the previously chosen language and SHALL NOT re-ask. Persistence is behavioral (the agent holds the choice, any explicit statement's binding, and the current review target in-conversation); it SHALL NOT be implemented as stored or config state.
 
 #### Scenario: same review across multiple turns
 
@@ -80,8 +86,23 @@ The gate SHALL fire at the start of each review of a given artifact or set of ar
 
 #### Scenario: new review target re-asks the gate
 
-- **WHEN** the user has chosen a review language for `proposal.md` and later starts a review of `design.md` (or any artifact other than the one(s) most recently reviewed)
+- **WHEN** the user has chosen a review language for `proposal.md` and later starts a review of `design.md` (or any artifact other than the one(s) most recently reviewed) without an explicit language statement for that target
 - **THEN** the agent re-asks the gate question before producing review content for the new target
+
+#### Scenario: an explicit statement binds to the set it names
+
+- **WHEN** the user states a language for a named artifact or artifact set and later reviews that same set
+- **THEN** the agent reuses that language without asking the gate question
+
+#### Scenario: a loop-wide statement binds every set
+
+- **WHEN** the user states a language that covers the whole downstream review loop
+- **THEN** every set of that loop uses that language without the gate question
+
+#### Scenario: a different set evaluates again without a binding statement
+
+- **WHEN** the review target changes to an artifact set that no explicit language statement names
+- **THEN** the gate asks its language question again before producing review content
 
 ### Requirement: Decline or non-committal answer falls back to remember.md
 

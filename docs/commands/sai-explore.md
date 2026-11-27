@@ -96,9 +96,18 @@ switch to a local branch through `new-change-branch`, and whether to assign the
 linked issue when implementation starts. An existing issue's question names the
 concrete user; when no issue exists yet but backlog creation is selected, it asks
 the intent to assign the authenticated user once the issue exists. Without a
-linked issue or planned creation, the assignment question is left out. The branch
-and assignment questions are conditional: they take effect only when the backlog
-answer continues to implementation.
+linked issue or planned creation, the assignment question is left out. A set
+whose every document has a linked issue whose only assignee is you is also left
+out: the set records `keep` and nothing is assigned. A set with a linked issue
+whose change names and documents are unchanged since the last completed
+publication in this conversation, or changed only in their origin lines, skips
+the backlog question and records `skip-continue`; without a linked issue the
+question is always asked, and the comparison is local and never re-reads the
+issue. When the context settled either decision, one line before the rounds names
+it, and an explicit request to publish or to change the assignment reopens its
+question.
+The branch and assignment questions are conditional: they take effect only when
+the backlog answer continues to implementation.
 Round 2: the exact publication approval (it is not presented when the
 backlog answer skips publication or the publication needs no approval). Round 3: the
 route; for several pending slices, whether later Direct Build slices start
@@ -135,6 +144,16 @@ branch preparation permits no code edits. The backlog
 question and option descriptions retain the word `backlog` in every language
 (for example, “¿Quieres crear o actualizar el backlog con esta propuesta?”).
 Publication approval remains a separate answer bound to the exact proposal `to-backlog` prepared.
+
+Three more questions are asked only when their context leaves the answer open.
+The downstream review invitation is offered unless your turn's main intent is to
+enter the review loop, in any language; a request to review a specific artifact is
+served first under the artifact-review gate, and it follows the same condition. A
+turn that `next-step` advancement recognizes, including an explicit request to
+review edge cases, is never answered with the maturity question or its selector. The
+artifact-review language gate uses an explicit language statement for the artifact
+set it names, or for the set of the review turn it is made in, and asks only when
+no statement and no English turn settles it.
 
 The backlog question offers three options, in this order, with the same labels and
 stable values on both harnesses:

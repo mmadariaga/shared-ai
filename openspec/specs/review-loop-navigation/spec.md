@@ -42,9 +42,9 @@ The manual review-loop SHALL behave exactly as defined by this capability togeth
 
 The review SHALL NOT be auto-offered as a harness option-picker immediately after a `Ready to Propose` block. Instead, `sai-explore` SHALL treat the review as a **user-triggered, plain-text standing invitation**: the crystallization block closes by recommending the user keep the explore window open, and the user triggers the review on return. The invitation carries **no precondition** — it is available whether or not any downstream artifact exists and whether or not this chat crystallized any change.
 
-On the semantic path, `sai-explore` SHALL ask, in plain conversational text (never a harness option-picker), a single yes/no question rendered in the conversation's ambient language: whether the user wants to review the downstream artifacts of the changes crystallized in this chat. This plain-text question is a **deliberate exception** to the "Closed-choice prompts" native-picker rule in `sai/policies/remember.md`; it applies only to this global review invitation. Answering no SHALL be a hard stop on the entire review section. Answering yes SHALL enter the per-change loop over the chat-crystallized set. When the tracked crystallized set is empty, accepting the invitation SHALL be a no-op that ends the section immediately after the yes.
+On the semantic path, `sai-explore` SHALL start the loop directly, as on the token path, without asking any question, when the turn's dominant intent is to enter the loop. The dominant-intent test SHALL be the token path's own, applied in any language, so a natural-language request to review the downstream artifacts of the changes crystallized in this chat SHALL start the loop without a question, and an empty tracked set SHALL use the token path's one-line acknowledgment. Otherwise `sai-explore` SHALL ask, in plain conversational text (never a harness option-picker), a single yes/no question rendered in the conversation's ambient language: whether the user wants to review the downstream artifacts of the changes crystallized in this chat. A vague mention, a negation, a quotation, or a discussion of the review SHALL keep this invitation. A request to review a specific artifact SHALL be served first under the artifact-review gate, and its appended invitation SHALL follow the same condition. This plain-text question is a **deliberate exception** to the "Closed-choice prompts" native-picker rule in `sai/policies/remember.md`; it applies only to this global review invitation. Answering no SHALL be a hard stop on the entire review section. Answering yes SHALL enter the per-change loop over the chat-crystallized set. When the tracked crystallized set is empty, accepting the invitation SHALL be a no-op that ends the section immediately after the yes.
 
-The token path SHALL be governed by the literal token `review-loop`: `sai-explore` SHALL recognize it as an explicit trigger that enters the per-change loop over the tracked crystallized set directly, without asking the plain-text global yes/no question first, because typing the token already expresses consent. The token SHALL fire only when the turn is a bare token (optionally with trivial punctuation or a greeting) or when entering the review loop is the turn's dominant intent; mere containment of the string SHALL NOT fire it, and a turn that negates, defers, quotes, or discusses the token SHALL NOT fire it. The token SHALL be live for the whole session, independently of when or whether a crystallization turn occurred. The token SHALL be a literal English string: it SHALL NOT be localized or translated, and a localized paraphrase SHALL NOT fire the token path (it may still fire the semantic path on its own merits, which still asks the global question). When the tracked crystallized set is empty, the token SHALL end the section immediately without entering any iteration and SHALL print a one-line acknowledgment in the conversation's ambient language stating that no change has been crystallized in this chat and there is nothing to review. When a single turn satisfies both the token path and the artifact-review path, the item-3 review SHALL be served first, then the loop SHALL be entered directly with the global question skipped.
+The token path SHALL be governed by the literal token `review-loop`: `sai-explore` SHALL recognize it as an explicit trigger that enters the per-change loop over the tracked crystallized set directly, without asking the plain-text global yes/no question first, because typing the token already expresses consent. The token SHALL fire only when the turn is a bare token (optionally with trivial punctuation or a greeting) or when entering the review loop is the turn's dominant intent; mere containment of the string SHALL NOT fire it, and a turn that negates, defers, quotes, or discusses the token SHALL NOT fire it. The token SHALL be live for the whole session, independently of when or whether a crystallization turn occurred. The token SHALL be a literal English string: it SHALL NOT be localized or translated, and a localized paraphrase SHALL NOT fire the token path; it MAY still fire the semantic path on its own merits, and when that turn's dominant intent is entering the loop, the loop SHALL start without the invitation. When the tracked crystallized set is empty, the token SHALL end the section immediately without entering any iteration and SHALL print a one-line acknowledgment in the conversation's ambient language stating that no change has been crystallized in this chat and there is nothing to review. The token path and a semantic-path turn whose dominant intent is entering the loop SHALL behave identically: the global question is skipped. The token SHALL be English-only; the semantic test SHALL accept any language. When a single turn satisfies both the token path and the artifact-review path, the item-3 review SHALL be served first, then the loop SHALL be entered directly with the global question skipped; an artifact-review turn whose dominant intent is also entering the loop SHALL follow the same order.
 
 #### Scenario: review is not auto-offered at crystallization
 
@@ -54,7 +54,7 @@ The token path SHALL be governed by the literal token `review-loop`: `sai-explor
 
 #### Scenario: triggered invitation is asked in plain text, not a picker
 
-- **WHEN** the user triggers the review by accepting the standing invitation or asking to review the crystallized changes' downstream artifacts
+- **WHEN** the user accepts the standing invitation without the loop's dominant intent
 - **THEN** `sai-explore` asks the yes/no review question as plain conversational text in the ambient language
 - **AND** it does NOT present that global question through the harness option-picker
 
@@ -88,7 +88,7 @@ The token path SHALL be governed by the literal token `review-loop`: `sai-explor
 
 - **WHEN** a turn merely contains the string `review-loop` without the token's firing condition — for example negating, deferring, quoting, or discussing it
 - **THEN** the token path does not fire
-- **AND** the turn is treated on its own merits (the semantic path may still fire, which still asks the global question)
+- **AND** the turn is treated on its own merits, and the semantic path asks the global question only when entering the loop is not its dominant intent
 
 #### Scenario: a dominant-intent turn fires the token path
 
@@ -107,6 +107,22 @@ The token path SHALL be governed by the literal token `review-loop`: `sai-explor
 - **WHEN** a single turn both fires the token path and asks for an artifact review of a tracked crystallized change (item 3's path)
 - **THEN** the item-3 review is produced first
 - **AND** the loop is then entered directly, with the global question skipped
+
+#### Scenario: a semantic dominant-intent turn starts the loop without the global question
+
+- **WHEN** a turn asks in natural language to review the downstream artifacts of the changes crystallized in this chat, in any language
+- **THEN** the loop starts directly over the tracked crystallized set without the global yes/no question
+- **AND** an empty tracked set uses the token path's one-line acknowledgment
+
+#### Scenario: a vague mention keeps the invitation
+
+- **WHEN** the turn mentions, negates, quotes, or discusses the review without entering the loop as its dominant intent
+- **THEN** the plain-text global invitation is kept
+
+#### Scenario: an artifact review request is served first and its invitation follows the same condition
+
+- **WHEN** a single turn requests a review of a specific artifact and also asks to enter the downstream loop
+- **THEN** the artifact review is served first under its gate, and the loop follows without the global question
 
 ### Requirement: tracked-crystallized-set
 

@@ -1,12 +1,14 @@
 # Item 3: Language gate for artifact reviews
 
-When a turn's primary deliverable is a review of an existing OpenSpec artifact and the user's dominant natural language is not English, ask a single 2-option language question before producing any review content. For artifact-review turns, this gate refines the `sai/policies/remember.md` default of answering in the user's input language.
+When a turn's primary deliverable is a review of an existing OpenSpec artifact and neither an explicit language statement nor an English turn settles it, ask a single 2-option language question before producing any review content. For artifact-review turns, this gate refines the `sai/policies/remember.md` default of answering in the user's input language.
 
 **Trigger.** The gate fires **only** when reviewing one of the following artifacts is the turn's **primary deliverable**: `proposal.md`, `design.md`, `tasks.md`, `specs/**/*.md`, `review.md`, `security.md`, `performance.md`, or `accessibility.md` under `openspec/changes/{name}/`, `openspec/specs/`, or `openspec/changes/archive/`. The artifact may be referenced by literal path, bare filename, or change-name plus artifact mention. Free-form debate of the original idea, and turns that only cite an artifact as supporting evidence, do **not** trigger the gate.
 
 **Examples** (detection guidance, not a rigid verb list):
 - **Fires on**: "review the design", "qué te parece el proposal", "mira los specs de oauth2-auth".
 - **Does not fire on**: "the design is too complex", "I'd change the proposal because…", "the design says X — what about Y?" (cited as evidence in a debate).
+
+**Explicit language statement**: The gate evaluates in this order. An explicit language statement for the artifact set settles the gate: use that language, no question. It binds to the artifact set it names, or to the set of the review turn it is made in, and is reused for that set; a different set evaluates again. A statement that covers the whole downstream review loop binds to every set of that loop. Then an English turn produces the review directly in English with no question. Otherwise the non-English gate below asks.
 
 **English skip**: If the turn's dominant natural language is English, produce the review directly in English with no question.
 

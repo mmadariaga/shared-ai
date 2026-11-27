@@ -838,3 +838,21 @@ test('E15: the GitHub set and set-update proposals report auto_approve and their
   assert.equal(updateOn.proposal.auto_approve, true);
   assert.notEqual(updateOn.confirmation, updateOff.confirmation);
 });
+
+test('a sole-self-assignee keep is a read-only no-op advance approval', async t => {
+  const fixture = fake(); await publish(t, fixture);
+  const issue = fixture.state.issues[1];
+  issue.assignees = ['actor'];
+  const request = { reference: issue.url };
+  const inspected = await assignment.inspect(request, fixture.io);
+  assert.equal(inspected.status, 'complete');
+  assert.deepEqual(inspected.assignees, ['actor']);
+  assert.equal(inspected.actor, 'actor');
+  const before = fixture.state.calls.length;
+  const keep = await assignment.propose({ ...request, choice: 'keep' }, fixture.io);
+  assert.equal(keep.status, 'ready');
+  assert.deepEqual(keep.proposal.target, ['actor']);
+  const verified = await assignment.verify({ ...request, choice: 'keep', expected_assignees: keep.proposal.target, expected_parent: keep.proposal.parent, confirmation: keep.confirmation }, fixture.io);
+  assert.equal(verified.verified, true);
+  assert.ok(fixture.state.calls.slice(before).every(call => call.args.includes('GET')));
+});

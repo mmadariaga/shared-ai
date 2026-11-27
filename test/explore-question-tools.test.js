@@ -95,3 +95,15 @@ test('the shared rule retains picker-unavailable and capacity fallbacks', () => 
   assert.match(definition(read('issue-intake.md'), '- **Several unrelated issues**'), /falling back to numbered plain text beyond the harness picker capacity/);
   assert.match(definition(read('common.md'), '**Optional native stage selectors'), /unchanged text-only fallback/);
 });
+
+test('an explicit language statement settles the artifact-review gate before the English skip', () => {
+  const gate = fs.readFileSync(path.join(__dirname, '../sai/commands/explore/steps/artifact-review-language-gate.md'), 'utf8');
+  const explicit = gate.indexOf('**Explicit language statement**');
+  const english = gate.indexOf('**English skip**');
+  const ask = gate.indexOf('**Non-English gate**');
+  assert.ok(explicit >= 0 && english > explicit && ask > english);
+  assert.match(gate, /An explicit language statement for the artifact set settles the gate: use that language, no question/);
+  assert.match(gate, /It binds to the artifact set it names, or to the set of the review turn it is made in, and is reused for that set; a different set evaluates again/);
+  assert.match(gate, /A statement that covers the whole downstream review loop binds to every set of that loop/);
+  assert.match(gate, /neither an explicit language statement nor an English turn settles it/);
+});

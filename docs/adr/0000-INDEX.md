@@ -234,6 +234,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0226 — Direct Build run state lives in the store on the explore route only](./0226-direct-build-run-state-in-store-on-explore-route.md) — Refs 0225
 - [0237 — The issue precheck informs and never decides](./0237-issue-precheck-informs-never-decides.md)
 - [0238 — The slicing assessment is skipped only for a re-imported published change document](./0238-slicing-skip-published-change-document.md)
+- [0239 — Accept a verified sole-self-assignee no-op keep without an explicit approval](./0239-sole-self-assignee-no-op-keep.md)
 
 ### `/sai-backfill`
 

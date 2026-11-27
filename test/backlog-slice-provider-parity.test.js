@@ -882,3 +882,21 @@ test('gitlab: publication emits no progress lines', async t => {
   assert.equal(result.status, 'complete');
   assert.deepEqual(lines, []);
 });
+test('sole-self-assignee keep is a read-only no-op advance approval on every provider', async t => {
+  for (const platform of ['gitlab', 'azuredevops']) {
+    const f = fixture(platform); await publish(t, f);
+    const request = { provider: platform, reference: await f.url(2) };
+    const ready = await f.adapter['propose-assignment'](request, f.io);
+    await f.adapter.assign({ ...request, confirmation: ready.confirmation }, f.io);
+    const inspected = await f.adapter['inspect-assignment'](request, f.io);
+    assert.equal(inspected.status, 'complete');
+    assert.deepEqual(inspected.assignees, [inspected.actor], platform);
+    const before = f.state.writes.length;
+    const keep = await f.adapter['propose-assignment']({ ...request, choice: 'keep' }, f.io);
+    assert.equal(keep.status, 'ready');
+    assert.deepEqual(keep.proposal.target, [inspected.actor]);
+    const verified = await f.adapter['verify-assignment']({ ...request, choice: 'keep', expected_assignees: keep.proposal.target, expected_parent: keep.proposal.parent, confirmation: keep.confirmation }, f.io);
+    assert.equal(verified.verified, true);
+    assert.equal(f.state.writes.length, before);
+  }
+});
