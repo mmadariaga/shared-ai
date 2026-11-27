@@ -142,9 +142,9 @@ async function readChildren(reference, io) {
     return { status: 'error', reason: error.reason || 'retrieval-failed', message: error.message };
   }
 }
-// Pure route shape of a full issue URL on any HTTPS host: `/<group…>/<project>/-/issues/N`, with no resolution.
+// Pure route shape of a full issue URL on any HTTPS host: `/<group…>/<project>/-/issues/N` or `/-/work_items/N`, with no resolution.
 function issueRoute(value) {
-  try { return issueURL(value).route === 'issues' && new URL(value).protocol === 'https:'; } catch { return false; }
+  try { return ['issues', 'work_items'].includes(issueURL(value).route) && new URL(value).protocol === 'https:'; } catch { return false; }
 }
 
 module.exports = { project, api, issueURL, issueRoute, resolve, issue, readIssue, read, readSet, readChildren, dependencies };

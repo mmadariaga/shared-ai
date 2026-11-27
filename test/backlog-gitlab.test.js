@@ -147,6 +147,15 @@ test('GitLab invalid and incomplete references fail before provider queries with
   }
 });
 
+test('issueRoute accepts both GitLab display routes on HTTPS only', () => {
+  for (const input of [`${url}/-/issues/7`, `${url}/-/work_items/7`, 'https://gitlab.com/group/project/-/work_items/37/']) {
+    assert.equal(from.issueRoute(input), true, input);
+  }
+  for (const input of [`${url}/-/merge_requests/7`, `${url}/-/epics/7`, 'https://gitlab.com/groups/group/-/epics/7', `http://private.example:8443/group/nested/repo/-/work_items/7`, `${url}/-/work_items/0`, '/group/project/-/work_items/7']) {
+    assert.equal(from.issueRoute(input), false, input);
+  }
+});
+
 test('GitLab response validation names the failed identity, URL, type or content check', async () => {
   for (const [issue, message] of [
     [{ id: 0 }, /issue ID/], [{ project_id: 15 }, /project ID/], [{ iid: 8 }, /issue number/],
