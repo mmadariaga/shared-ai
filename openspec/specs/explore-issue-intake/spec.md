@@ -31,11 +31,11 @@ Give `/sai-explore` one defined, source-agnostic intake for any issue, bug, or t
 
 ### Requirement: The work question decides whether the issue becomes the candidate idea
 
-Once the issue's complete content is in the conversation, Explore SHALL ask the work question through the harness-native picker (`AskUserQuestion` on Claude Code, `question` on opencode) with the options `work` and `context` in that order, and the question SHALL close that turn. When several unrelated issues arrive in one message, the question SHALL list one `work` option per issue plus `context`, falling back to numbered plain text beyond the picker capacity, and the user SHALL pick at most one issue to work on while the rest stay as context. A message that states the intent to work on the issue while bringing it SHALL answer the question with `work` without asking. The issue SHALL be mature when its `Maturity` section reads `Ready to propose`, and Explore SHALL read that from the `ready_to_propose_form` of `change-document.js sections`, never from its own judgment. For such an issue the question SHALL also show a kebab-case `Change name` proposed from the issue's `Goal`, starting from the tool's `proposed_change_name`, correctable through the free-text answer. `--fast-track` SHALL NOT skip the work question.
+Explore SHALL read the issue once with `change-document.js sections` as soon as the issue's complete content is in the conversation, before asking the work question, and SHALL determine maturity and the proposed `Change name` from that reading's `ready_to_propose_form` and `proposed_change_name`, never from its own judgment. It SHALL then ask the work question through the harness-native picker (`AskUserQuestion` on Claude Code, `question` on opencode) with the options `work` and `context` in that order, and the question SHALL close that turn. When several unrelated issues arrive in one message, the question SHALL list one `work` option per issue plus `context`, falling back to numbered plain text beyond the picker capacity, and the user SHALL pick at most one issue to work on while the rest stay as context. A message that states the intent to work on the issue while bringing it SHALL answer the question with `work` without asking. An issue SHALL be mature when `ready_to_propose_form` is `true`, and for such an issue the question SHALL also show a kebab-case `Change name` proposed from the issue's `Goal`, starting from the tool's `proposed_change_name`, correctable through the free-text answer. For a mature issue the work question SHALL be one round of `@sai/policies/question-rounds.md` together with the drift check as its conditional second question, included only when the seed leaves at least one section `agreed`; the round SHALL close the turn, and a message that already states the intent to work SHALL leave the round the drift question alone. An issue that is not mature SHALL keep the work question alone. `--fast-track` SHALL NOT skip the work question.
 
 #### Scenario: Work question closes the turn
 
-- **WHEN** an issue-format text enters the conversation without a stated intent to work on it
+- **WHEN** an issue-format text that is not mature enters the conversation without a stated intent to work on it
 - **THEN** Explore asks the work question with the options `work` and `context` through the native picker and ends the turn
 
 #### Scenario: Stated intent answers work
@@ -56,7 +56,12 @@ Once the issue's complete content is in the conversation, Explore SHALL ask the 
 #### Scenario: The form comes from the conversion tool
 
 - **WHEN** an issue enters the conversation
-- **THEN** Explore runs `change-document.js sections` and takes the maturity form and the proposed `Change name` from its `ready_to_propose_form` and `proposed_change_name`
+- **THEN** Explore runs `change-document.js sections` before asking and takes the maturity form and the proposed `Change name` from its `ready_to_propose_form` and `proposed_change_name`
+
+#### Scenario: A mature issue asks the drift check in the same round
+
+- **WHEN** a mature issue's reading leaves at least one section seeded `agreed`
+- **THEN** the work question and the drift check are one round of `@sai/policies/question-rounds.md`, and the round closes the turn
 
 ### Requirement: A worked issue becomes the candidate idea with carried starting lists
 
@@ -94,7 +99,7 @@ On `work`, in the same turn and with no separate activation turn, the issue SHAL
 
 ### Requirement: The conversion tool owns the issue-to-block mapping in the intake
 
-Explore SHALL NOT judge which sections an issue agrees, and the intake SHALL build no block and no change document from the issue: the change document is composed at `Crystallize` from the agreed sections. Explore SHALL run `change-document.js sections` with `--input-file <path>`, the file holding the issue text exactly as it entered the conversation (Markdown or HTML), written with the harness-native file-write tool in a directory from `transfer.js open`, once the issue's complete content is in the conversation. The tool SHALL accept an issue of any `Maturity`. Explore SHALL read the tool's `sections`, `open_questions`, `seed`, `ready_to_propose_form`, `proposed_change_name`, and `declared_clean_note`, and SHALL send `seed` verbatim to `explore-idea@1` as an input-file event. When the seed event answers `SECTIONS_INVALID`, Explore SHALL report it in one line and continue from `Explore change` with every section `open`.
+Explore SHALL NOT judge which sections an issue agrees, and the intake SHALL build no block from the issue: the change document is composed at `Crystallize` from the agreed sections and, on the mature fast path, by the conversion tool. Explore SHALL run `change-document.js sections` with `--input-file <path>`, the file holding the issue's complete text (its title as a `# <title>` first line, then its description exactly as it entered the conversation, Markdown or HTML; the text exactly as it entered when it already begins with a `# <title>` line, such as a pasted change document), written with the harness-native file-write tool in a directory from `transfer.js open`, as soon as the issue's complete content is in the conversation. The tool SHALL accept an issue of any `Maturity`. Explore SHALL read the tool's `sections`, `open_questions`, `seed`, `ready_to_propose_form`, `proposed_change_name`, `declared_clean_note`, `change`, and `backlog_origin`, and SHALL send `seed` verbatim to `explore-idea@1` as an input-file event only after `work` is answered. When the seed event answers `SECTIONS_INVALID`, Explore SHALL report it in one line and continue from `Explore change` with every section `open`, without running `sections` again for that issue.
 
 #### Scenario: Conversion rejection continues with the planned steps
 
@@ -106,9 +111,14 @@ Explore SHALL NOT judge which sections an issue agrees, and the intake SHALL bui
 - **WHEN** an issue whose `Maturity` reads `Ready to propose` still has entries in `Open questions`
 - **THEN** no change document is built from the issue and the sections those entries affect are seeded `open`
 
+#### Scenario: No seed before the work answer
+
+- **WHEN** the issue reading is complete and the work question is still unanswered
+- **THEN** no seed event is sent to `explore-idea@1` and nothing is composed
+
 ### Requirement: The drift check validates every section an issue seeded agreed
 
-Explore SHALL ask the drift check once `work` is answered and at least one section was seeded `agreed`, through the harness-native picker (`AskUserQuestion` on Claude Code, `question` on opencode) with the options `validate` and `declared-clean` in that order. No earlier assessment of the issue SHALL replace it. `validate` SHALL compare each `agreed` section's behaviors, constraints, and implementation notes with the current code read-only and report each mismatch with its path. The outcome SHALL be exactly one of `clean` (every agreed section stays agreed), `drift` (a mismatch was found, or the user states that the issue has drifted, which answers the question without asking), or `declared-clean` (the user skipped validation; every seeded section stays agreed and the change document composed at `Crystallize` carries the tool's `declared_clean_note` line in its `## Additional notes` section). On `drift`, each mismatch, doubt, or improvement SHALL be shown with its evidence and SHALL mark only the section it touches `open`, keeping that section's list as the starting proposal; every other section SHALL stay `agreed`. The same rule SHALL hold for a deviation found in an `agreed` section at any later point of the conversation. `--fast-track` SHALL NOT skip the drift check.
+Explore SHALL ask the drift check once `work` is answered and at least one section was seeded `agreed`; for an issue that is not mature it is asked after `work`, and for a mature issue it is the conditional second question of the work round. No earlier assessment of the issue SHALL replace it. `validate` SHALL compare each `agreed` section's behaviors, constraints, and implementation notes with the current code read-only and report each mismatch with its path; on the mature fast path the deterministic precheck's missing references SHALL be the starting point of that comparison. The outcome SHALL be exactly one of `clean` (every agreed section stays agreed), `drift` (a mismatch was found, or the user states that the issue has drifted, which answers the question without asking), or `declared-clean` (the user skipped validation; every seeded section stays agreed and the change document composed at `Crystallize` carries the tool's `declared_clean_note` line in its `## Additional notes` section). On `drift`, each mismatch, doubt, or improvement SHALL be shown with its evidence and SHALL mark only the section it touches `open`, keeping that section's list as the starting proposal; every other section SHALL stay `agreed`, and no document SHALL be composed on the mature fast path. The same rule SHALL hold for a deviation found in an `agreed` section at any later point of the conversation. `--fast-track` SHALL NOT skip the drift check.
 
 #### Scenario: Drift opens only the touched section
 
@@ -117,17 +127,22 @@ Explore SHALL ask the drift check once `work` is answered and at least one secti
 
 #### Scenario: Declared-clean keeps the seeded sections
 
-- **WHEN** the user answers the drift check with `declared-clean`
-- **THEN** every seeded section stays agreed and the change document carries the declared-clean line in its `## Additional notes` section
+- **WHEN** the user answers the drift check with `declared-clean` on a mature issue whose every section is agreed
+- **THEN** every seeded section stays agreed and the composed change document carries the declared-clean line in its `## Additional notes` section
 
 #### Scenario: No agreed section means no drift check
 
 - **WHEN** a worked issue seeds no section `agreed`
 - **THEN** no drift check is asked and the issue continues in `Explore change`
 
+#### Scenario: A validate mismatch composes nothing
+
+- **WHEN** `validate` reports a mismatch on a mature issue
+- **THEN** the touched section becomes `open` and no change document is composed on the fast path
+
 ### Requirement: A seeded issue resumes at its first open section through goto
 
-Once the seed and the drift check are recorded, Explore SHALL emit one `goto` to `crystallize` with reason `user-request`. When every section is agreed the move SHALL be accepted, the slicing assessment SHALL run as always, a single change SHALL take its change document from the agreed sections, and a sliced set SHALL distribute the `I` items across slices with their literal text. When a section is open the move SHALL answer `MISSING_PRECONDITIONS`; Explore SHALL then `goto` `resume_at` and present that stage with the issue's starting content, and the next forward move SHALL skip every stage whose section is still `agreed`. When `resume_at` is the current stage, Explore SHALL stay and present it. No route SHALL start without the explicit route-selector answer. Claude Code and opencode SHALL follow the same path.
+Once the seed and the drift check are recorded, Explore SHALL emit one `goto` to `crystallize` with reason `user-request`. When every section is agreed the move SHALL be accepted; a mature issue whose drift check ended `declared-clean` or `validate` with no mismatch SHALL enter `Crystallize` on the fast path, where the conversion tool composes its document. An issue that is not mature, and a mature issue with any open section or drift mismatch, SHALL be composed by the model as always: a single change SHALL take its change document from the agreed sections, and a sliced set SHALL distribute the `I` items across slices with their literal text. The slicing assessment SHALL run as always, with one exception: a re-imported published change document (the reading returns `change.name`) SHALL skip it, because its origin exploration already sliced it. When a section is open the move SHALL answer `MISSING_PRECONDITIONS`; Explore SHALL then `goto` `resume_at` and present that stage with the issue's starting content, and the next forward move SHALL skip every stage whose section is still `agreed`. When `resume_at` is the current stage, Explore SHALL stay and present it. No route SHALL start without the explicit route-selector answer. Claude Code and opencode SHALL follow the same path.
 
 #### Scenario: Fully agreed issue enters Crystallize
 
@@ -143,3 +158,42 @@ Once the seed and the drift check are recorded, Explore SHALL emit one `goto` to
 
 - **WHEN** the slicing assessment splits a fully agreed issue into several slices
 - **THEN** each `I` item reaches its slice with its literal text
+
+#### Scenario: A re-imported published change document is not sliced again
+
+- **WHEN** the issue reading returns `change.name`
+- **THEN** Explore skips the slicing assessment and follows the route selector for that one change
+
+### Requirement: A mature issue is taken in through deterministic tools
+
+A mature issue SHALL run the deterministic precheck of `sai/tools/issue-precheck.js` before its question round, SHALL present the issue as a summary instead of its full text, and SHALL compose its change document with `change-document.js compose` when the round answers `work` with every section agreed and a drift check that ends `declared-clean` or `validate` with no mismatch. The precheck SHALL inform and never decide: it SHALL list the paths, `path:line` references, and symbols the working tree does not hold, with the section each appears in, and SHALL open no section. The summary SHALL carry the link, state, title, `Goal`, the counts of edge cases, implementation notes, and decisions, and every comment in full with its author; the full issue text SHALL appear once, in the final document. When a section stays `open`, the exploration SHALL resume at that section and the later crystallization SHALL compose the document as before. On the fast path `compose` SHALL write the issue's literal text with the settled `## Change` lines, including `backlog_origin.value`, the `Explore origin:` list in order with the current session appended when it resolves, the `Specs:` value of a re-imported document, and the no-specs answer when the reading carries none. A `check` or document-emit rejection, or a `violation` hygiene verdict on a flagged line, SHALL fall back to model composition with its cause shown, without stopping the run. Claude Code and opencode SHALL follow the same flow.
+
+#### Scenario: Fast path starts only for a mature issue
+
+- **WHEN** `sections` reports `ready_to_propose_form: false`
+- **THEN** the issue keeps the full flow: the work question alone, the seed after `work`, and the drift check only when a section is agreed
+
+#### Scenario: The precheck informs the drift decision
+
+- **WHEN** the precheck reports references the working tree does not hold
+- **THEN** Explore shows each missing reference with its section before the round, and the user still chooses `validate` or `declared-clean`
+
+#### Scenario: A newly proposed symbol is not an error
+
+- **WHEN** an issue cites a symbol the change proposes that does not exist yet
+- **THEN** the precheck lists it as missing and the intake continues without an error
+
+#### Scenario: The composed document is the issue text plus the settled lines
+
+- **WHEN** a mature issue answers `work`, every section is agreed, and the drift check ends `declared-clean`
+- **THEN** `compose` writes the issue's literal text with the settled `## Change` lines and the declared-clean note, and the hygiene verdicts are judged only for the lines the check flags
+
+#### Scenario: A rejected composition falls back
+
+- **WHEN** `check` or the document emit rejects the composed document, or a flagged line receives a `violation` verdict
+- **THEN** Explore shows the cause, composes the document as before, and does not stop the run
+
+#### Scenario: The precheck failure does not block the round
+
+- **WHEN** the precheck cannot run
+- **THEN** one line reports it and the question round goes on

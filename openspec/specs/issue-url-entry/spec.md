@@ -8,7 +8,7 @@ TBD - created by archiving change sai-explore-issue-url-invocation. Update Purpo
 
 ### Requirement: A whole-argument issue URL is imported after the load
 
-`/sai-explore` SHALL import an issue through the from-backlog skill, in the same session, when the cleaned argument (`arguments_value` after the `--fast-track` strip and the trim) is exactly one `https://` URL that `from-backlog.js detect` classifies with `verdict: issue`. The import SHALL run only on an invocation turn, after the prerequisite check, the instruction loads, `sai-state spawn`, the invocation resets, and the chat-language read; a recovery load SHALL NOT run it. Explore SHALL announce the import in one line, SHALL decide only from the `detect` verdict and never from its own reading of the URL, and SHALL ask the `work`/`context` question of the issue intake once the import and the project assessment are complete, in place of the skill's own continuation question. The import SHALL be read-only: it writes no repository file, changes nothing at the provider, assigns nothing, and starts no route. Claude Code and opencode SHALL behave the same, through the shared `body.md`.
+`/sai-explore` SHALL import an issue through the from-backlog skill, in the same session, when the cleaned argument (`arguments_value` after the `--fast-track` strip and the trim) is exactly one `https://` URL that `from-backlog.js detect` classifies with `verdict: issue`. The import SHALL run only on an invocation turn, after the prerequisite check, the instruction loads, `sai-state spawn`, the invocation resets, and the chat-language read; a recovery load SHALL NOT run it. Explore SHALL announce the import in one line, SHALL decide only from the `detect` verdict and never from its own reading of the URL, and SHALL ask the `work`/`context` question of the issue intake in place of the skill's own continuation question. For a mature issue (`change-document.js sections` reports `ready_to_propose_form: true`) Explore SHALL skip the skill's §3 full presentation and §4 project assessment, SHALL present the issue as the summary and run the deterministic precheck of the issue intake, and SHALL ask the `work`/`context` question and the drift check in one round of `sai/policies/question-rounds.md`; every other issue SHALL keep the skill's §3 and §4 and ask the `work`/`context` question once the import and the project assessment are complete. The import SHALL be read-only: it writes no repository file, changes nothing at the provider, assigns nothing, and starts no route. Claude Code and opencode SHALL behave the same, through the shared `body.md`.
 
 #### Scenario: Issue URL as the whole argument
 
@@ -29,6 +29,16 @@ TBD - created by archiving change sai-explore-issue-url-invocation. Update Purpo
 
 - **WHEN** the prerequisite check or `sai-state spawn` fails
 - **THEN** nothing is imported
+
+#### Scenario: A mature issue skips the presentation and the assessment
+
+- **WHEN** the imported issue is `Ready to propose`
+- **THEN** Explore shows its summary, runs the precheck, and asks the work question and the drift check in one round, without the skill's §3 full presentation and §4 project assessment
+
+#### Scenario: An issue that is not mature keeps the skill's flow
+
+- **WHEN** the imported issue is not `Ready to propose`
+- **THEN** the skill presents it and assesses it against the project before Explore asks the `work`/`context` question
 
 ### Requirement: Arguments that are not a single issue URL keep the ordinary entry
 

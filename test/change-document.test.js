@@ -324,6 +324,74 @@ test('the command line checks, hashes, compares, and reads sections', () => {
   }
 });
 
+test('compose writes the literal issue text with the settled Change lines', () => {
+  const dir = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'change-document-'));
+  try {
+    const issue = documentText({ Change: null });
+    const issueFile = path.join(dir, 'issue.md');
+    const outputFile = path.join(dir, 'composed.md');
+    fs.writeFileSync(issueFile, issue);
+    const run = (args) => spawnSync(process.execPath, [toolPath, ...args], { encoding: 'utf8' });
+    const result = run([
+      'compose', '--input-file', issueFile,
+      '--backlog-origin', 'https://github.com/owner/repo/issues/12',
+      '--change-name', 'greeting-banner',
+      '--explore-origin', EXPLORE,
+      '--explore-origin', 'opencode ses_de1c29264fferEp1LOli9vp1In',
+      '--specs', 'none — documentation only',
+      '--declared-clean',
+      '--output-file', outputFile,
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    const reference = JSON.parse(result.stdout);
+    assert.deepEqual(Object.keys(reference).sort(), ['document_file', 'hash']);
+    assert.equal(reference.document_file, outputFile);
+    const composed = fs.readFileSync(outputFile, 'utf8');
+    assert.equal(reference.hash, doc.hashDocument(composed));
+    assert.match(composed, /## Additional notes\n\nThe user declared that the issue has no drift from the current code without validating it\.\n/);
+    assert.match(composed, /- Change name: greeting-banner\n- Depends on: None\n- Backlog origin: https:\/\/github\.com\/owner\/repo\/issues\/12\n- Explore origin: claude 88a1341a-aab7-4efe-82d8-58de66098f65, opencode ses_de1c29264fferEp1LOli9vp1In\n- Specs: none — documentation only\n$/);
+    assert.equal(composed.indexOf('## Additional notes') < composed.indexOf('## Open questions'), true);
+    const checked = doc.checkDocument(composed);
+    assert.deepEqual(checked.violations, []);
+    assert.equal(checked.dispatchable, true);
+    assert.equal(checked.name, 'greeting-banner');
+    assert.deepEqual(checked.change.explore_origin, ['88a1341a-aab7-4efe-82d8-58de66098f65', 'ses_de1c29264fferEp1LOli9vp1In']);
+    assert.equal(checked.change.skip_specs, true);
+    assert.match(composed, /## Problem\nThe greeting is easy to miss\./);
+    assert.match(composed, /## Scope\n- The banner shows the greeting text\./);
+    assert.match(composed, /## Maturity\nReady to propose/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('compose replaces an existing Change section, keeps its Depends on, and omits absent options', () => {
+  const issue = documentText({ Change: change(['Change name: existing-name', 'Depends on: earlier-slice', `Explore origin: ${EXPLORE}`]) });
+  const composed = doc.composeChangeDocument(issue, { backlogOrigin: 'https://github.com/owner/repo/issues/12' });
+  assert.equal((composed.match(/## Change/g) || []).length, 1);
+  assert.ok(composed.startsWith(issue.slice(0, issue.indexOf('## Change')).trimEnd()), 'the text before Change stays literal');
+  assert.match(composed, /- Change name: existing-name\n- Depends on: earlier-slice\n- Backlog origin: https:\/\/github\.com\/owner\/repo\/issues\/12\n$/);
+  assert.doesNotMatch(composed, /Specs:/);
+  assert.doesNotMatch(composed, /Additional notes/);
+  assert.equal(doc.checkDocument(composed).dispatchable, true);
+  const appended = doc.composeChangeDocument(documentText({ 'Additional notes': 'Existing context.' }), {
+    backlogOrigin: 'https://github.com/owner/repo/issues/12',
+    changeName: 'greeting-banner',
+    declaredClean: true,
+  });
+  assert.match(appended, /## Additional notes\nExisting context\.\n\nThe user declared that the issue has no drift from the current code without validating it\./);
+});
+
+test('compose rejects an invalid origin, name, Explore origin, and Specs value as usage errors', () => {
+  const issue = documentText({ Change: null });
+  const usage = (options) => assert.throws(() => doc.composeChangeDocument(issue, options), (error) => error.usage === true);
+  usage({ backlogOrigin: 'https://example.com/not-an-issue', changeName: 'greeting-banner' });
+  usage({ backlogOrigin: 'https://github.com/owner/repo/issues/12', changeName: 'Not Kebab' });
+  usage({ backlogOrigin: 'https://github.com/owner/repo/issues/12', changeName: 'greeting-banner', exploreOrigins: ['claude not-a-uuid'] });
+  usage({ backlogOrigin: 'https://github.com/owner/repo/issues/12', changeName: 'greeting-banner', specs: 'none' });
+  usage({ backlogOrigin: 'https://github.com/owner/repo/issues/12', changeName: 'greeting-banner', specs: 'none —' });
+});
+
 test('issue-format.md defines the change document format the tool enforces', () => {
   const headings = [...policy.matchAll(/^### (.+) — (mandatory|optional)$/gm)].map((match) => match[1]);
   const expected = doc.SECTIONS.filter((section) => section.name !== 'Change').map((section) => section.name);
