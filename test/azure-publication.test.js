@@ -20,6 +20,8 @@ function receipt() {
 }
 // Mocked protocol tests, not live Azure integration. Every test names its
 // crystallized E/I coverage and asserts both results and forbidden operations.
+const PROJECT_GUID = '6f3c1d2e-8a4b-4c5d-9e7f-0123456789ab';
+const withProjectGuid = url => url.startsWith(`${organization}/_apis/`) ? `${organization}/${PROJECT_GUID}${url.slice(organization.length)}` : url;
 function fixture() {
   const state = { calls: [], writes: [], items: new Map(), rows: [], pullRequestCalls: [], head: 'a'.repeat(40), remoteHead: 'a'.repeat(40), rev: 1 };
   const item = (id, title = 'Old', description = '<p>Keep <custom>HTML</custom></p>') => ({ id, rev: state.rev,
@@ -80,7 +82,9 @@ function fixture() {
     if (resource === 'wiql') return JSON.stringify({ workItems: [...state.items.keys()].map(id => ({ id })) });
     if (resource === 'workitems' && method === 'GET') {
       if (state.readbackError) throw new Error('Readback unavailable');
-      return JSON.stringify(state.items.get(Number(parameter('id'))));
+      const stored = state.items.get(Number(parameter('id')));
+      // Azure returns every relation URL with the project GUID between the organization and `/_apis/`.
+      return JSON.stringify(stored?.relations ? { ...stored, relations: stored.relations.map(link => ({ ...link, url: withProjectGuid(link.url) })) } : stored);
     }
     if (resource === 'pullrequests' && method === 'GET') return JSON.stringify({ count: state.rows.length, value: state.rows });
     state.writes.push({ command, method, resource, body, args });
@@ -354,6 +358,32 @@ test('planning E1 E2 I2 I4: planning-only update binds baseline, protects parent
   await assert.rejects(async () => await boards['query-update']({ ...request, baseline: next.baseline }, io), /different native parent/);
   assert.equal(state.writes.length, 2);
 });
+test('relation identity E1-E6: organization and number match with or without a project segment, and nothing else does', () => {
+  const reader = require('../sai/tools/from-backlog-azuredevops');
+  const same = (left, right) => { const a = reader.workItemIdentity(left), b = reader.workItemIdentity(right); return !!a && !!b && a.organization === b.organization && a.number === b.number; };
+  const written = `${organization}/_apis/wit/workItems/12`;
+  assert.ok(same(`${organization}/${PROJECT_GUID}/_apis/wit/workItems/12`, written), 'E1 project GUID');
+  assert.ok(same(`${organization}/Team/_apis/wit/workItems/12`, written), 'E1 project name');
+  assert.ok(same(written, written), 'E2 no project segment');
+  assert.ok(!same('https://dev.azure.com/else/_apis/wit/workItems/12', written), 'E3 other organization');
+  assert.ok(same('https://DEV.azure.com/ORG/_apis/wit/workItems/12', written), 'E3 case-insensitive organization');
+  assert.ok(same('https://org.visualstudio.com/_apis/wit/workItems/12', written), 'E3 legacy host');
+  assert.ok(!same(`${organization}/${PROJECT_GUID}/_apis/wit/workItems/120`, `${organization}/_apis/wit/workItems/12`), 'E5 whole number');
+  for (const bad of ['not a url', `${organization}/${PROJECT_GUID}/_apis/wit/workItems/x`, `${organization}/_workitems/edit/12`, `${organization}/_apis/wit/workItems/012`, null, undefined]) {
+    assert.equal(reader.workItemIdentity(bad), null, `E6 ${bad}`);
+    assert.ok(!same(bad, written));
+  }
+});
+test('planning E9: another existing parent is rejected in the project-GUID form too', async () => {
+  const { io, state } = planningFixture(), reference = `${organization}/${project}/_workitems/edit/1`;
+  const current = await boards['read-update']({ reference }, io);
+  const request = { ...planningRequest, reference, baseline: current.baseline, title: current.baseline.title, description: undefined };
+  const ready = await boards['query-update'](request, io);
+  assert.equal((await boards.update({ ...request, confirmation: ready.confirmation, receipt: receipt() }, io)).status, 'complete');
+  const next = await boards['read-update']({ reference }, io);
+  state.items.get(1).relations[0].url = `${organization}/${PROJECT_GUID}/_apis/wit/workItems/4`;
+  await assert.rejects(async () => await boards['query-update']({ ...request, baseline: next.baseline }, io), /different native parent/);
+});
 test('planning E2 I4: stale continuation does not overwrite a concurrent planning change', async () => {
   const { io, state } = planningFixture(), ready = await boards.query(planningRequest, io), file = receipt();
   state.rejectPlanning = true;
@@ -368,7 +398,7 @@ test('planning I3: ordinary Azure read exposes parent, iteration and assignment 
   const reader = require('../sai/tools/from-backlog-azuredevops');
   const row = { id: 1, fields: { 'System.TeamProject': project, 'System.Title': 'Task', 'System.WorkItemType': 'Task', 'System.State': 'New',
     'System.IterationPath': 'Team\\Sprint 1', 'System.AssignedTo': { id: 'actor', uniqueName: 'me@example.test', displayName: 'Me' } },
-    relations: [{ rel: 'System.LinkTypes.Hierarchy-Reverse', url: `${organization}/_apis/wit/workItems/3` }] };
+    relations: [{ rel: 'System.LinkTypes.Hierarchy-Reverse', url: withProjectGuid(`${organization}/_apis/wit/workItems/3`) }] };
   const io = { run(command, args) {
     assert.equal(command, 'az');
     if (args[0] === 'boards') { assert.ok(args.includes('relations')); return JSON.stringify(row); }
@@ -376,7 +406,7 @@ test('planning I3: ordinary Azure read exposes parent, iteration and assignment 
   } };
   const ref = { organization, project, number: 1 }, result = await reader.read(ref, io);
   assert.equal(result.status, 'complete');
-  assert.deepEqual(result.item.parent, { id: 3, url: `${organization}/_apis/wit/workItems/3` });
+  assert.deepEqual(result.item.parent, { id: 3, url: withProjectGuid(`${organization}/_apis/wit/workItems/3`) });
   assert.equal(result.item.iteration, 'Team\\Sprint 1');
   assert.deepEqual(result.item.assignment, { id: 'actor', displayName: 'Me', uniqueName: 'me@example.test' });
   row.fields['System.AssignedTo'] = {};

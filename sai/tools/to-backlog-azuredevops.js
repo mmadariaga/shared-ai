@@ -78,6 +78,12 @@ async function readItem(target, number, io) {
     // The work item is the only reliable source of its description format; only an exact `markdown` makes it one.
     format: String(row.multilineFieldsFormat?.['System.Description']).toLowerCase() === 'markdown' ? 'markdown' : 'html' };
 }
+// Azure returns relation URLs with or without a project segment: two relation URLs are the same work item when
+// their organization and number match. A URL that names no work item matches nothing.
+function sameWorkItem(left, right) {
+  const a = source.workItemIdentity(left), b = source.workItemIdentity(right);
+  return !!a && !!b && a.organization === b.organization && a.number === b.number;
+}
 function planningState(row) {
   const parents = (row.relations || []).filter(link => link.rel === 'System.LinkTypes.Hierarchy-Reverse').map(link => link.url);
   if (parents.length > 1 || parents.some(url => typeof url !== 'string')) throw new Error('Invalid parent relations');
@@ -128,13 +134,13 @@ async function planning(request, target, io, item) {
   if (!Object.keys(result).length) return undefined;
   if (item) {
     result.baseline = planningState(await relationRow(target, item, io));
-    if (result.parent && result.baseline.parent && !azure.equal(result.parent.url, result.baseline.parent)) throw new Error('A different native parent already exists');
+    if (result.parent && result.baseline.parent && !sameWorkItem(result.parent.url, result.baseline.parent)) throw new Error('A different native parent already exists');
   }
   return result;
 }
 function pendingPlanning(plan, state) {
-  return ['parent', 'iteration', 'assignee'].filter(key => plan[key] !== undefined && !azure.equal(
-    key === 'parent' ? plan.parent.url : key === 'assignee' ? plan.assignee.id : plan.iteration, state[key]));
+  return ['parent', 'iteration', 'assignee'].filter(key => plan[key] !== undefined && !(key === 'parent' ? sameWorkItem(plan.parent.url, state.parent)
+    : azure.equal(key === 'assignee' ? plan.assignee.id : plan.iteration, state[key])));
 }
 async function planningOutcome(receipt, io) {
   const p = receipt.proposal, row = await relationRow(p, receipt.issue, io), state = planningState(row);
@@ -153,7 +159,7 @@ async function applyPlanning(receipt, file, io, continuation) {
     if (continuation && continuation !== digest({ proposal: p, issue: receipt.issue, rev: row.rev, state })) throw new Error('Planning changed after continuation approval; verify and approve again');
     if (row.fields['System.Title'] !== p.title || !equivalent(p.description, row.fields['System.Description'] ?? '', p.format)) throw new Error('Content changed before planning; reconcile and approve again');
     if (!continuation && p.planning.baseline && digest(state) !== digest(p.planning.baseline) && pending.length) throw new Error('Planning fields changed; reconcile and approve again');
-    if (p.planning.parent && state.parent && !azure.equal(state.parent, p.planning.parent.url)) throw new Error('A different native parent already exists');
+    if (p.planning.parent && state.parent && !sameWorkItem(state.parent, p.planning.parent.url)) throw new Error('A different native parent already exists');
     if (!pending.length) return await planningOutcome(receipt, io);
     const patch = [{ op: 'test', path: '/rev', value: row.rev }];
     if (pending.includes('parent')) patch.push({ op: 'add', path: '/relations/-', value: { rel: relationType('parent'), url: p.planning.parent.url } });
@@ -300,7 +306,7 @@ async function relationRow(p, item, io) {
   return row;
 }
 async function hasRelation(p, item, other, kind, io) {
-  return ((await relationRow(p, item, io)).relations || []).some(link => link.rel === relationType(kind) && azure.equal(link.url, relationURL(p, other)));
+  return ((await relationRow(p, item, io)).relations || []).some(link => link.rel === relationType(kind) && sameWorkItem(link.url, relationURL(p, other)));
 }
 const NOT_FOUND = /(?:HTTP(?: status)?|StatusCode|status code)\s*[:=]?\s*404\b/i;
 // A work item that disappears between a query and its read is not a candidate.
