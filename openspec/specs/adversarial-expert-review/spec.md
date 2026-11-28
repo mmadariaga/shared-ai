@@ -89,7 +89,7 @@ When the product is, or contains, text an agent will read, the reviewer SHALL lo
 
 ### Requirement: Closing report of the checkpoint
 
-The run SHALL report the checkpoint with one line per kept correction and its reason, one line per discarded correction and its reason, one line per finding reported without a correction, the scope observations when any were reported, and one line when the worker report was missing, invalid, or failed, after which the run SHALL continue as after a `no` answer; a review with no findings SHALL be reported as `Expert review: no findings.` with no reconciliation and no commit.
+The run SHALL report the checkpoint with one line per kept correction and its reason, one line per discarded correction and its reason, one line per finding reported without a correction, the scope observations when any were reported, and one line when the worker report was missing, invalid, or failed, after which the run SHALL continue as after a `no` answer; a review with no findings SHALL be reported as `Expert review: no findings.` with no findings list, no reconciliation question, no summary line, and no commit.
 
 #### Scenario: Reviewer report missing or failed
 
@@ -136,3 +136,12 @@ The Direct Build run SHALL record the resolved answer as `expert_review` and the
 
 - **WHEN** a resumed Direct Build run finds `expert_review_checkpoint` recorded as `done`
 - **THEN** it does not run the checkpoint again, and the kept corrections already on disk travel in the archive commit.
+
+### Requirement: Auto-mode findings summary
+
+In `auto` mode, once every finding is decided and before a discarded correction is reverted or a stored document is amended, the coordinator SHALL print one summary line with two counts per severity: the findings the review returned and the findings whose corrections the decision keeps, for example `Expert review: reported High=1 Medium=2 Low=0; accepted High=1 Medium=0 Low=0`. A kept correction that verification later reverts, and a corrected copy that is later discarded, SHALL be named in the closing report. A review with no findings SHALL print no summary line.
+
+#### Scenario: Auto decision reports its counts
+
+- **WHEN** an `auto` checkpoint decides every finding
+- **THEN** it SHALL print one summary line with the reported and accepted counts per severity before a discarded correction is reverted or a stored document is amended.

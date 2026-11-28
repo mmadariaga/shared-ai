@@ -86,3 +86,17 @@ The explore checkpoint SHALL ask, through the native picker, whether to review t
 
 - **WHEN** the user answers `No` to the explore checkpoint question
 - **THEN** no worker SHALL start, no report directory SHALL be opened, and the flow SHALL continue to round 1.
+
+### Requirement: Findings list before the reconciliation question
+
+Wherever the reconciliation question is asked — `ask` mode, an explore checkpoint whose answer is `ask`, and an explore checkpoint whose yes/no question was answered `Yes` — the coordinator SHALL print the `Recommended:` line and then every finding before the picker, in the conversation language, with identifiers, paths, and severities literal. The `Recommended:` line SHALL name the corrections the coordinator recommends keeping as `Recommended: <ids>`, or read `Recommended: none` when it recommends none. The findings list SHALL order findings `High` → `Medium` → `Low` and by ascending identifier, and SHALL render each finding with the five fields and their order of `@sai/policies/artifact-review-contract.md` § Finding shape: `Identifier`, `Severity`, `Artifact location`, `Issue`, and `Recommended correction`. A finding without a correction SHALL appear in the list and stay outside the decision. The list SHALL live only in the chat: the checkpoint SHALL create no findings file, and the closing report SHALL keep the per-finding detail. A review with no findings SHALL open no reconciliation question and no findings list.
+
+#### Scenario: Ask mode shows the findings before the picker
+
+- **WHEN** the recorded answer is `ask` and the review returns findings
+- **THEN** the coordinator SHALL print the `Recommended:` line and the ordered findings list before the reconciliation picker.
+
+#### Scenario: A finding without a correction
+
+- **WHEN** a finding carries no correction
+- **THEN** it SHALL appear in the findings list and stay outside the decision.
