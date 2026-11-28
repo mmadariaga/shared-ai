@@ -177,3 +177,17 @@ With the set answer `yes`, a Direct Build - Unattended slice SHALL hand `sai/com
 
 - **WHEN** marking the shared request ready fails on the last Direct Build slice
 - **THEN** the request stays a draft, the report gives the reason and says it can be marked ready by hand, and the slice counts as completed
+
+### Requirement: The Direct Build publication SHALL carry the archive plan's closing line
+
+When a Direct Build - Unattended slice publishes with the set answer `yes`, the coordinator SHALL hand `sai/commands/build/publication.md` the archived change's name as `closing_change` and the archive plan's `closing_line`, so the request closes the issue linked to the change. A plan without a `closing_line` SHALL hand `closing_change` alone, and the publication SHALL send no closing line.
+
+#### Scenario: Direct Build hands the plan's closing line
+
+- **WHEN** a Direct Build slice publishes with the answer `yes` after the archive worker's clean `completed` result and the plan carries a `closing_line`
+- **THEN** `sai/commands/build/publication.md` receives the archived change name and that closing line, and its `publish` request repeats both
+
+#### Scenario: A plan without a closing line hands the change name alone
+
+- **WHEN** the archive plan of the published slice carries no `closing_line`
+- **THEN** the publication receives `closing_change` with the archived change name and sends no closing line

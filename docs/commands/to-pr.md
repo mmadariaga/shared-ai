@@ -93,8 +93,18 @@ other people's comments; ambiguous matches need clarification. Moving the block
 back to the description leaves a location notice in the managed comment.
 
 On GitHub and GitLab, the description ends with a `Closes` block generated from
-closing keywords in the branch's committed messages (such as `Fixes #12`). A branch
-named `<number>_<slug>` after an issue also closes that issue, but only when it has
+closing keywords in the branch's committed messages (such as `Fixes #12`). Two optional
+fields add an origin-driven reference: `closing_change` names a change whose
+`backlog_origin` (from its active, or else archived, `.openspec.yaml`) supplies
+`Closes owner/repo#N`, and `closing_line` passes that complete line explicitly and wins
+over the metadata. Only a canonical GitHub or GitLab origin on the destination host
+produces a line: a non-canonical origin warns without inventing one, an origin on another
+host or an Azure DevOps origin adds nothing and no warning, and a change without a readable
+`.openspec.yaml` warns without blocking publication. `/sai-build` passes `closing_change`,
+so its request closes the issue linked to the change, and the Direct Build route passes the
+archive plan's `closing_line` too; `/sai-plan` passes neither. Both fields enter the query
+proposal, so a publish whose values differ from the approved ones fails the approval check.
+A branch named `<number>_<slug>` after an issue also closes that issue, but only when it has
 children and all of them are closed or covered by this request. Issues you already
 close by hand in the description are not repeated. An issue on another host is
 reported as a warning and not closed. Azure Repos requests get no closing block.

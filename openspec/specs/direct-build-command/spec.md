@@ -52,12 +52,17 @@ Invoking the command SHALL consent to the delegated writes of the Direct Build r
 
 ### Requirement: Closing literal only on completion
 
-The command SHALL dispose every worker and helper still alive before its closing report, in every outcome, and close with the card's terminal report. It SHALL print `Direct build done.` as the last line of the output, alone on its line, only when the archive worker returned a clean `completed` result and the archive commit is confirmed. An escalation SHALL go through the native picker; a stopped, cancelled, or unanswered run, or one whose escalation was dismissed, SHALL print its report and end without the closing literal, so a headless caller reads the missing line as an escalation.
+The command SHALL dispose every worker and helper still alive before its closing report, in every outcome, and close with the card's terminal report. It SHALL print `Direct build done.` as the last line of the output, alone on its line, only when the archive worker returned a clean `completed` result, the archive commit is confirmed, and the closing-footer check left the archive plan's `closing_line` as the last non-empty line of that commit. An escalation SHALL go through the native picker; a stopped, cancelled, or unanswered run, or one whose escalation was dismissed, or a run whose closing-footer amendment failed, SHALL print its report and end without the closing literal, so a headless caller reads the missing line as an escalation.
 
 #### Scenario: Unanswered escalation omits the literal
 
 - **WHEN** a `/sai-direct-build` run escalates and no user answers
 - **THEN** the stop report is printed and `Direct build done.` is not
+
+#### Scenario: A present footer allows the closing literal
+
+- **WHEN** the archive worker's result is clean, the archive commit is confirmed, and the plan's `closing_line` is its last non-empty line
+- **THEN** the report ends with `Direct build done.` alone on its last line
 
 ### Requirement: Direct Build command capability profile
 
@@ -76,3 +81,17 @@ The model customization menu SHALL list `command:sai-direct-build` with context 
 
 - **WHEN** a default preset is read
 - **THEN** its `command:sai-direct-build` entry equals its `command:sai-build` entry
+
+### Requirement: The closing-footer amendment SHALL keep one commit
+
+After the archive worker's clean `completed` result and before its closing report, `/sai-direct-build` SHALL run the card's closing-footer check against the archive plan's `closing_line` and SHALL amend that one local commit's message when the line is missing, moved, or beside another `Closes` line. The amendment SHALL create no second commit, record no telemetry, and push nothing; a plan without a `closing_line` SHALL run no check.
+
+#### Scenario: A missing footer is amended on the one commit
+
+- **WHEN** the archive commit message lacks the plan's `closing_line`
+- **THEN** the command appends the line, amends that same commit, and still holds exactly one local commit with no telemetry commit
+
+#### Scenario: A failed amendment ends the run without the literal
+
+- **WHEN** the amendment of the archive commit's message fails
+- **THEN** the report names the affected commit and `Direct build done.` does not print

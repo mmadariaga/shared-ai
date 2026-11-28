@@ -1000,6 +1000,102 @@ test('I3: publication writes the block into the created request exactly as appro
   assert.equal(state.mutations[0].body.body, `## Summary\nCommitted feature\n\n${block('Closes #5')}`);
 });
 
+// Origin-driven closing: `closing_change` reads the change's backlog origin, `closing_line` passes the line explicitly.
+function originFixture(t, provider, { active, archived } = {}) {
+  const made = closingFixture(provider, {});
+  const cwd = temporaryDirectory(t, 'to-pr-origin-');
+  made.io.cwd = cwd;
+  if (active !== undefined) {
+    fs.mkdirSync(path.join(cwd, 'openspec/changes/demo'), { recursive: true });
+    fs.writeFileSync(path.join(cwd, 'openspec/changes/demo/.openspec.yaml'), active);
+  }
+  if (archived !== undefined) {
+    const directory = path.join(cwd, 'openspec/changes/archive/2026-01-02-demo');
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(directory, '.openspec.yaml'), archived);
+  }
+  return made;
+}
+const META = origin => `schema: sai-workflow\ncreated: 2026-01-01\nbacklog_origin: ${origin}\n`;
+for (const provider of ['github', 'gitlab']) {
+  const origin = provider === 'github' ? githubIssue(7) : gitlabIssue(7);
+  test(`${provider} closing_change closes the issue of the active .openspec.yaml origin`, async t => {
+    const { request, io } = originFixture(t, provider, { active: META(origin) });
+    const result = await tool.query({ ...request, closing_change: 'demo' }, io);
+    assert.equal(result.proposal.description, `## Summary\nCommitted feature\n\n${block('Closes #7')}`);
+    assert.equal(result.proposal.closing_change, 'demo');
+    assert.equal(result.warnings, undefined);
+  });
+  test(`${provider} closing_change falls back to the archived .openspec.yaml`, async t => {
+    const { request, io } = originFixture(t, provider, { archived: META(origin) });
+    const result = await tool.query({ ...request, closing_change: 'demo' }, io);
+    assert.equal(result.proposal.description, `## Summary\nCommitted feature\n\n${block('Closes #7')}`);
+  });
+}
+test('closing_line is an explicit reference and needs no change metadata', async t => {
+  const { request, io } = originFixture(t, 'github', {});
+  const result = await tool.query({ ...request, closing_line: 'Closes team/repo#42' }, io);
+  assert.equal(result.proposal.description, `## Summary\nCommitted feature\n\n${block('Closes #42')}`);
+  assert.equal(result.proposal.closing_line, 'Closes team/repo#42');
+  assert.equal(result.warnings, undefined);
+});
+test('E4: a non-canonical origin warns without inventing a line, a foreign host or Azure origin adds nothing, and a missing metadata warns', async t => {
+  const nonCanonical = originFixture(t, 'github', { active: META('https://github.com/team/repo/pull/7') });
+  const warned = await tool.query({ ...nonCanonical.request, closing_change: 'demo' }, nonCanonical.io);
+  assert.equal(warned.proposal.description, '## Summary\nCommitted feature');
+  assert.equal(warned.warnings.length, 1);
+  assert.match(warned.warnings[0], /no closing reference/);
+  for (const [label, url] of [['another host', 'https://gitlab.com/team/repo/issues/7'], ['Azure DevOps', 'https://dev.azure.com/org/proj/_workitems/edit/3']]) {
+    const foreign = originFixture(t, 'github', { active: META(url) });
+    const result = await tool.query({ ...foreign.request, closing_change: 'demo' }, foreign.io);
+    assert.equal(result.proposal.description, '## Summary\nCommitted feature', label);
+    assert.equal(result.warnings, undefined, label);
+  }
+  const missing = originFixture(t, 'github', {});
+  const unreadable = await tool.query({ ...missing.request, closing_change: 'ghost' }, missing.io);
+  assert.equal(unreadable.proposal.description, '## Summary\nCommitted feature');
+  assert.equal(unreadable.warnings.length, 1);
+  assert.match(unreadable.warnings[0], /no \.openspec\.yaml/);
+  const noOrigin = originFixture(t, 'github', { active: 'schema: sai-workflow\ncreated: 2026-01-01\n' });
+  const none = await tool.query({ ...noOrigin.request, closing_change: 'demo' }, noOrigin.io);
+  assert.equal(none.proposal.description, '## Summary\nCommitted feature');
+  assert.equal(none.warnings, undefined);
+});
+test('E4: the active .openspec.yaml is authoritative even without a backlog_origin', async t => {
+  const { request, io } = originFixture(t, 'github', {
+    active: 'schema: sai-workflow\ncreated: 2026-01-01\n',
+    archived: META(githubIssue(7)),
+  });
+  const result = await tool.query({ ...request, closing_change: 'demo' }, io);
+  assert.equal(result.proposal.description, '## Summary\nCommitted feature');
+  assert.equal(result.warnings, undefined);
+});
+test('E4: an explicit closing_line from a foreign-host origin adds no line', async t => {
+  const { request, io } = originFixture(t, 'github', { active: META('https://gitlab.com/team/repo/issues/7') });
+  const result = await tool.query({ ...request, closing_change: 'demo', closing_line: 'Closes team/repo#7' }, io);
+  assert.equal(result.proposal.description, '## Summary\nCommitted feature');
+  assert.equal(result.warnings, undefined);
+});
+test('E4: a same-host explicit closing_line still closes', async t => {
+  const { request, io } = originFixture(t, 'github', { active: META(githubIssue(7)) });
+  const result = await tool.query({ ...request, closing_change: 'demo', closing_line: 'Closes team/repo#42' }, io);
+  assert.equal(result.proposal.description, `## Summary\nCommitted feature\n\n${block('Closes #42')}`);
+});
+test('E5 / I4: the closing fields enter the query proposal and its approval digest', async t => {
+  const { request, io, state } = originFixture(t, 'github', { active: META(githubIssue(7)) });
+  const ready = await tool.query({ ...request, closing_change: 'demo' }, io);
+  await assert.rejects(async () => await tool.publish({ ...request, closing_change: 'demo', closing_line: 'Closes team/repo#99', approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io), /approval/);
+  assert.equal(state.mutations.length, 0);
+  const result = await tool.publish({ ...request, closing_change: 'demo', approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io);
+  assert.equal(result.status, 'complete');
+  assert.equal(state.mutations[0].body.body, `## Summary\nCommitted feature\n\n${block('Closes #7')}`);
+});
+test('the closing fields are validated before any destination is read', async t => {
+  const { request, io } = originFixture(t, 'github', {});
+  await assert.rejects(async () => await tool.query({ ...request, closing_line: '#12' }, io), /closing_line/);
+  await assert.rejects(async () => await tool.query({ ...request, closing_change: 'Bad Name' }, io), /closing_change/);
+});
+
 // Assignee and labels on creation (E1-E10, I1-I6): the current user plus existing type/area labels.
 const labelCalls = state => state.calls.filter(call => call.command !== 'git' && (call.args[1] === 'user' || /\/labels\?/.test(call.args[1])));
 for (const provider of ['github', 'gitlab']) {

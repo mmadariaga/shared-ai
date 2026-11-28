@@ -8,7 +8,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const TOOL = path.join(__dirname, '..', 'sai', 'tools', 'archive-plan.js');
-const { parseMetadata, parseDelta, emptiesCapability, closingLineOf } = require(TOOL);
+const { parseMetadata, parseDelta, emptiesCapability, closingLineOf, closingFooterStatus } = require(TOOL);
 
 const HAS_OPENSPEC = !spawnSync('openspec', ['--version'], { encoding: 'utf8' }).error;
 const fixture = (name, body) => test(name, { skip: HAS_OPENSPEC ? false : 'the openspec binary is absent' }, body);
@@ -164,6 +164,75 @@ test('the closing line comes from the shape of the origin URL, with no API call'
   assert.equal(closingLineOf('https://dev.azure.com/org/proj/_workitems/edit/3').warning, null);
   assert.equal(closingLineOf('not a url').line, null);
   assert.ok(closingLineOf('not a url').warning);
+});
+
+test('the footer check finds a present, missing, moved, and additional closing line and corrects the message', () => {
+  const line = 'Closes owner/repo#12';
+  const present = closingFooterStatus('feat: archive the change\n\nBody line\n\nCloses owner/repo#12\n', line);
+  assert.deepEqual(present, { status: 'present', last_line: line, kept: [], corrected: null });
+  assert.deepEqual(closingFooterStatus(`feat: archive\n\n${line}`, line).status, 'present');
+  const missing = closingFooterStatus('feat: archive the change\n\nBody line', line);
+  assert.equal(missing.status, 'missing');
+  assert.equal(missing.corrected, `feat: archive the change\n\nBody line\n\n${line}`);
+  const moved = closingFooterStatus(`feat: archive\n\n${line}\n\nBody after`, line);
+  assert.equal(moved.status, 'moved');
+  assert.equal(moved.corrected, `feat: archive\n\n\nBody after\n\n${line}`);
+  assert.doesNotMatch(moved.corrected.replace(line, ''), /Closes/);
+  const spaced = closingFooterStatus('feat: archive\n\n\nBody after two blank lines', line);
+  assert.equal(spaced.status, 'missing');
+  assert.equal(spaced.corrected, `feat: archive\n\n\nBody after two blank lines\n\n${line}`);
+  const additional = closingFooterStatus(`feat: archive\n\nCloses other/repo#9`, line);
+  assert.equal(additional.status, 'additional');
+  assert.deepEqual(additional.kept, ['Closes other/repo#9']);
+  assert.equal(additional.corrected, `feat: archive\n\nCloses other/repo#9\n\n${line}`);
+  // A bare or differently cased closing line is another closing line too, and it is kept as written.
+  const bare = closingFooterStatus('feat: archive\n\nCloses #9', line);
+  assert.equal(bare.status, 'additional');
+  assert.deepEqual(bare.kept, ['Closes #9']);
+  assert.equal(bare.corrected, `feat: archive\n\nCloses #9\n\n${line}`);
+  const cased = closingFooterStatus('feat: archive\n\ncloses #9', line);
+  assert.equal(cased.status, 'additional');
+  assert.deepEqual(cased.kept, ['closes #9']);
+  // The same issue in another form is the plan's issue, not another issue.
+  const sameCased = closingFooterStatus('feat: archive\n\ncloses owner/repo#12', line);
+  assert.equal(sameCased.status, 'moved');
+  assert.deepEqual(sameCased.kept, []);
+  assert.equal(sameCased.corrected, `feat: archive\n\n${line}`);
+  const sameBare = closingFooterStatus('feat: archive\n\nCloses #12', line);
+  assert.equal(sameBare.status, 'moved');
+  assert.deepEqual(sameBare.kept, []);
+  assert.equal(sameBare.corrected, `feat: archive\n\n${line}`);
+  // A message whose last line already is the plan's line is left untouched, other lines included.
+  const both = closingFooterStatus(`feat: archive\n\nCloses other/repo#9\n\n${line}`, line);
+  assert.equal(both.status, 'present');
+  assert.equal(both.corrected, null);
+  assert.equal(closingFooterStatus('', line).status, 'missing');
+});
+
+test('the footer subcommand reads the commit message and writes the corrected message to amend with', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-footer-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  git(root, ['init', '-q']);
+  git(root, ['config', 'user.email', 'test@example.com']);
+  git(root, ['config', 'user.name', 'Test']);
+  put(root, 'file.txt', 'one\n');
+  git(root, ['add', '-A']);
+  git(root, ['commit', '-q', '-m', 'feat: archive']);
+  const output = path.join(root, 'message.txt');
+  const corrected = spawnSync(process.execPath, [TOOL, 'footer', '--commit', 'HEAD', '--closing-line', 'Closes owner/repo#12', '--output', output, '--json', '--cwd', root], { encoding: 'utf8' });
+  assert.equal(corrected.status, 0, corrected.stderr);
+  const verdict = JSON.parse(corrected.stdout);
+  assert.equal(verdict.ok, true);
+  assert.equal(verdict.status, 'missing');
+  assert.equal(fs.readFileSync(verdict.corrected_file, 'utf8'), 'feat: archive\n\nCloses owner/repo#12\n');
+  git(root, ['commit', '-q', '--amend', '-F', verdict.corrected_file]);
+  const present = spawnSync(process.execPath, [TOOL, 'footer', '--commit', 'HEAD', '--closing-line', 'Closes owner/repo#12', '--output', path.join(root, 'other.txt'), '--json', '--cwd', root], { encoding: 'utf8' });
+  assert.equal(present.status, 0, present.stderr);
+  assert.deepEqual(JSON.parse(present.stdout), { ok: true, commit: JSON.parse(present.stdout).commit, status: 'present', last_line: 'Closes owner/repo#12', kept: [], corrected_file: null });
+  assert.equal(fs.existsSync(path.join(root, 'other.txt')), false);
+  const missingLine = spawnSync(process.execPath, [TOOL, 'footer', '--commit', 'HEAD', '--json', '--cwd', root], { encoding: 'utf8' });
+  assert.equal(missingLine.status, 2);
+  assert.match(missingLine.stdout, /closing line required/);
 });
 
 fixture('E1: a normal archive gets the destination, the specs, the commit paths, and the omitted paths git and the CLI produce', (t) => {

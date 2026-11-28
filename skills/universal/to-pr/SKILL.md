@@ -243,7 +243,17 @@ Run sections 1 and 2 as written, with these changes: ask nothing (an ambiguous r
 target branch, an unresolved provider, or a missing plan skips the publication and names the
 fact), and send `publish_pr_as_draft` in `query` and `publish`: `true` for `/sai-plan`, and the value
 that `sai/commands/build/publication.md` receives from its caller for the build and the Direct Build
-slice (`false` for `/sai-build`). Then add the `--unattended` flag to
+slice (`false` for `/sai-build`).
+
+The build and Direct Build publications also send two optional closing fields in `query` and
+`publish`: `closing_change`, the change name whose `backlog_origin` supplies the closing reference
+(read from the change's active or archived `.openspec.yaml`), and `closing_line`, a complete
+`Closes owner/repo#N` line that wins over the change metadata. Both enter the proposal, so a
+`publish` whose field values differ from the approved ones fails the approval check, and only a
+canonical GitHub or GitLab origin on the destination host produces a line. The `/sai-plan`
+publication sends neither and closes no issue.
+
+Then add the `--unattended` flag to
 exactly three operations: `plan-commit`, `push`, and `publish`
 (`node <tool-path> <operation> --unattended <registry-path>`; every other operation refuses
 the flag, and a field named `unattended` in the input never enables it). The flag replaces the
