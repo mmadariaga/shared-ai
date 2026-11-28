@@ -7,7 +7,7 @@ TBD - created by archiving change pr-publication-answer-in-explore. Update Purpo
 
 ### Requirement: Round 3 asks the publication question once per crystallized set
 
-Round 3 of `/sai-explore` SHALL carry the publication question as a conditional question beside the route question, never as a separate interaction after the route answer. The question SHALL be asked once for the whole `last_crystallization_set`, in the first round 3 of the set, whatever route that slice takes, Manual included; later round-3 groups of the same set SHALL NOT ask it again. Before round 3, Explore SHALL resolve the answer in this order, and the first match SHALL win with no publication question in the round: the answer `explore-slice@1` already holds for the set; then the `pr.publishAfterRun` setting read with `project-settings.js get`, when it returns `yes` or `no`, printing `Project setting pr.publishAfterRun: <value>` once; then the question. `ask`, an absent key, an invalid value, and a tool that cannot run SHALL leave the question normal. The question SHALL say what a `yes` does on each route and that a `no` pushes nothing. With a branch pending creation, it SHALL name the pending branch by its exact name and its remote (the only remote the repository lists, or say that the remote cannot be read) and SHALL say that the branch does not exist yet and is created after the route answer, so that a `yes` authorizes the push of that branch only. With no pending branch, it SHALL name the current branch and its remote (or say that the remote cannot be read). It SHALL offer **Publish** (`yes`) and **Do not publish** (`no`) through `AskUserQuestion` on Claude Code and `question` on opencode, with the same text and options on both. A detached HEAD with no pending branch SHALL ask nothing, record no answer, and report that nothing is published. A declined, cancelled, or non-committal answer to the question SHALL resolve `no`; a cancelled round or an invalid route answer SHALL record nothing. The answer SHALL be the held confirmation for the push and the creation or update of the request on the branch each publishing slice is on, and SHALL authorize nothing else.
+Round 3 of `/sai-explore` SHALL carry the publication question as a conditional question beside the route question, never as a separate interaction after the route answer. The question SHALL be asked once for the whole `last_crystallization_set`, in the first round 3 of the set, whatever route that slice takes, Manual included; later round-3 groups of the same set SHALL NOT ask it again. Before round 3, Explore SHALL resolve the answer in this order, and the first match SHALL win with no publication question in the round: the answer `explore-slice@1` already holds for the set; then the `pr.publishAfterRun` setting read with `project-settings.js get`, when it returns `yes` or `no`, printing `Project setting pr.publishAfterRun: <value>` once; then the question. `ask`, an absent key, an invalid value, and a tool that cannot run SHALL leave the question normal. The question SHALL say what a `yes` does on each route and that a `no` pushes nothing. With a branch pending creation, it SHALL name the pending branch by its exact name and its remote (the only remote the repository lists, or say that the remote cannot be read) and SHALL say that the branch does not exist yet and is created after the route answer, so that a `yes` authorizes the push of that branch only. With no pending branch, it SHALL name the current branch and its remote (or say that the remote cannot be read). A detached HEAD with no pending branch SHALL ask nothing, show no sentence, record no answer, and report that nothing is published. The picker's summary question SHALL be the fixed sentence “Should a pull request be published when each change's automatic run ends?”, with the Spanish form, used verbatim: “¿Quieres que se publique una pull request al terminar la ejecución automática de cada cambio?”. In any other chat language, the run SHALL translate the sentence, the option labels, and the option descriptions, and SHALL keep “pull request” and “PR/MR” as written. The options SHALL be fixed, with the stable values `yes` and `no`: `yes` has label “Publish the PR/MR” and description “Push the branch and create or update its PR/MR”, with the Spanish label “Publicar la PR/MR” and description “Subir la rama y crear o actualizar su PR/MR”; `no` has label “Do not publish” and description “Push nothing and publish nothing”, with the Spanish label “No publicar nada” and description “No subir ni publicar nada”. Explore SHALL present them through `AskUserQuestion` on Claude Code and `question` on opencode, with the same text and options on both. The text before the picker SHALL keep naming the branch, its remote, and the pull-request state each route produces, and SHALL use the sentence's terms: a slice is a “change”, the request is a “pull request”, and a route is named by its picker label. The paragraph's opening definition sentence SHALL use the same terms. A declined, cancelled, or non-committal answer to the question SHALL resolve `no`; a cancelled round or an invalid route answer SHALL record nothing. The answer SHALL be the held confirmation for the push and the creation or update of the request on the branch each publishing slice is on, and SHALL authorize nothing else.
 
 #### Scenario: First round 3 of the set asks the question
 
@@ -27,12 +27,27 @@ Round 3 of `/sai-explore` SHALL carry the publication question as a conditional 
 #### Scenario: Detached HEAD publishes nothing
 
 - **WHEN** round 3 would ask the publication question while HEAD is detached and no branch is pending
-- **THEN** Explore asks nothing, records no answer, and reports that nothing is published because HEAD is detached
+- **THEN** Explore asks nothing, shows no sentence, records no answer, and reports that nothing is published because HEAD is detached
 
 #### Scenario: Pending branch is named in the question
 
 - **WHEN** round 3 asks the publication question while a branch is pending creation
 - **THEN** the question names the pending branch's exact name and its remote and says that the branch does not exist yet
+
+#### Scenario: English uses the fixed sentence and options
+
+- **WHEN** round 3 asks the publication question in an English chat
+- **THEN** the picker's summary question is “Should a pull request be published when each change's automatic run ends?”, and the `yes` and `no` options carry the fixed English labels and descriptions
+
+#### Scenario: Spanish uses the fixed forms verbatim
+
+- **WHEN** round 3 asks the publication question in a Spanish chat
+- **THEN** the picker's summary question is “¿Quieres que se publique una pull request al terminar la ejecución automática de cada cambio?”, and the options carry the fixed Spanish labels and descriptions
+
+#### Scenario: Other languages translate and keep the fixed terms
+
+- **WHEN** round 3 asks the publication question in a chat language other than English or Spanish
+- **THEN** the sentence, labels, and descriptions are translated, “pull request” and “PR/MR” stay as written, and the preceding text uses “change”, “pull request”, and the route's picker label
 
 ### Requirement: explore-slice@1 records the set-wide publication answer
 

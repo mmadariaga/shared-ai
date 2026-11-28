@@ -169,6 +169,21 @@ test('round 3 carries the publication question once per set and records it in ex
   assert.match(publication, /node <sai-state-path> emit --note "record the publication answer" <id> explore-slice@1 --set intent=publication --set value=<yes\|no>/);
   assert.match(publication, /PUBLICATION_ALREADY_RECORDED/);
   assert.match(publication, /clears it together with the slice inventory/);
+  assert.match(publication, /Spanish form, used verbatim:/);
+  assert.match(publication, /“Should a pull request be published when each change's automatic run ends\?”/);
+  assert.match(publication, /“¿Quieres que se publique una pull request al terminar la ejecución automática de cada cambio\?”/);
+  for (const fixed of [
+    '“Publish the PR/MR”',
+    '“Push the branch and create or update its PR/MR”',
+    '“Publicar la PR/MR”',
+    '“Subir la rama y crear o actualizar su PR/MR”',
+    '“Do not publish”',
+    '“Push nothing and publish nothing”',
+    '“No publicar nada”',
+    '“No subir ni publicar nada”',
+  ]) {
+    assert.ok(publication.includes(fixed), fixed);
+  }
   assert.match(publication, /A declined, cancelled, or non-committal answer to this question resolves `no`/);
   assert.match(publication, /`AskUserQuestion` on Claude Code, `question` on opencode/);
   assert.match(publication, /\*\*Manual\*\* ignores the answer/);
