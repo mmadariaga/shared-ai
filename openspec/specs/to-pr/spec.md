@@ -910,7 +910,7 @@ When `publication.autoApprove` is `true`, `to-pr.js` `push` and `publish` SHALL 
 
 ### Requirement: Normalized risk block feeds every later use
 
-The risk-block planner SHALL strip trailing `\r` and `\n` from `risk_block` exactly once, after its string-type check, and SHALL use the stripped block for the marker checks, the description comparison, the comment-overflow length check, the returned proposal `block`, and the managed comment body.
+`query` and `publish` SHALL use the `risk_block` without its trailing `\r` and `\n` characters for the marker checks, the description comparison, the comment-overflow length check, the proposal's `inherent_risk.block`, and the managed comment body; the request value with its line breaks SHALL reach none of them.
 
 #### Scenario: Description placement compares the normalized block
 - **WHEN** description placement is selected and the request `risk_block` ends with line breaks
@@ -918,7 +918,7 @@ The risk-block planner SHALL strip trailing `\r` and `\n` from `risk_block` exac
 
 #### Scenario: Comment placement writes the normalized block
 - **WHEN** comment placement is selected and the request `risk_block` ends with line breaks
-- **THEN** the managed comment body carries the normalized block, equal to the reported `inherent_risk.block`
+- **THEN** the managed comment body carries the normalized block, equal to the proposal's `inherent_risk.block`
 
 #### Scenario: Publication accepts the unnormalized request
 - **WHEN** `publish` receives the same request with trailing line breaks and the `confirmation` returned for the normalized request

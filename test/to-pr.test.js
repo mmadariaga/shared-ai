@@ -319,8 +319,10 @@ for (const provider of ['github', 'gitlab']) {
       assert.equal(ready.confirmation, clean.confirmation);
       assert.equal(ready.proposal.inherent_risk.block, riskBlock);
       assert.equal(ready.proposal.inherent_risk.body, `<!-- sai-to-pr:inherent-risk -->\n${riskBlock}`);
-      const described = { ...request, risk_placement: 'description', description: `${request.description}\n${riskBlock}`, risk_block: riskBlock + ending };
-      assert.equal((await tool.query(described, io)).proposal.inherent_risk.block, riskBlock);
+      const described = { ...request, risk_placement: 'description', description: `${request.description}\n${riskBlock}`, risk_block: riskBlock };
+      const describedReady = await tool.query({ ...described, risk_block: riskBlock + ending }, io);
+      assert.equal(describedReady.proposal.inherent_risk.block, riskBlock);
+      assert.equal(describedReady.confirmation, (await tool.query(described, io)).confirmation);
     }
     // E1: YAML `|`, `|-` and `|+` block scalars read through the shared request reader.
     const yaml = header => [
