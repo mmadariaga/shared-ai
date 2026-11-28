@@ -2,9 +2,9 @@
 
 How a plan segment runs, whether it runs alone (`/sai-1-spec`, `/sai-2-design`) or inside `/sai-plan`. The segment card that fetched this file names its worker binding, step machine, steps, artifact paths, mechanical checks, review criteria, commit paths, and closing report. This file owns the rest.
 
-Fetch `@sai/policies/obstacle-escalation.md`
+Fetch? `@sai/policies/obstacle-escalation.md`
 Fetch `@sai/policies/cache-warming.md`
-Fetch `@sai/policies/worker-report-transport.md` and follow its receiver side for every spec, design, and plan RED report.
+Fetch? `@sai/policies/worker-report-transport.md` and follow its receiver side for every spec, design, and plan RED report.
 
 You are the driver of the segment. You decide, answer, check, review, and commit. The worker only writes the segment's artifacts, and never runs git. Segments exchange nothing but artifacts on disk.
 

@@ -19,10 +19,10 @@ test('the Direct Build card is a goal-driven card on the shared obstacle policy'
   for (const heading of ['## Goal', '## Start', '## Run state', '## The run', '## Resume', '## Obstacles', '## Close']) {
     assert.ok(card.includes(heading), `the card has ${heading}`);
   }
-  assert.ok(card.includes('Fetch `@sai/policies/obstacle-escalation.md`'));
+  assert.ok(card.includes('Fetch? `@sai/policies/obstacle-escalation.md`'));
   assert.match(card, /Obstacles, their budget of 3 attempts, force majeure, and escalation follow `@sai\/policies\/obstacle-escalation\.md`/);
   assert.ok(card.includes('Fetch `@sai/orchestration/workers/bindings/direct-build-worker.md` and use it.'));
-  assert.ok(card.includes('Fetch `@sai/orchestration/workers/bindings/backfill-worker.md` and use it'));
+  assert.ok(card.includes('Fetch? `@sai/orchestration/workers/bindings/backfill-worker.md` and use it'));
   assert.ok(card.includes('Fetch `@sai/orchestration/workers/bindings/archive-worker.md` and use it.'));
   assert.doesNotMatch(card, LEGACY);
   assert.doesNotMatch(card, /Bounded Recovery|Cause Locus|diagnosis_rounds|replacement_reconstruction_fields/);

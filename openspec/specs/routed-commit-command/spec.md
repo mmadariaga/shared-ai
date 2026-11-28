@@ -68,7 +68,7 @@ The commit coordinator card SHALL state an "OpenSpec independence" note: `sai-co
 
 ### Requirement: End-to-end worker registration
 
-The `sai-commit-worker` identity SHALL be registered across the full projection chain: `bin/worker-matrix.js` carries the `commit` phase entry and its worker-identity regex admits `sai-commit-worker`; `sai/install-manifest.json` (and its generator) declare the claude and opencode managed-agent projections for the worker; the installed-worker roster and binding validators in `bin/install-flow.js` accept the resulting roster; and `sai/commands/commit/coordinator.md` carries exactly the binding fetch `Fetch @sai/orchestration/workers/bindings/commit-worker.md and use it.`
+The `sai-commit-worker` identity SHALL be registered across the full projection chain: `bin/worker-matrix.js` carries the `commit` phase entry and its worker-identity regex admits `sai-commit-worker`; `sai/install-manifest.json` (and its generator) declare the claude and opencode managed-agent projections for the worker; the installed-worker roster and binding validators in `bin/install-flow.js` accept the resulting roster; and `sai/commands/commit/coordinator.md` carries exactly the binding fetch ``Fetch `@sai/orchestration/workers/bindings/commit-worker.md` and use it.``
 
 #### Scenario: Install validates the worker roster
 

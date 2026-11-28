@@ -4,7 +4,7 @@
 
 ## Locate the tool
 
-Resolve `sai/tools/prereqs.js` with the fetch tool in path mode, per `@sai/policies/tool-resolution.md`: name the subpath `sai/tools/prereqs.js` twice in one call (a one-subpath call prints the file), and run the copy it returns as that policy states. The first copy it returns defines the version.
+Resolve `sai/tools/prereqs.js` with the fetch tool in path mode, per `@sai/policies/tool-resolution.md`: name the subpath `sai/tools/prereqs.js` twice in one call (a one-subpath call prints the file), read the absolute path from the tree's root line, and run that copy as that policy states. The first copy the tool returns defines the version.
 
 ## Run it
 

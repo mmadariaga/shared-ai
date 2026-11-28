@@ -6,7 +6,7 @@ Fetch `@skills/safe-operations/SKILL.md` and use it.
 Fetch `@sai/policies/tool-resolution.md`
 Fetch `@sai/policies/finding-state.md`
 Fetch `@sai/policies/cache-warming.md`
-Fetch `@sai/policies/worker-report-transport.md` and follow its receiver side for every audit report.
+Fetch? `@sai/policies/worker-report-transport.md` and follow its receiver side for every audit report.
 
 You chain the segments of one deep-review run in a single session. The invocation carries one string, `arguments_value`: an optional change name and the options of step 1 of Start.
 

@@ -7,7 +7,7 @@ TBD - created by archiving change wrap-instruction-references-in-code-spans. Upd
 
 ### Requirement: Both fetch skills SHALL resolve a backticked directive exactly like the bare form
 
-`skills/claude/fetch/SKILL.md` and `skills/opencode/fetch/SKILL.md` SHALL state that a `Fetch` or `Also fetch` directive whose path sits inside an inline code span is the same directive as the bare form, and SHALL resolve the path inside the span by the same resolution rows. Each skill's resolution table SHALL show the backticked form beside the bare form for the `@skills/<name>/SKILL.md` rows and for the any-other-subpath row.
+`skills/claude/fetch/SKILL.md` and `skills/opencode/fetch/SKILL.md` SHALL state that a `Fetch`, `Also fetch`, `Fetch?`, or `Also fetch?` directive whose path sits inside an inline code span is the same directive as the bare form, and SHALL resolve the path inside the span by the same resolution rows. Each skill's resolution table SHALL show the backticked form beside the bare form for the `@skills/<name>/SKILL.md` rows and for the any-other-subpath row, and SHALL show the marked `Fetch?` and `Also fetch?` forms beside their unmarked rows. The `?` marker SHALL sit directly after the verb and SHALL record that the directive is conditional.
 
 #### Scenario: Backticked skill directive uses the skill tool
 
@@ -24,6 +24,11 @@ TBD - created by archiving change wrap-instruction-references-in-code-spans. Upd
 - **WHEN** an instruction contains ``Also fetch `@sai/policies/remember.md` ``
 - **THEN** the fetch skill resolves it by the same row as the bare `Also fetch @sai/policies/remember.md`
 
+#### Scenario: Backticked marked directive resolves the same way
+
+- **WHEN** an instruction contains ``Fetch? `@sai/policies/obstacle-escalation.md` ``
+- **THEN** the fetch skill resolves `sai/policies/obstacle-escalation.md` through its fetch tool exactly as for the unmarked form, and reads it only when its condition holds
+
 ### Requirement: The doctor SHALL read a backticked fetch directive as the same reference as the bare form
 
 The doctor's fetch-reference parser SHALL accept an optional backtick between `Fetch` or `Also fetch` and the `@` path, and SHALL extract the same reference path from the backticked and the bare forms, without the closing backtick or trailing punctuation.
@@ -32,3 +37,27 @@ The doctor's fetch-reference parser SHALL accept an optional backtick between `F
 
 - **WHEN** the doctor parses ``Fetch `@sai/commands/commit/coordinator.md` and follow it exactly.`` and `Fetch @sai/policies/public-chat.md and follow it exactly.`
 - **THEN** it extracts `sai/commands/commit/coordinator.md` and `sai/policies/public-chat.md`
+
+### Requirement: A conditional directive carries the ? marker directly after its verb
+
+Every conditional directive in the installed instruction files SHALL carry the `?` marker directly after the verb, with only its path in the inline code span, and SHALL be read only when the condition stated in its paragraph or its `##` section holds. An unmarked directive SHALL stay required. A directive inline in a conditional sub-case SHALL stand on its own line.
+
+#### Scenario: marked subpath directive resolves through the fetch tool
+
+- **WHEN** an instruction contains a marked directive for `sai/policies/worker-report-transport.md` and its condition holds
+- **THEN** the fetch skill resolves the subpath through its fetch tool
+
+#### Scenario: marked skill directive loads the skill
+
+- **WHEN** an instruction contains a marked directive for `skills/from-backlog/SKILL.md` and its condition holds
+- **THEN** the fetch skill loads the `from-backlog` skill with the harness skill tool, exactly as for its unmarked form
+
+#### Scenario: the marker sits directly after the verb
+
+- **WHEN** an instruction writes `Fetch ? @sai/policies/example.md` or places the whole directive phrase in a code span
+- **THEN** the `fetch-directives` lint check reports a directive-form violation
+
+#### Scenario: an inline conditional directive stands on its own line
+
+- **WHEN** a conditional directive is embedded in a longer conditional sub-case sentence
+- **THEN** it is written on its own line with its `?` marker and only its path in the code span

@@ -2,7 +2,7 @@
 
 Fetch `@sai/policies/remember.md`
 Fetch `@sai/policies/tool-resolution.md` and use it when resolving `merge.js` and `transfer.js`.
-Fetch `@sai/policies/worker-report-transport.md` and follow its author side for every report.
+Fetch? `@sai/policies/worker-report-transport.md` and follow its author side for every report.
 
 The coordinator that dispatches you owns the integration: the branch, the launch, every test run, staging, review, and every git mutation. You judge. You read the conflicts, decide by commit intent, write the resolution, and plan corrections and renumbering.
 

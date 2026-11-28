@@ -43,7 +43,7 @@ test('the answer is recorded after segment 1 opens its run and again after segme
 
 test('the build publishes once, after the telemetry commit, and a failed publication never changes the outcome', () => {
   assert.ok(build.indexOf('**Telemetry.**') < build.indexOf('**Publication.**') && build.indexOf('**Publication.**') < build.indexOf('After the last segment that ran ends, print the report'));
-  assert.match(build, /Fetch `@sai\/commands\/build\/publication\.md`/);
+  assert.match(build, /Fetch\?? `@sai\/commands\/build\/publication\.md`/);
   assert.match(build, /publish only when the answer is `yes` or `draft`/);
   assert.match(build, /the `publish_pr_as_draft` value \(`false` for `yes`, `true` for `draft`\)/);
   assert.match(build, /the build publishes once, here, never between segments/);

@@ -59,7 +59,7 @@ The ordinary coordinator SHALL run exactly `openspec archive <name> --yes --json
 
 ### Requirement: End-to-end worker registration
 
-The `sai-archive-worker` identity SHALL be registered across the full projection chain: `bin/worker-matrix.js` carries the `archive` phase entry and its worker-identity regex admits `sai-archive-worker`; `sai/install-manifest.json` (and its generator) declare the claude and opencode managed-agent projections for the worker; the installed-worker roster and binding validators in `bin/install-flow.js` accept the resulting roster; and `sai/commands/archive/coordinator.md` carries exactly the binding fetch `Fetch @sai/orchestration/workers/bindings/archive-worker.md and use it.`
+The `sai-archive-worker` identity SHALL be registered across the full projection chain: `bin/worker-matrix.js` carries the `archive` phase entry and its worker-identity regex admits `sai-archive-worker`; `sai/install-manifest.json` (and its generator) declare the claude and opencode managed-agent projections for the worker; the installed-worker roster and binding validators in `bin/install-flow.js` accept the resulting roster; and `sai/commands/archive/coordinator.md` carries exactly the binding fetch ``Fetch `@sai/orchestration/workers/bindings/archive-worker.md` and use it.``
 
 #### Scenario: Install validates the worker roster
 

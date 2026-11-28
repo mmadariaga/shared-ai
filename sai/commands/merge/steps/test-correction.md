@@ -7,7 +7,7 @@ Goal: find why a new failure appeared after the integration and propose the smal
 Read the failure record at its path, not a summary of it. A failure is yours to correct when the integrated code or a test that depends on it is wrong because of how the two sides combine; it is not yours when the test fails for a reason the integration did not touch.
 
 Before authoring a proposed code correction,
-Fetch `@sai/policies/code-quality-priority-stack.md`
+Fetch? `@sai/policies/code-quality-priority-stack.md`
 Apply it within the approved strategy and behavior-preservation requirements; those restrictions prevail. This load grants no write: the coordinator must authorize and capture the correction ranges before application in `resolve`.
 
 Save the report as a YAML file:

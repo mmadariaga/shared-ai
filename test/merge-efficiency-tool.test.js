@@ -467,7 +467,7 @@ test('a command that fails to start is unavailable with its reason, apart from f
 test('the coordinator resolves the test command through the shared resolver and keeps no detection in merge.js', () => {
   const coordinator = fs.readFileSync(path.join(ROOT, 'sai/commands/merge/coordinator.md'), 'utf8');
   assert.match(coordinator, /`node <tool-path> command --cwd <project-root>` \(`test-select\.js`\)/);
-  assert.match(coordinator, /Fetch `@sai\/policies\/test-execution\.md`/);
+  assert.match(coordinator, /Fetch\?? `@sai\/policies\/test-execution\.md`/);
   assert.doesNotMatch(coordinator, /merge\.js suite|verify --baseline/);
   const mechanics = fs.readFileSync(path.join(ROOT, 'sai/commands/merge/mechanics.md'), 'utf8');
   assert.match(mechanics, /`verify` reports `unavailable` with its reason[\s\S]+not a failing test and not a pass/);

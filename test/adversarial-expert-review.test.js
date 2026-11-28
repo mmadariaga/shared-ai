@@ -90,7 +90,7 @@ test('the shared policy owns the answer, the two questions, the cycle, keep-or-r
     /`Discard all corrections` \(`discard-all`\)/,
     /restore <before-snapshot> <the group's paths>/,
     /review-delta\.js/,
-    /Fetch `@sai\/orchestration\/workers\/bindings\/adversarial-expert-review-worker\.md`/,
+    /Fetch\?? `@sai\/orchestration\/workers\/bindings\/adversarial-expert-review-worker\.md`/,
     /A missing, invalid, or failed report costs one line in the closing report[\s\S]{0,400}revert every path of the worker's delta from the before-snapshot with `review-delta\.js restore`/,
     /verify the corrected copy against the `sha256` its `corrected_documents` entry reports/,
   ]) assert.match(policy, fragment);
@@ -107,7 +107,7 @@ test('a failed worker report and an unverified document copy never leave a corre
   assert.match(checkpoint, /A copy that does not match its hash, or that fails the check, is discarded and its stored document stays \(E7\); the finding counts as discarded in the closing report/);
   const design = read('sai/commands/design/coordinator.md');
   assert.match(design, /created through the installed binding that policy § The checkpoint names/);
-  assert.doesNotMatch(design, /Fetch `@sai\/orchestration\/workers\/bindings\/adversarial-expert-review-worker\.md`/,
+  assert.doesNotMatch(design, /Fetch\?? `@sai\/orchestration\/workers\/bindings\/adversarial-expert-review-worker\.md`/,
     'the binding is single-sourced in the policy');
 });
 

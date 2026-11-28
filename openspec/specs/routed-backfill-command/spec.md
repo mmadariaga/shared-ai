@@ -90,7 +90,7 @@ The ordinary backfill worker SHALL compose only temporary drafts. The coordinato
 
 ### Requirement: End-to-end worker registration
 
-The `sai-backfill-worker` identity SHALL be registered across the full projection chain: `bin/worker-matrix.js` carries the `backfill` phase entry and its worker-identity regex admits `sai-backfill-worker`; `sai/install-manifest.json` (and its generator) declare the claude and opencode managed-agent projections for the worker; the installed-worker roster and binding validators in `bin/install-flow.js` accept the resulting roster; and `sai/commands/backfill/coordinator.md` carries exactly the binding fetch `Fetch @sai/orchestration/workers/bindings/backfill-worker.md and use it.`
+The `sai-backfill-worker` identity SHALL be registered across the full projection chain: `bin/worker-matrix.js` carries the `backfill` phase entry and its worker-identity regex admits `sai-backfill-worker`; `sai/install-manifest.json` (and its generator) declare the claude and opencode managed-agent projections for the worker; the installed-worker roster and binding validators in `bin/install-flow.js` accept the resulting roster; and `sai/commands/backfill/coordinator.md` carries exactly the binding fetch ``Fetch `@sai/orchestration/workers/bindings/backfill-worker.md` and use it.``
 
 #### Scenario: Install validates the worker roster
 

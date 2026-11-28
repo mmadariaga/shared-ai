@@ -87,8 +87,13 @@ const SHELL_TOOLS = new Set(['Bash', 'PowerShell', 'bash', 'shell']);
 // (optionally after PowerShell's `&`): a path mentioned in `node -e`, a grep pattern, or another argument is not a run.
 const FETCH_INVOCATION = /^(?:&\s*)?["']?(?:[^\s"']*[\\/])?node(?:\.exe)?["']?\s+(?:(?!-e\b|-p\b|--eval\b|--print\b)--?[\w-]+\s+)*(?:"[^"]*|'[^']*|[^\s"']*)skills[\\/]+fetch[\\/]+fetch\.js["']?(?=\s|$)/;
 const HEREDOC = /<<-?[ \t]*(["']?)(\w+)\1([^\n]*)\n[\s\S]*?(?:\n[ \t]*\2[ \t]*(?=\n|$)|$)/g;
-// One resolved subpath prints `path:`, `root:`, a blank line, then the file content. Several subpaths print `subpath:` blocks and a too-large file prints `too-large:` instead of content: neither carries content.
+// A single-leaf call prints `path:`, `root:`, a blank line, then the file content. Every other call prints the
+// dependency tree (`graph:` summary and `legend:`), which carries no content; a requested subpath that did not
+// resolve prints a `! <subpath>` root line and the tool exits 1.
 const FETCH_SINGLE = /^\s*path: (.+?)\r?\nroot: (?:project|global)\r?\n\r?\n([\s\S]*)$/;
+const FETCH_TREE = /^graph: \d+ entr(?:y|ies), \d+ nodes?, \d+ conditional, \d+ skills?, \d+ unresolved, [\d.]+k chars$/m;
+const FETCH_TREE_FAILED = /^! \S+$/m;
+const FETCH_TOO_LARGE = /^path: .+\r?\nroot: (?:project|global)\r?\ntoo-large: /m;
 const OPENCODE_TIMEOUT = 'bash tool terminated command after exceeding timeout';
 const BASELINE_FORMAT = 2;
 
@@ -216,11 +221,16 @@ function shellSegments(command) {
 // Whether the call's own output shows what `fetch.js` printed: a run whose stdout is piped into a later command (`|`) leaves its header and content to that command.
 const showsFetchOutput = command => shellSegments(command).some(segment => segment.end !== '|' && FETCH_INVOCATION.test(segment.command.trim()));
 
-// The `fetch.js` call a shell call made: the file it returned (null unless exactly one subpath resolved with its content) and whether it failed to return any file.
+// The `fetch.js` call a shell call made: the file it returned (null unless a single-leaf closure printed its
+// content) and whether the call failed. A tree that lists every requested subpath is a success that loaded no
+// content by itself; an unresolved requested subpath is its `! <subpath>` root line.
 function fetchCall(toolName, command, output) {
   if (!SHELL_TOOLS.has(toolName) || typeof command !== 'string' || !showsFetchOutput(command)) return null;
   const single = output.match(FETCH_SINGLE);
-  return { load: single ? { path: forwardSlashes(single[1]), text: single[2] } : null, failed: /^error: /m.test(output) || !/^path: /m.test(output) };
+  if (single) return { load: { path: forwardSlashes(single[1]), text: single[2] }, failed: false };
+  if (FETCH_TREE.test(output)) return { load: null, failed: FETCH_TREE_FAILED.test(output) };
+  if (FETCH_TOO_LARGE.test(output)) return { load: null, failed: false };
+  return { load: null, failed: true };
 }
 
 // The class of a failed tool call: a shell timeout (even when the harness flags no error), the harness's own error flag, or a `fetch.js` call that returned no file.

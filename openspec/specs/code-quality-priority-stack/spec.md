@@ -84,12 +84,12 @@ The priority order MUST act as a deterministic tie-breaker when two rules pull i
 
 ### Requirement: Review Maintainability Rule References The Stack
 
-The Maintainability review category (pass 6) in `sai/commands/review/steps/resolve-review-analysis.md` SHALL reference the Code Quality Priority Stack as the resolution order for code-quality tensions, in a single sentence, rather than restating the six rules. The reference MUST NOT duplicate the rule list. The sentence SHALL load the stack conditionally: only on a tension between two Maintainability practices, in a finding the reviewer reports or dismisses, with the line `Fetch @sai/policies/code-quality-priority-stack.md`, resolving the tension there. A reported finding that rests on a tension SHALL name its result as `<winner> over <loser>`, each side written as `rule N <name>` or `project alignment`.
+The Maintainability review category (pass 6) in `sai/commands/review/steps/resolve-review-analysis.md` SHALL reference the Code Quality Priority Stack as the resolution order for code-quality tensions, in a single sentence, rather than restating the six rules. The reference MUST NOT duplicate the rule list. The sentence SHALL load the stack conditionally: only on a tension between two Maintainability practices, in a finding the reviewer reports or dismisses, with the marked directive ``Fetch? `@sai/policies/code-quality-priority-stack.md` ``, resolving the tension there. A reported finding that rests on a tension SHALL name its result as `<winner> over <loser>`, each side written as `rule N <name>` or `project alignment`.
 
 #### Scenario: Reviewer cites the stack without duplicating it
 
 - **WHEN** pass 6 in `sai/commands/review/steps/resolve-review-analysis.md` is read
-- **THEN** it points to `sai/policies/code-quality-priority-stack.md` through a `Fetch` line as the tie-breaking order
+- **THEN** it points to `sai/policies/code-quality-priority-stack.md` through a marked `Fetch?` line as the tie-breaking order
 - **AND** it does not re-enumerate the six rules
 
 #### Scenario: Review without a tension loads no policy
@@ -101,5 +101,5 @@ The Maintainability review category (pass 6) in `sai/commands/review/steps/resol
 #### Scenario: Reported tension finding names the winning rule
 
 - **WHEN** a reported Maintainability finding rests on a tension between two practices
-- **THEN** pass 6 directs the reviewer to fetch the policy and resolve the tension there
+- **THEN** pass 6 directs the reviewer to fetch the policy through the marked `Fetch?` line and resolve the tension there
 - **AND** the finding names the result as `rule N <name> over rule M <name>` or `project alignment over rule M <name>`

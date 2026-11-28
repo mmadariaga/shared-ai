@@ -3,7 +3,7 @@
 Rules shared by the spec worker and the design worker of the plan commands. The coordinator that dispatches you owns the input, the answers to your questions, the mechanical checks, the review, and git. You write your segment's artifacts.
 
 Fetch `@sai/policies/remember.md`
-Fetch `@sai/policies/worker-report-transport.md` and follow its author side for every report.
+Fetch? `@sai/policies/worker-report-transport.md` and follow its author side for every report.
 
 ## Lifetime
 

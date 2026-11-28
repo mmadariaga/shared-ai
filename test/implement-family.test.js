@@ -12,7 +12,7 @@ const { resolveProfile, translate } = require('../bin/capabilities');
 const { matrixRenderFor } = require('../bin/install-manifest');
 
 const read = relative => fs.readFileSync(path.join(repoRoot, relative), 'utf8');
-const fetches = source => source.split(/\r?\n/).filter(line => /Fetch `?@/.test(line));
+const fetches = source => source.split(/\r?\n/).filter(line => /Fetch\?? `?@/.test(line));
 
 const COORDINATORS = [
   'sai/commands/implement/coordinator.md',
@@ -93,7 +93,7 @@ test('the implement, review, and build coordinators load only the policies that 
   ];
   for (const file of COORDINATORS) {
     for (const line of fetches(read(file))) {
-      assert.ok(allowed.some(target => line.includes(`Fetch \`${target}`)), `${file} fetches an unexpected target: ${line}`);
+      assert.ok(allowed.some(target => line.includes(target)), `${file} fetches an unexpected target: ${line}`);
     }
   }
   const implementNew = read(COORDINATORS[0]);
@@ -203,7 +203,7 @@ test('the implement coordinator reuses the design context and promotes learnings
   const close = source.slice(source.indexOf('## Close'));
   assert.match(close, /Promote learnings, before the report/);
   assert.match(close, /leave `SAI_LEARNINGS.md` untouched and create no file/);
-  assert.match(close, /Fetch `@sai\/policies\/sai-learnings-format\.md`/);
+  assert.match(close, /Fetch\?? `@sai\/policies\/sai-learnings-format\.md`/);
   assert.match(read('sai/policies/sai-learnings-format.md'), /`\/sai-3-implement` coordinator is the only writer/);
   assert.match(read('sai/commands/design/steps/research.md'), /`\/sai-3-implement` coordinator's learnings promotion at run close/);
 });
@@ -275,10 +275,10 @@ test('decision records are created once by the outermost implementing command', 
   assert.match(implement, /Inside `\/sai-build` skip this step/);
   const build = read('sai/commands/build/coordinator.md');
   assert.match(build, /Segments 1 and 3 create no decision records/);
-  assert.match(build, /Fetch `@sai\/policies\/decision-record-creation\.md`/);
+  assert.match(build, /Fetch\?? `@sai\/policies\/decision-record-creation\.md`/);
   assert.match(read('sai/commands/deep-review/coordinator.md'), /creates the decision records of `@sai\/policies\/decision-record-creation\.md`/);
   const directBuild = read('sai/commands/explore/direct-build-coordinator.md');
-  assert.match(directBuild, /Fetch `@sai\/policies\/decision-record-creation\.md` and prepare its order/);
+  assert.match(directBuild, /Fetch\?? `@sai\/policies\/decision-record-creation\.md` and prepare its order/);
   assert.doesNotMatch(directBuild, /persistent ADR\/DDR creation remains owned by the normal implementation flow/);
   assert.match(read('sai/commands/explore/direct-build-worker.md'), /\*\*Decision-record order\.\*\*/);
 });
@@ -521,7 +521,7 @@ test('the implement close stores the inherent-risk ratings in review.md before t
   const ratings = close.indexOf('Store the inherent-risk ratings');
   assert.ok(ratings !== -1 && ratings < close.indexOf('Promote learnings, before the report'), 'ratings come before the learnings step');
   assert.match(close, /only when the run completed, marked at least one finding of any audit report fixed, and `openspec\/changes\/\{name\}\/review\.md` exists/);
-  assert.match(close, /Fetch `@sai\/policies\/inherent-risk\.md`/);
+  assert.match(close, /Fetch\?? `@sai\/policies\/inherent-risk\.md`/);
   assert.match(close, /`\*\*Reviewed:\*\*` line of `review\.md` names/);
   assert.match(close, /prints `fresh`/);
   assert.match(close, /git check-ignore -q/);
