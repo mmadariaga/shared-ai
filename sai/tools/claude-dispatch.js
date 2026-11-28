@@ -8,7 +8,8 @@
  * An opencode agent file that carries `harness: claude` runs through `claude -p`, one process per turn, so the model,
  * effort, tools, and permission mode come from the Claude Code agent of the same name. The tool decides the route,
  * runs one turn, stops a turn, and prints one JSON object. It never passes `--model` or `--effort`: the Claude Code
- * agent file carries them. The message travels on stdin, so free text is never re-quoted and a message full of options
+ * agent file carries them, and every turn names it with `--agent`, a resumed one included. Every turn also adds the
+ * opencode SAI temp root with `--add-dir`, because the coordinator's report directory lies there. The message travels on stdin, so free text is never re-quoted and a message full of options
  * is never read as one. The command it spawns is the one `opencode-launcher.js` resolves for the name `claude`, which
  * on Windows is the `.exe` behind npm's `.cmd` shim.
  *
@@ -37,7 +38,7 @@
  * creates; `stop` is the only other reader of it.
  *
  * `stop` ends the running turn: it kills the process tree of the PID the turn lock holds, releases the lock, and prints
- * `stopped`; a session with no live turn answers `none`. `stop` is the opencode stop call of a Claude-routed worker.
+ * `stopped`; a session with no live turn answers `none`, and so does a lock whose PID now belongs to another program. `stop` is the opencode stop call of a Claude-routed worker.
  *
  * The child's environment drops `OPENCODE_SESSION_ID`, so no turn reads the coordinator's session as its own.
  */
@@ -48,6 +49,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { extractInputFile, readInputFile, InputFileError } = require('./input-reader');
 const { resolveBinary } = require('./opencode-launcher');
+const { resolveTempRoot } = require('./temp-root');
 const { acquireTurnLock, busyResult, emptyTokens, frontmatterValue, harnessOf, lockHolder, processAlive, sleepSync, turnLockDirectory: commonLockDirectory, BUSY_EXIT } = require('./dispatch-common');
 const usageKit = require('./usage');
 
@@ -159,12 +161,13 @@ function defaultProbe(cwd) {
   const options = { cwd, encoding: 'utf8', timeout: PROBE_TIMEOUT_MS, stdio: ['ignore', 'pipe', 'pipe'], env };
   const version = spawnSync(launched.command, ['--version'], options);
   if (version.error || version.status !== 0) return { available: false, authenticated: false, cause: 'claude-missing' };
+  const authenticatedByEnvironment = AUTH_ENVIRONMENT.some(name => env[name]);
   const auth = spawnSync(launched.command, ['auth', 'status'], options);
-  if (auth.error) return { available: true, authenticated: false };
-  if (auth.status !== 0) return { available: true, authenticated: AUTH_ENVIRONMENT.some(name => env[name]) };
+  if (auth.error) return { available: true, authenticated: authenticatedByEnvironment };
+  if (auth.status !== 0) return { available: true, authenticated: authenticatedByEnvironment };
   try {
     const parsed = JSON.parse(auth.stdout);
-    if (parsed !== null && typeof parsed === 'object' && parsed.loggedIn === false) return { available: true, authenticated: false };
+    if (parsed !== null && typeof parsed === 'object' && parsed.loggedIn === false) return { available: true, authenticated: authenticatedByEnvironment };
   } catch { /* a non-JSON status line keeps the exit code as the answer */ }
   return { available: true, authenticated: true };
 }
@@ -235,22 +238,41 @@ function toolList(tools) {
   return names;
 }
 
-/** The `claude -p` arguments of one turn: create names the session, continue resumes it, and the message is on stdin. */
-function runArguments({ agent, session, create }, settings = {}) {
+/**
+ * The `claude -p` arguments of one turn: create names the session, continue resumes it, and the message is on stdin.
+ * Both name the agent, because a resumed session rebuilds its system prompt and model from the flags of the turn, not
+ * from the transcript. `reportRoot` (the opencode SAI temp root) is added as a working directory, so the worker can
+ * write its report drafts in the coordinator's report directory, which lies outside the project.
+ */
+function runArguments({ agent, session, create }, settings = {}, { reportRoot = null } = {}) {
   const args = create
     ? ['-p', '--agent', agent, '--output-format', 'json', '--session-id', session]
-    : ['-p', '--resume', session, '--output-format', 'json'];
+    : ['-p', '--resume', session, '--agent', agent, '--output-format', 'json'];
+  if (reportRoot) args.push('--add-dir', reportRoot);
   if (settings.allowedTools) args.push('--allowedTools', ...toolList(settings.allowedTools));
   if (settings.permissionMode) args.push('--permission-mode', settings.permissionMode);
   return args;
 }
 
-/** The turn's JSON result: the whole output when it parses, else the last line that does. `null` when none does. */
+/** The opencode SAI temp root, which holds the coordinator's report directory; `null` when it cannot be resolved. */
+function defaultReportRoot() {
+  try {
+    return resolveTempRoot('opencode');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The turn's JSON result: the whole output when it parses, else the last line that does. An array of events (the form
+ * a `verbose` setting gives) yields its last `result` event. `null` when none does.
+ */
 function readResult(stdout) {
   const text = stdout.trim();
   if (text === '') return null;
   try {
     const parsed = JSON.parse(text);
+    if (Array.isArray(parsed)) return [...parsed].reverse().find(event => event !== null && typeof event === 'object' && event.type === 'result') ?? null;
     if (parsed !== null && typeof parsed === 'object') return parsed;
   } catch { /* fall through to the lines */ }
   for (const line of text.split(/\r?\n/).reverse()) {
@@ -313,7 +335,7 @@ function defaultRun(args, cwd, message, track = {}) {
  * Run one turn: `start` creates the session of `agent` under `session`, `continue` resumes `session`.
  * `{ status, sessionID, text, tokens, cost, exit_code, error }`. `track` carries the child-PID file of the turn.
  */
-async function turn({ agent, session, message, cwd, create = false, track }, run = defaultRun) {
+async function turn({ agent, session, message, cwd, create = false, track }, run = defaultRun, { reportRoot = defaultReportRoot } = {}) {
   const text = readClaudeAgentFile(agent, cwd, claudeRoot);
   if (text === null) {
     return {
@@ -321,7 +343,8 @@ async function turn({ agent, session, message, cwd, create = false, track }, run
       error: `Claude Code has no agent file of that name: ${agent}`,
     };
   }
-  const outcome = await run(runArguments({ agent, session, create }, agentSettings(text)), cwd, message, track);
+  const root = typeof reportRoot === 'function' ? reportRoot() : reportRoot;
+  const outcome = await run(runArguments({ agent, session, create }, agentSettings(text), { reportRoot: root }), cwd, message, track);
   const result = readResult(outcome.stdout ?? '');
   const usage = result?.usage ?? {};
   const tokens = {
@@ -409,8 +432,27 @@ function terminateTree(pid, {
   if (alive(pid)) { try { kill(pid, 'SIGKILL'); } catch { /* the tool is already gone */ } }
 }
 
+/**
+ * Whether `pid` is still a `claude-dispatch.js` process. A lock left by a killed tool can name a PID the system has since
+ * given to an unrelated process, which a stop must never signal. Linux reads `/proc`, other POSIX systems ask `ps`;
+ * Windows has no cheap reader, so the live PID counts as the tool there.
+ */
+function ownsTurn(pid, { platform = process.platform, readFile = fs.readFileSync, run = spawnSync } = {}) {
+  if (platform === 'win32') return true;
+  let command = null;
+  if (platform === 'linux') {
+    try { command = readFile(`/proc/${pid}/cmdline`, 'utf8').split('\0').join(' '); } catch { /* fall back to ps */ }
+  }
+  if (command === null) {
+    const listed = run('ps', ['-p', String(pid), '-o', 'command='], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    if (listed.error || listed.status !== 0) return false;
+    command = listed.stdout;
+  }
+  return command.includes('claude-dispatch');
+}
+
 /** Stop the running turn of `session`: `{ status: 'stopped' | 'none', ... }` in the shape of a turn result. */
-function stopSession(session, { lockDirectory = turnLockDirectory, alive = processAlive, terminate = terminateTree } = {}) {
+function stopSession(session, { lockDirectory = turnLockDirectory, alive = processAlive, owns = ownsTurn, terminate = terminateTree } = {}) {
   const base = { sessionID: session, text: '', tokens: emptyTokens(), cost: 0, exit_code: null, error: null };
   const directory = lockDirectory();
   if (directory === null) return { status: 'none', ...base };
@@ -422,7 +464,7 @@ function stopSession(session, { lockDirectory = turnLockDirectory, alive = proce
     }
   };
   const pid = lockHolder(lockFile);
-  if (pid === null || !alive(pid)) {
+  if (pid === null || !alive(pid) || !owns(pid)) {
     removeMarkers();
     return { status: 'none', ...base };
   }
@@ -499,6 +541,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  route, checkAgents, FALLBACK_CAUSES, turn, guardedTurn, stopSession, terminateTree, readResult, runArguments,
+  route, checkAgents, FALLBACK_CAUSES, turn, guardedTurn, stopSession, terminateTree, ownsTurn, readResult, runArguments,
   agentSettings, childEnvironment, harnessOf, parseArguments, UsageError, USAGE, BUSY_EXIT,
 };

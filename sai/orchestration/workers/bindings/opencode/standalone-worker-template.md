@@ -6,9 +6,11 @@ to replace it, and what each message carries.
 
 ## Create
 
+Fetch `@sai/policies/claude-dispatch.md`
+
 Before every creation of the worker, a replacement included, run the route
-query of `@sai/policies/claude-dispatch.md` § Route, with the dispatch path that
-policy resolves, and take the branch it answers:
+query of that policy (§ Route). The query reads the agent file, so never decide
+the route yourself. Take the branch it answers:
 
 - `opencode`: Create the worker with the ready prompt alone, through the call
   below. It runs in the background, and the `sessionID` the call returns is its

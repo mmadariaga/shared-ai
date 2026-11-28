@@ -124,7 +124,10 @@ test('I4 I5 a turn runs claude -p with the message on stdin, the agent file tool
   assert.deepEqual(runArguments({ agent: 'w', session: 'u-1', create: true }, settings),
     ['-p', '--agent', 'w', '--output-format', 'json', '--session-id', 'u-1', '--allowedTools', 'Read', 'Bash', '--permission-mode', 'acceptEdits']);
   assert.deepEqual(runArguments({ agent: 'w', session: 'u-1', create: false }, settings),
-    ['-p', '--resume', 'u-1', '--output-format', 'json', '--allowedTools', 'Read', 'Bash', '--permission-mode', 'acceptEdits']);
+    ['-p', '--resume', 'u-1', '--agent', 'w', '--output-format', 'json', '--allowedTools', 'Read', 'Bash', '--permission-mode', 'acceptEdits']);
+  assert.deepEqual(runArguments({ agent: 'w', session: 'u-1', create: false }, {}, { reportRoot: '/tmp/opencode/sai' }),
+    ['-p', '--resume', 'u-1', '--agent', 'w', '--output-format', 'json', '--add-dir', '/tmp/opencode/sai'],
+    'a resumed turn keeps the agent and reaches the report directory');
   for (const args of [runArguments({ agent: 'w', session: 'u', create: true }), runArguments({ agent: 'w', session: 'u', create: false })]) {
     assert.ok(!args.includes('--model') && !args.includes('--effort'), 'the Claude Code agent file carries model and effort');
   }
@@ -184,6 +187,8 @@ test('I2 a turn maps the JSON result, its usage, and its cost; an error result i
 test('readResult takes the whole output or its last JSON line', () => {
   assert.deepEqual(readResult('{"session_id":"u-1"}'), { session_id: 'u-1' });
   assert.deepEqual(readResult('noise\n{"session_id":"u-2"}\n'), { session_id: 'u-2' });
+  assert.deepEqual(readResult('[{"type":"system"},{"type":"result","session_id":"u-3"}]'), { type: 'result', session_id: 'u-3' }, 'an event array yields its result event');
+  assert.equal(readResult('[{"type":"system"}]'), null);
   assert.equal(readResult('noise'), null);
   assert.equal(readResult(''), null);
 });
@@ -232,12 +237,17 @@ test('I12 stop kills the process tree of the lock, releases it, and answers none
     assert.deepEqual(stopSession('u-1', { lockDirectory: () => dir }), { status: 'none', ...base });
     fs.writeFileSync(path.join(dir, 'u-1.lock'), '4242');
     const killed = [];
-    const result = stopSession('u-1', { lockDirectory: () => dir, alive: pid => pid === 4242, terminate: pid => killed.push(pid) });
+    const result = stopSession('u-1', { lockDirectory: () => dir, alive: pid => pid === 4242, owns: () => true, terminate: pid => killed.push(pid) });
     assert.deepEqual(result, { status: 'stopped', ...base });
     assert.deepEqual(killed, [4242]);
     assert.equal(fs.existsSync(path.join(dir, 'u-1.lock')), false, 'stop releases the lock');
     fs.writeFileSync(path.join(dir, 'u-1.lock'), '4242');
     assert.equal(stopSession('u-1', { lockDirectory: () => dir, alive: () => false }).status, 'none', 'a dead holder is no live turn');
+    fs.writeFileSync(path.join(dir, 'u-1.lock'), '4242');
+    const spared = [];
+    assert.equal(stopSession('u-1', { lockDirectory: () => dir, alive: () => true, owns: () => false, terminate: pid => spared.push(pid) }).status, 'none',
+      'a reused PID that belongs to another program is never signalled');
+    assert.deepEqual(spared, []);
     assert.equal(fs.existsSync(path.join(dir, 'u-1.lock')), false);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -296,7 +306,7 @@ test('M2 stop passes the turn child PID from its marker file and removes both ma
     fs.writeFileSync(path.join(dir, 'u-1.lock'), '4242');
     fs.writeFileSync(path.join(dir, 'u-1.child'), '5150');
     const seen = [];
-    const result = stopSession('u-1', { lockDirectory: () => dir, alive: pid => pid === 4242, terminate: (pid, options) => seen.push([pid, options.childPid]) });
+    const result = stopSession('u-1', { lockDirectory: () => dir, alive: pid => pid === 4242, owns: () => true, terminate: (pid, options) => seen.push([pid, options.childPid]) });
     assert.equal(result.status, 'stopped');
     assert.deepEqual(seen, [[4242, 5150]]);
     assert.deepEqual(fs.readdirSync(dir), [], 'the lock and the child marker are gone');
@@ -347,7 +357,7 @@ test('I11 the policy is the single source and the four dispatch sites point to i
   assert.match(read('sai/policies/cache-warming.md'), /Claude-routed worker \(`@sai\/policies\/claude-dispatch\.md`\) receives no switch/);
   assert.match(read('sai/policies/worker-report-transport.md'), /A Claude-routed worker[\s\S]*`--harness opencode` this way/);
   assert.doesNotMatch(read('sai/policies/opencode-dispatch.md'), /the `harness:` key exists only in Claude Code agent files/);
-  assert.match(read('sai/orchestration/workers/bindings/opencode/standalone-worker-template.md'), /route\s+query of `@sai\/policies\/claude-dispatch\.md`/);
+  assert.match(read('sai/orchestration/workers/bindings/opencode/standalone-worker-template.md'), /Fetch `@sai\/policies\/claude-dispatch\.md`\s+Before every creation of the worker, a replacement included, run the route\s+query of that policy/);
 });
 
 test('I9 the setup documents the route and its inert model', () => {
@@ -365,4 +375,12 @@ test('E12 only opencode worker rows are eligible for the Claude Code route', () 
   assert.equal(isPassthroughEligible({ family: 'agent', name: 'budget-explorer' }, 'opencode'), false);
   assert.equal(isPassthroughEligible({ family: 'command', name: 'sai-1-spec' }, 'opencode'), false);
   assert.equal(isPassthroughEligible({ family: 'agent', name: 'budget-explorer' }, 'claude'), true);
+});
+
+test('I12 ownsTurn recognises the dispatch tool by its command line', () => {
+  assert.equal(dispatch.ownsTurn(1, { platform: 'linux', readFile: () => 'node\0/x/sai/tools/claude-dispatch.js\0continue\0' }), true);
+  assert.equal(dispatch.ownsTurn(1, { platform: 'linux', readFile: () => 'bash\0' }), false);
+  assert.equal(dispatch.ownsTurn(1, { platform: 'darwin', run: () => ({ status: 0, stdout: 'node claude-dispatch.js start\n' }) }), true);
+  assert.equal(dispatch.ownsTurn(1, { platform: 'darwin', run: () => ({ status: 1, stdout: '' }) }), false);
+  assert.equal(dispatch.ownsTurn(1, { platform: 'win32' }), true);
 });
