@@ -31,16 +31,21 @@ TBD - created by archiving change wrap-instruction-references-in-code-spans. Upd
 
 ### Requirement: The doctor SHALL read a backticked fetch directive as the same reference as the bare form
 
-The doctor's fetch-reference parser SHALL accept an optional backtick between `Fetch` or `Also fetch` and the `@` path, and SHALL extract the same reference path from the backticked and the bare forms, without the closing backtick or trailing punctuation.
+The doctor's fetch-reference parser SHALL accept an optional backtick between `Fetch` or `Also fetch` and the `@` path, an optional `?` marker directly after the verb, and the lowercase `fetch` form, and SHALL extract the same reference path from the backticked and the bare forms, without the closing backtick or trailing punctuation. It SHALL create no reference from a word that merely embeds the verb.
 
 #### Scenario: Backticked and bare directives yield the same references
 
 - **WHEN** the doctor parses ``Fetch `@sai/commands/commit/coordinator.md` and follow it exactly.`` and `Fetch @sai/policies/public-chat.md and follow it exactly.`
 - **THEN** it extracts `sai/commands/commit/coordinator.md` and `sai/policies/public-chat.md`
 
+#### Scenario: Marked and lowercase directives yield the same references
+
+- **WHEN** the doctor parses ``Fetch? `@sai/policies/obstacle-escalation.md` ``, ``Otherwise fetch `@commands/sai-<name>.md`.``, and `The prefetch @sai/policies/c.md stays text.`
+- **THEN** it extracts `sai/policies/obstacle-escalation.md` and `commands/sai-<name>.md`, and creates no reference from the embedded word
+
 ### Requirement: A conditional directive carries the ? marker directly after its verb
 
-Every conditional directive in the installed instruction files SHALL carry the `?` marker directly after the verb, with only its path in the inline code span, and SHALL be read only when the condition stated in its paragraph or its `##` section holds. An unmarked directive SHALL stay required. A directive inline in a conditional sub-case SHALL stand on its own line.
+Every directive in the installed instruction files SHALL carry a marker that matches its true load condition: a conditional directive SHALL carry the `?` marker directly after the verb, with only its path in the inline code span, and SHALL be read only when the condition stated in its paragraph or its `##` section holds; an unmarked directive SHALL stay required. Conditionality SHALL be the author's semantic decision, and the `fetch-directives` check SHALL validate form only, deciding neither that a marked directive lacks a condition nor that an unmarked directive sits under a conditional section. A directive inline in a conditional sub-case SHALL stand on its own line. The instruction files SHALL use one verb form (`Fetch` or `Also fetch`); the three lowercase `fetch @` directives SHALL be normalized to `Fetch?`, each gated by a stated branch or step. The specs that require `worker-report-transport` unconditionally SHALL remain the source of truth, and the cards SHALL align with them.
 
 #### Scenario: marked subpath directive resolves through the fetch tool
 
@@ -61,3 +66,13 @@ Every conditional directive in the installed instruction files SHALL carry the `
 
 - **WHEN** a conditional directive is embedded in a longer conditional sub-case sentence
 - **THEN** it is written on its own line with its `?` marker and only its path in the code span
+
+#### Scenario: a required directive stays unmarked
+
+- **WHEN** a directive is needed by every run of its card
+- **THEN** it is written without the `?` marker and the tree counts it as required
+
+#### Scenario: a form-only lint leaves a classified directive alone
+
+- **WHEN** a marked directive's paragraph states no condition, or an unmarked directive sits under a conditional section
+- **THEN** the `fetch-directives` check reports no violation and the review owns the classification

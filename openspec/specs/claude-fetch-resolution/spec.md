@@ -237,7 +237,7 @@ A call with exactly one requested subpath whose closure is exactly one file with
 - **THEN** the call prints a tree whose single root line carries the absolute resolved path and no file content
 
 ### Requirement: The tree marks conditional edges, skills, and unresolved paths
-The tree SHALL NOT print a `§ <heading>` section line; a conditional directive's gate is read in the parent's prose. The tree SHALL prefix a node reached only through marked edges with `? `. A skill SHALL render as `[skill] <name>` and SHALL never be descended into. A requested subpath that did not resolve SHALL print a `! <subpath>` root line, its message on stderr, and fail the call; a nested unresolved path SHALL render as `! <subpath>  (unresolved)` with no exit-code change.
+The tree SHALL NOT print a `§ <heading>` section line; a conditional directive's gate is read in the parent's prose. The tree SHALL prefix every node of the computed conditional set with `? `: a node reached through a marked edge, and every unmarked node reachable only through marked edges, a nested node included. The number of `?` node lines SHALL equal the summary's conditional count, aliases excluded. A skill SHALL render as `[skill] <name>` and SHALL never be descended into. A requested subpath that did not resolve SHALL print a `! <subpath>` root line, its message on stderr, and fail the call; a nested unresolved path SHALL render as `! <subpath>  (unresolved)` with no exit-code change.
 
 #### Scenario: no section line is printed
 - **WHEN** a parent file's `##` section names several directives
@@ -247,6 +247,10 @@ The tree SHALL NOT print a `§ <heading>` section line; a conditional directive'
 - **WHEN** a node is reached only through a marked edge
 - **THEN** its line starts with `? ` and the summary counts it as conditional
 
+#### Scenario: a nested conditional node is marked
+- **WHEN** a marked edge reaches a file whose own edge is unmarked
+- **THEN** both node lines start with `? ` and the `?` node lines equal the summary's conditional count
+
 #### Scenario: a skill is terminal
 - **WHEN** a file names a `skills/<name>/SKILL.md` directive
 - **THEN** the tree prints `[skill] <name>` and lists none of the skill's files
@@ -254,3 +258,22 @@ The tree SHALL NOT print a `§ <heading>` section line; a conditional directive'
 #### Scenario: a nested unresolved path does not fail the call
 - **WHEN** a resolved file names a path that resolves in neither root
 - **THEN** the tree prints `! <subpath>  (unresolved)` at its position and the call keeps exit code 0
+
+### Requirement: The fetch tool directive parser recognizes the lowercase fetch verb
+
+The fetch tool's directive parser SHALL recognize `Fetch`, `Also fetch`, `Fetch?`, `Also fetch?`, and the lowercase `fetch` form, with the same optional marker directly after the verb and the same path and skill handling as the capitalized forms, and SHALL create no directive from a word that merely embeds the verb. A recognized lowercase directive SHALL become a dependency-tree edge exactly as its capitalized form does.
+
+#### Scenario: a lowercase directive creates an edge
+
+- **WHEN** a file writes ``Otherwise fetch `@sai/policies/b.md`.``
+- **THEN** the tree lists the resolved `b.md` node as an edge of that file
+
+#### Scenario: a word that embeds the verb creates no edge
+
+- **WHEN** a file writes `The prefetch @sai/policies/c.md stays text.`
+- **THEN** the parser creates no edge for `c.md`
+
+#### Scenario: the normalized archive commit gate is a conditional node
+
+- **WHEN** `sai/commands/archive/coordinator.md` names its commit gate with `Fetch?`
+- **THEN** the tree prints that gate with `? ` as a conditional node

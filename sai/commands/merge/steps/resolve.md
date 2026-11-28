@@ -1,7 +1,7 @@
 # Merge step: resolve
 
 Fetch `@sai/commands/merge/steps/common.md` and read it once.
-Fetch? `@sai/commands/merge/steps/strategy.md` and read it once.
+Fetch `@sai/commands/merge/steps/strategy.md` and read it once.
 
 Goal: decide how every conflict of the files you are given resolves, write the resolution, and report exactly what you wrote, in this one step. The brief names the snapshot record and its hash, the files you resolve, the method, the run directory, and, when they exist, the paths of findings to fix, the decisions the user chose for escalated conflicts, and the correction snapshot of a test or final-tree correction.
 

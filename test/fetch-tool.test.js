@@ -198,7 +198,9 @@ test('E11 a conditional edge is marked, and a node reached only through marked e
   assert.equal(result.code, 0);
   assert.match(result.out, /2 conditional/);
   assert.match(result.out, new RegExp(`  \\? ${slashes(path.join(cwd, '.claude/sai/policies/b.md'))}  \\(0\\.0k\\) \\(project\\)`));
-  assert.match(result.out, new RegExp(`    ${slashes(path.join(cwd, '.claude/sai/policies/c.md'))}  \\(0\\.0k\\) \\(project\\)`));
+  assert.match(result.out, new RegExp(`    \\? ${slashes(path.join(cwd, '.claude/sai/policies/c.md'))}  \\(0\\.0k\\) \\(project\\)`));
+  const marks = result.out.split('\n').filter(line => line.trim().startsWith('? '));
+  assert.equal(marks.length, 2, 'the ? node lines equal the conditional count');
 });
 
 test('E12 a file whose only dependency is a skill returns the tree, not its content', () => {
@@ -485,22 +487,138 @@ test('lint fetch-directives passes over the installed instruction roots', () => 
   assert.deepEqual(violations, []);
 });
 
-test('lint fetch-directives reports the broken form, a marker without a condition, and an unmarked conditional heading', () => {
+test('lint fetch-directives reports the broken form, the lowercase verb, and the whole phrase in a code span', () => {
   const parser = lint.fetchParser();
   const content = [
     'Fetch? `@sai/policies/a.md`',
     '',
     'When the run stops, Fetch?@sai/policies/b.md',
     '',
-    '## Optional actions',
+    'A mention `Fetch @sai/policies/c.md` stays prose.',
     '',
-    'Fetch `@sai/policies/c.md`',
+    'Otherwise fetch `@sai/policies/d.md`.',
+    '',
+    'Fetch `@sai/policies/e.md`',
     '',
   ].join('\n');
   const found = lint.checkFetchDirectives(content, 'sai/x.md', parser).map(violation => `${violation.line}:${violation.problem}`);
   assert.deepEqual(found, [
-    '1:FETCH_MARKER_WITHOUT_CONDITION',
     '3:FETCH_DIRECTIVE_FORM',
-    '7:FETCH_UNMARKED_CONDITIONAL',
+    '5:FETCH_DIRECTIVE_FORM',
+    '7:FETCH_DIRECTIVE_FORM',
   ]);
+});
+
+test('lint fetch-directives leaves a quoted literal and a template path alone', () => {
+  const parser = lint.fetchParser();
+  const content = [
+    '`Warming: on, agent {agent}. Fetch @sai/policies/cache-warming.md and follow it as a subagent.`',
+    '',
+    'Fetch `@sai/<path>` names a template.',
+    '',
+  ].join('\n');
+  assert.deepEqual(lint.checkFetchDirectives(content, 'sai/x.md', parser), []);
+});
+
+test('the parser accepts the lowercase fetch form and refuses a word that embeds it', () => {
+  const { cwd, home } = fixture();
+  const a = 'Otherwise fetch `@sai/policies/b.md`.\nThe prefetch @sai/policies/c.md stays text.\n';
+  write(path.join(cwd, '.claude/sai/policies/a.md'), a);
+  write(path.join(cwd, '.claude/sai/policies/b.md'), 'b');
+  write(path.join(cwd, '.claude/sai/policies/c.md'), 'c');
+  const result = run(['--harness', 'claude', 'sai/policies/a.md'], { cwd, home });
+  assert.equal(result.code, 0);
+  assert.match(result.out, /b\.md/);
+  assert.ok(!result.out.includes('c.md'), 'a word that embeds the verb creates no edge');
+});
+
+test('I4 the archive coordinator tree carries the commit gate as a conditional node', () => {
+  const { cwd, home } = fixture();
+  const coordinator = fs.readFileSync(path.join(repoRoot, 'sai/commands/archive/coordinator.md'), 'utf8');
+  const file = path.join(cwd, '.opencode/sai/commands/archive/coordinator.md');
+  write(file, coordinator);
+  for (const occurrence of scanDirectives(coordinator)) {
+    if (!occurrence.active || occurrence.skill) continue;
+    const target = path.join(cwd, '.opencode', occurrence.subpath);
+    if (!fs.existsSync(target)) write(target, '# stub\n');
+  }
+  const result = run(['--harness', 'opencode', 'sai/commands/archive/coordinator.md'], { cwd, home });
+  assert.equal(result.code, 0);
+  const gate = path.join(cwd, '.opencode/sai/commands/archive/archive-commit-gate.instructions.md');
+  assert.match(result.out, new RegExp(`\\? ${slashes(gate)}`));
+});
+
+// The directives every run of their card needs stay unmarked, and the ones a branch, event, or step gates
+// keep the marker. The lists pin the classification; a marker that drifts fails here.
+const REQUIRED_DIRECTIVES = {
+  'sai/commands/commit/worker.md': ['sai/policies/worker-report-transport.md'],
+  'sai/commands/commit/coordinator.md': ['sai/policies/worker-report-transport.md', 'sai/policies/obstacle-escalation.md'],
+  'sai/commands/archive/worker.md': ['sai/policies/worker-report-transport.md'],
+  'sai/commands/archive/coordinator.md': ['sai/policies/worker-report-transport.md', 'sai/policies/obstacle-escalation.md'],
+  'sai/commands/implement/coordinator.md': ['sai/policies/worker-report-transport.md', 'sai/policies/test-execution.md', 'sai/policies/obstacle-escalation.md'],
+  'sai/commands/implement/worker-common.md': ['sai/policies/worker-report-transport.md'],
+  'sai/commands/merge/coordinator.md': ['sai/policies/worker-report-transport.md', 'sai/policies/test-execution.md', 'sai/policies/obstacle-escalation.md'],
+  'sai/commands/merge/worker.md': ['sai/policies/worker-report-transport.md'],
+  'sai/commands/review/coordinator.md': ['sai/policies/worker-report-transport.md', 'sai/policies/obstacle-escalation.md'],
+  'sai/commands/review/worker.md': ['sai/policies/worker-report-transport.md'],
+  'sai/commands/audit/coordinator.md': ['sai/policies/worker-report-transport.md', 'sai/policies/obstacle-escalation.md'],
+  'sai/commands/audit/worker-common.md': ['sai/policies/worker-report-transport.md'],
+  'sai/commands/deep-review/coordinator.md': ['sai/policies/worker-report-transport.md'],
+  'sai/commands/plan/cycle.md': ['sai/policies/worker-report-transport.md', 'sai/policies/obstacle-escalation.md'],
+  'sai/commands/plan/worker-common.md': ['sai/policies/worker-report-transport.md'],
+  'sai/commands/backfill/coordinator.md': ['sai/policies/worker-report-transport.md', 'sai/policies/obstacle-escalation.md'],
+  'sai/commands/backfill/worker.md': ['sai/policies/worker-report-transport.md'],
+  'sai/commands/explore/direct-build-coordinator.md': ['sai/policies/worker-report-transport.md', 'sai/policies/obstacle-escalation.md', 'sai/policies/backfill-draft-validation.md'],
+  'sai/commands/merge/steps/resolve.md': ['sai/commands/merge/steps/strategy.md'],
+  'sai/commands/explore/steps/crystallization-protocol.md': ['sai/policies/issue-format.md'],
+  'sai/policies/adversarial-expert-review.md': ['sai/orchestration/workers/bindings/adversarial-expert-review-worker.md'],
+  'sai/commands/design/steps/tasks.md': ['sai/policies/tool-resolution.md', 'sai/policies/tool-resolution.md'],
+};
+
+const CONDITIONAL_DIRECTIVES = {
+  'sai/commands/archive/coordinator.md': ['sai/orchestration/workers/bindings/backfill-worker.md'],
+  'sai/commands/build/coordinator.md': ['sai/policies/adversarial-expert-review.md', 'sai/policies/decision-record-creation.md', 'sai/commands/build/publication.md'],
+  'sai/commands/design/steps/research.md': ['sai/policies/sai-learnings-format.md', 'sai/policies/explore-agent.md'],
+  'sai/commands/explore/body.md': ['sai/policies/obstacle-escalation.md', 'sai/policies/investigation-batch.md', 'sai/policies/worker-lifecycle.md', 'skills/from-backlog/SKILL.md'],
+  'sai/commands/explore/direct-build-coordinator.md': ['sai/policies/test-execution.md', 'sai/policies/implementation-closing-report.md', 'sai/policies/adversarial-expert-review.md', 'sai/orchestration/workers/bindings/backfill-worker.md', 'sai/policies/scenario-preservation.md', 'sai/policies/decision-record-creation.md', 'sai/commands/build/publication.md'],
+  'sai/commands/explore/instructions.md': ['sai/policies/explore-agent.md'],
+  'sai/commands/explore/steps/common.md': ['sai/commands/explore/steps/issue-intake.md', 'sai/commands/explore/instructions.md'],
+  'sai/commands/explore/steps/crystallization-protocol.md': ['sai/commands/explore/steps/open-decisions.md', 'sai/policies/block-hygiene-judgment.md'],
+  'sai/commands/explore/steps/pipeline-plan-unattended.md': ['sai/commands/explore/steps/handoff-warming.md'],
+  'sai/commands/explore/steps/route-selector.md': ['sai/policies/backlog-origin-transport.md', 'sai/commands/explore/steps/handoff-warming.md'],
+  'sai/commands/implement/coordinator.md': ['sai/orchestration/workers/bindings/red-worker.md', 'sai/policies/inherent-risk.md', 'sai/policies/sai-learnings-format.md', 'sai/policies/decision-record-creation.md'],
+  'sai/commands/implement/steps/green-step.md': ['sai/policies/sai-learnings-format.md'],
+  'sai/commands/implement/steps/red-step.md': ['sai/policies/sai-learnings-format.md'],
+  'sai/commands/merge/coordinator.md': ['sai/orchestration/workers/bindings/merge-worker.md'],
+  'sai/commands/merge/steps/resolve.md': ['sai/policies/code-quality-priority-stack.md'],
+  'sai/commands/merge/steps/test-correction.md': ['sai/policies/code-quality-priority-stack.md'],
+  'sai/commands/plan/coordinator.md': ['sai/policies/adversarial-expert-review.md', 'sai/commands/spec/coordinator.md', 'sai/commands/plan/publication.md'],
+  'sai/commands/retire-docs/body.md': ['sai/policies/obstacle-escalation.md'],
+  'sai/commands/retrospective/body.md': ['sai/policies/obstacle-escalation.md'],
+  'sai/commands/review/steps/resolve-review-analysis.md': ['sai/policies/code-quality-priority-stack.md', 'sai/policies/sai-learnings-format.md', 'sai/policies/glossary-format.md'],
+  'sai/commands/spec/coordinator.md': ['sai/policies/block-hygiene-judgment.md'],
+  'sai/commands/status/body.md': ['sai/policies/obstacle-escalation.md'],
+  'sai/commands/worktree/body.md': ['sai/policies/obstacle-escalation.md'],
+};
+
+test('the required directives stay unmarked and the conditional ones keep the marker', () => {
+  const read = file => fs.readFileSync(path.join(repoRoot, file), 'utf8');
+  const required = Object.values(REQUIRED_DIRECTIVES).flat().length;
+  assert.equal(required, 35, 'the required classification pins 35 directives');
+  assert.equal(Object.values(CONDITIONAL_DIRECTIVES).flat().length, 45, 'the conditional classification pins 45 directives');
+  for (const [file, paths] of Object.entries(REQUIRED_DIRECTIVES)) {
+    const text = read(file);
+    for (const subpath of paths) {
+      assert.ok(text.includes(`Fetch \`@${subpath}\``), `${file} loads ${subpath} without the marker`);
+      assert.ok(!text.includes(`Fetch? \`@${subpath}\``), `${file} does not mark ${subpath}`);
+    }
+  }
+  assert.equal(read('sai/commands/design/steps/tasks.md').split('Fetch `@sai/policies/tool-resolution.md`').length - 1, 2);
+  for (const [file, paths] of Object.entries(CONDITIONAL_DIRECTIVES)) {
+    const text = read(file);
+    for (const subpath of paths) {
+      assert.ok(text.includes(`Fetch? \`@${subpath}\``), `${file} marks ${subpath}`);
+      assert.ok(!text.includes(`Fetch \`@${subpath}\``), `${file} does not leave ${subpath} unmarked`);
+    }
+  }
 });

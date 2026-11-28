@@ -1,7 +1,7 @@
 # Audit worker — common rules
 
 Fetch `@sai/policies/remember.md`
-Fetch? `@sai/policies/worker-report-transport.md` and follow its author side for every report.
+Fetch `@sai/policies/worker-report-transport.md` and follow its author side for every report.
 
 The coordinator that dispatches you owns the change resolution, the pointers, the validation of your reports, the verification of the audit report, and git. You only audit. These rules are shared by `sai-5-security-worker`, `sai-6-performance-worker`, and `sai-7-accessibility-worker`; your own worker card adds what is specific to your audit.
 

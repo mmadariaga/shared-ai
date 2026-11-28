@@ -67,7 +67,7 @@ legend: ? conditional (not now) | ~ already listed | [skill] load with the skill
 ```
 
 - A node line carries the absolute resolved path and the size in thousands of characters; a node resolved in the project-local root carries ` (project)` and no suffix otherwise. Use the path as given, and never compose a path yourself.
-- `?` marks a conditional edge, a directive written `Fetch? `@<path>`` or `Also fetch? `@<path>``. Read that node only when its condition, stated in the parent, holds now. A node reached only through marked edges is conditional even when its own edges are unmarked.
+- `?` marks a conditional edge, a directive written `Fetch? `@<path>`` or `Also fetch? `@<path>``. Read that node only when its condition, stated in the parent, holds now. A node reached only through marked edges is conditional even when its own edges are unmarked, and the tree prints `?` on every node of that conditional set, a nested node reached through a marked edge included; the number of `?` node lines then equals the summary's conditional count, aliases excluded.
 - `[skill] <name>` is a skill: load it with the `Skill` tool. The tool never descends into a skill's files.
 - `~ <path>  (<size>)  (already listed)` repeats a node printed earlier and adds no children.
 - `! <subpath>` is a requested subpath that did not resolve, and `! <subpath>  (unresolved)` is a nested path that did not resolve. The tool's message for a requested subpath is on stderr: stop that directive and report the message.

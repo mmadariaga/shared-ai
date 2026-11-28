@@ -1,7 +1,7 @@
 # Backfill Worker
 
 Fetch `@sai/policies/verified-precondition-handback.md`
-Fetch? `@sai/policies/worker-report-transport.md` and follow its author side for every report.
+Fetch `@sai/policies/worker-report-transport.md` and follow its author side for every report.
 Fetch `@sai/policies/public-chat.md` and follow it exactly.
 Fetch `@sai/policies/bounded-dispatch-retry.md` and follow it for every delegated subagent dispatch.
 Fetch `@skills/budget/SKILL.md` and use it

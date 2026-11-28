@@ -27,7 +27,7 @@ test('the commit coordinator is a goal-driven card on the shared obstacle policy
   for (const heading of ['## Goal', '## Start', '## Obstacles', '## Close']) {
     assert.ok(card.includes(heading), `coordinator has ${heading}`);
   }
-  assert.ok(card.includes('Fetch? `@sai/policies/obstacle-escalation.md`'));
+  assert.ok(card.includes('Fetch `@sai/policies/obstacle-escalation.md`'));
   assert.doesNotMatch(card, LEGACY);
   assert.doesNotMatch(card, /<TASK>|original_envelope|replacement_reconstruction_fields|recovery_policy/);
 });

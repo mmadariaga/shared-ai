@@ -35,7 +35,7 @@ test('the archive and backfill coordinators are goal-driven cards on the shared 
     for (const heading of ['## Goal', '## Start', '## Obstacles', '## Close']) {
       assert.ok(card.includes(heading), `${name} coordinator has ${heading}`);
     }
-    assert.ok(card.includes('Fetch? `@sai/policies/obstacle-escalation.md`'));
+    assert.ok(card.includes('Fetch `@sai/policies/obstacle-escalation.md`'));
     assert.match(card, /Obstacles, their budget of 3 attempts, force majeure, and escalation follow `@sai\/policies\/obstacle-escalation\.md`/);
     assert.ok(card.includes(`Fetch ` + '`' + `@sai/orchestration/workers/bindings/${name}-worker.md` + '`' + ` and use it.`));
     assert.ok(card.includes('Fetch `@sai/policies/no-commit-guard.md`'));

@@ -616,18 +616,22 @@ test('Step 3 the repository contains no active reference to any superseded desti
   }
 });
 
-test('parseFetchRefs reads the backticked and the bare directive as the same reference', () => {
+test('parseFetchRefs reads the backticked, bare, marked, and lowercase directive as the same reference', () => {
   const { parseFetchRefs } = require('../bin/doctor.js');
   const text = [
     'Fetch `@skills/fetch/SKILL.md`',
     'Fetch `@sai/commands/commit/coordinator.md` and follow it exactly.',
     'Also fetch `@sai/policies/remember.md`, then continue.',
     'Fetch @sai/policies/public-chat.md and follow it exactly.',
+    'Fetch? `@sai/policies/obstacle-escalation.md`',
+    'Otherwise fetch `@commands/sai-<name>.md`.',
   ].join('\n');
   assert.deepEqual(parseFetchRefs(text), [
     'skills/fetch/SKILL.md',
     'sai/commands/commit/coordinator.md',
     'sai/policies/remember.md',
     'sai/policies/public-chat.md',
+    'sai/policies/obstacle-escalation.md',
+    'commands/sai-<name>.md',
   ]);
 });

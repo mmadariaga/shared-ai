@@ -185,7 +185,7 @@ test('crystallization-protocol.md detects open decisions before loading the slic
   assert.equal(fetches[0], 'open-decisions.md', 'the open-decision step is the first fetch of the file');
   assert.ok(protocol.indexOf('open-decisions.md') < protocol.indexOf('slicing-assessment.md'),
     'detection precedes the slicing assessment load');
-  assert.match(protocol, /Only when at least one exists, Fetch\?? `@sai\/commands\/explore\/steps\/open-decisions\.md` and complete that step before loading anything below/);
+  assert.match(protocol, /Only when at least one exists, Fetch\? `@sai\/commands\/explore\/steps\/open-decisions\.md` and complete that step before loading anything below/);
   assert.match(protocol, /With none, continue below and show nothing about this check/);
 
   const slicing = fs.readFileSync(path.join(explorerStepsDir, 'slicing-assessment.md'), 'utf8');

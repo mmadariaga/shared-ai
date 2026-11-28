@@ -5,8 +5,8 @@ Fetch `@sai/policies/public-chat.md` and follow it exactly.
 Fetch `@sai/policies/remember.md`
 Fetch `@skills/safe-operations/SKILL.md` and use it.
 Fetch `@sai/policies/tool-resolution.md`
-Fetch? `@sai/policies/worker-report-transport.md` and follow its receiver side for every backfill worker report of the ordinary route.
-Fetch? `@sai/policies/obstacle-escalation.md`
+Fetch `@sai/policies/worker-report-transport.md` and follow its receiver side for every backfill worker report of the ordinary route.
+Fetch `@sai/policies/obstacle-escalation.md`
 Fetch `@sai/policies/prereqs-paths.md`
 Fetch `@sai/policies/no-commit-guard.md` and follow its § Window pairing for every `sai-backfill-worker` stretch.
 

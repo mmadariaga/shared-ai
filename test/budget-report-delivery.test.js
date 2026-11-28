@@ -76,7 +76,7 @@ test('the budget reports are not added to the validator, and transfer.js gains n
 test('the three agent policies deliver through the transport and no longer describe a text reply', () => {
   for (const file of ['sai/policies/explore-agent.md', 'sai/policies/executor-agent.md', 'sai/policies/budget-agent.md']) {
     const text = read(file);
-    assert.match(text, /Fetch\?? `@sai\/policies\/worker-report-transport\.md` and follow its § Budget agents, agent side/, file);
+    assert.match(text, /Fetch `@sai\/policies\/worker-report-transport\.md` and follow its § Budget agents, agent side/, file);
     assert.doesNotMatch(text, /answered in text|reply with the response in text|inline/i, file);
   }
   assert.match(read('sai/policies/executor-agent.md'), /the final message is its `\{path, sha256\}` and the line `warming: false`/);
@@ -90,7 +90,7 @@ test('the six budget skills carry the dispatcher rule, and only the Claude Code 
       const label = `${harness}/${agent}`;
       assert.match(skill, /Every spawn prompt opens with the line `--report-dir <dir>`/, label);
       assert.match(skill, /there is no text reply/, label);
-      assert.match(skill, /Fetch\?? `@sai\/policies\/worker-report-transport\.md`/, label);
+      assert.match(skill, /Fetch `@sai\/policies\/worker-report-transport\.md`/, label);
       assert.match(skill, /§ Budget agents, dispatcher side/, label);
       assert.equal(/`--harness claude` as the second line/.test(skill), harness === 'claude', label);
     }

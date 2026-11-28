@@ -775,17 +775,10 @@ function checkWorkerEmissionOwnership(content) {
 }
 
 // --- fetch-directives --------------------------------------------------------
-// The condition words that make a section or a paragraph a narrower gate than its section. The event nouns
-// count too: a load gated by an obstacle, a report, a stop, a test, a failure, an error, or an escalation
-// states its condition by naming that event.
-const FETCH_CONDITION = /\b(?:whenever|when|before|after|if|once|unless|while|conditional|optional|in case|sub-case|only (?:when|on|after|if|for)|report|obstacle|stop|failure|error|test|escalat\w*|fallback|retry)\b/i;
-// A heading gates its whole section; only a grammatical condition makes it conditional, never an event noun.
-const FETCH_HEADING_CONDITION = /\b(?:whenever|when|before|after|if|once|unless|while|conditional|optional|in case|sub-case|only (?:when|on|after|if|for))\b/i;
 // A directive that breaks the form: the marker is not directly after the verb, or the whole phrase sits in a
 // code span instead of the path alone.
 const FETCH_BROKEN_MARKER = /\b(?:Also fetch|Fetch)(?:\?(?!\s)|[ \t]+\?)/;
 const FETCH_SPACED_MARKER = /\b(?:Also fetch|Fetch)[ \t]+\?[ \t]*`?@/;
-const FETCH_LINE_START =/^\s*(?:[-*]\s+|\d+\.\s+)?(?:Also fetch|Fetch)\??[ \t]*(?:`?@)/;
 
 // The graph parser of the fetch tool, whichever copy of this install holds it: the installed sibling
 // `skills/fetch/fetch.js`, or the repository source `skills/universal/fetch/fetch.js`.
@@ -808,39 +801,25 @@ function markdownFiles(directory) {
   });
 }
 
-// A directive that breaks the form, a `?` directive with no condition in its paragraph or section, or an
-// unmarked directive under a conditional heading.
-// The paragraph above a directive: a lead-in paragraph states the gate of a directive that stands on its own line.
-function paragraphBefore(lines, line) {
-  let index = line - 2;
-  while (index >= 0 && lines[index].trim() === '') index -= 1;
-  if (index < 0) return '';
-  const end = index;
-  while (index >= 0 && lines[index].trim() !== '' && !/^\s{0,3}#/.test(lines[index])) index -= 1;
-  return lines.slice(index + 1, end + 1).join(' ');
-}
-
+// A directive that breaks the form: a lowercase verb, a marker that is not directly after the verb, or a
+// directive phrase that sits whole in a code span instead of the path alone.
 function checkFetchDirectives(content, file, parser) {
   const violations = [];
   const lines = content.split(/\r?\n/);
   for (const occurrence of parser.scanDirectives(content)) {
     const lineText = lines[occurrence.line - 1] || '';
     if (!occurrence.active) {
-      if (occurrence.reason === 'prose-span' && FETCH_LINE_START.test(lineText.trim())) {
+      if (occurrence.reason === 'prose-span' && occurrence.verbSpan !== null && occurrence.verbSpan.startsWith(occurrence.verb)) {
         violations.push({ file, line: occurrence.line, problem: 'FETCH_DIRECTIVE_FORM', detail: 'the directive phrase sits in a code span; write the verb bare and only its path in the span (Fetch `@path`)' });
       }
       continue;
     }
-    const context = `${occurrence.paragraph} ${paragraphBefore(lines, occurrence.line)}`;
-    const conditional = FETCH_CONDITION.test(context) || (occurrence.section ? FETCH_CONDITION.test(occurrence.section) : false);
+    if (occurrence.verb === 'fetch') {
+      violations.push({ file, line: occurrence.line, problem: 'FETCH_DIRECTIVE_FORM', detail: 'write the verb as Fetch or Also fetch' });
+      continue;
+    }
     if (FETCH_BROKEN_MARKER.test(lineText)) {
       violations.push({ file, line: occurrence.line, problem: 'FETCH_DIRECTIVE_FORM', detail: 'the conditional marker must sit directly after the verb (Fetch? `@path`)' });
-    }
-    if (occurrence.conditional && !conditional) {
-      violations.push({ file, line: occurrence.line, problem: 'FETCH_MARKER_WITHOUT_CONDITION', detail: 'a conditional directive needs a condition in its paragraph or section' });
-    }
-    if (!occurrence.conditional && occurrence.section && FETCH_HEADING_CONDITION.test(occurrence.section)) {
-      violations.push({ file, line: occurrence.line, problem: 'FETCH_UNMARKED_CONDITIONAL', detail: `the directive sits under the conditional section "${occurrence.section}" and needs the ? marker` });
     }
   }
   // A marker separated from its verb (`Fetch ? @path`) is no directive to the parser, so the line itself is read,
@@ -894,7 +873,7 @@ const USAGE = {
     },
     'sai-learnings-format': FILE_CHECK('sai-learnings-format', 'Validates the format of SAI_LEARNINGS.md.', { example: 'SAI_LEARNINGS.md' }),
     'worker-emission-ownership': FILE_CHECK('worker-emission-ownership', 'Validates the emission ownership of a worker card.', { example: 'sai/commands/spec/worker.md' }),
-    'fetch-directives': FILE_CHECK('fetch-directives', 'Validates Fetch @ directives: the form, a ? marker with a condition, and an unmarked directive under a conditional heading. Takes a file or a directory.', { example: 'sai/policies' }),
+    'fetch-directives': FILE_CHECK('fetch-directives', 'Validates the form of Fetch @ directives: the verb and the marker, and the path alone in its code span; a template path and a fenced directive are payload. Takes a file or a directory.', { example: 'sai/policies' }),
   },
 };
 function usage() {
