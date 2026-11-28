@@ -112,11 +112,102 @@ On a routed agent row of the Claude Code harness, the SETTING column SHALL show 
 - **WHEN** a Claude Code agent row is routed and no same-named OpenCode agent file can be read
 - **THEN** the SETTING column shows `-> opencode: (unresolved)`
 
-### Requirement: OpenCode harness screen ignores the routing line
+### Requirement: Claude Code passthrough option for opencode worker rows
 
-The OpenCode harness screen of the "Customize models" menu SHALL NOT offer `OpenCode passthrough` and SHALL neither read nor write the `harness:` line.
+In the opencode harness of the "Customize models" menu, the provider selection SHALL offer `Claude Code passthrough` as its first option when at least one selected row is a WORKER file. It SHALL NOT offer the option when every selected row is an AGENT, ORCHESTRATOR, or UTILITY row. In a selection that mixes worker files and other rows, choosing the option SHALL apply only to the worker files; the other rows SHALL keep their current setting and a warning SHALL name them. The opencode adapter SHALL refuse to route a target that is not a worker file. Choosing the option SHALL write `harness: claude` in the target's project-local opencode agent file and SHALL leave its `model` and `variant` lines unchanged, as inert values while the worker runs through Claude Code. After the apply, setup SHALL check the `claude` command, its signed-in session, and the same-named Claude Code agent once for all written targets, through the check exported by `sai/tools/claude-dispatch.js`; when a piece is missing, the line SHALL stay written and a warning SHALL name the worker and the missing piece.
 
-#### Scenario: OpenCode screen unchanged
+#### Scenario: Option offered for worker rows only
 
-- **WHEN** the user customizes rows in the OpenCode harness
-- **THEN** no `OpenCode passthrough` option is offered and no `harness:` line is read or written
+- **WHEN** the user selects only AGENT, ORCHESTRATOR, or UTILITY rows in the opencode harness
+- **THEN** the provider selection does not offer `Claude Code passthrough`
+
+#### Scenario: Option listed first for a worker row
+
+- **WHEN** the selection in the opencode harness includes at least one WORKER row
+- **THEN** the provider selection lists `Claude Code passthrough` before the discovered providers
+
+#### Scenario: Mixed selection routes only worker rows
+
+- **WHEN** the user chooses `Claude Code passthrough` for a selection that mixes worker files and agent rows
+- **THEN** only the worker files receive the `harness: claude` line and a warning names the rows that keep their setting
+
+#### Scenario: Passthrough keeps the opencode tuning
+
+- **WHEN** the user chooses `Claude Code passthrough` for a worker file whose opencode agent file has `model` and `variant` lines
+- **THEN** the project-local agent file gains `harness: claude` and keeps the same `model` and `variant` lines
+
+#### Scenario: Missing Claude Code warns without blocking
+
+- **WHEN** the user chooses `Claude Code passthrough` and the `claude` command, its signed-in session, or the same-named Claude Code agent file is missing
+- **THEN** the `harness: claude` line is written and a warning names the worker and the missing piece
+
+### Requirement: OpenCode model choice, reset, and preset manage the routing line
+
+Choosing an opencode model and optional variant on a routed opencode worker SHALL write those lines and SHALL remove the `harness:` line. "Reset to default models" SHALL remove the `harness:` line of an opencode worker file, because the factory definition carries none. "Save preset" SHALL record for each opencode worker whether it is routed (`"harness": "claude"`, or `null` when it is not), and "Load preset" SHALL write or remove the line from that value; an entry of an older preset without the value SHALL leave the line as it is.
+
+#### Scenario: OpenCode model removes the routing
+
+- **WHEN** the user chooses an opencode model and variant for a worker file whose file carries `harness: claude`
+- **THEN** the file holds the chosen `model` and `variant` and no `harness:` line
+
+#### Scenario: Reset removes the routing
+
+- **WHEN** the user runs "Reset to default models" on an opencode worker file whose file carries `harness: claude`
+- **THEN** the file returns to the factory settings with no `harness:` line
+
+#### Scenario: Save records the route state
+
+- **WHEN** the user saves a preset while an opencode worker is routed or not routed
+- **THEN** the preset records `"harness": "claude"` for the routed worker and `null` for the unrouted one
+
+#### Scenario: Load writes or removes the route
+
+- **WHEN** the user loads a preset whose opencode worker entry carries `"harness": "claude"` or `null`
+- **THEN** the worker's project-local file gains or loses the `harness:` line accordingly
+
+#### Scenario: An older preset keeps the route
+
+- **WHEN** the user loads a preset whose opencode worker entry carries no `harness` value
+- **THEN** the worker's current `harness:` line stays as it is
+
+### Requirement: Claude passthrough row display
+
+On a routed opencode worker row, the SETTING column SHALL show `-> claude: anthropic/<model> (<effort>)`, read from the same-named Claude Code agent file (the project file first, then the Claude Code global root). When that file cannot be read, the column SHALL show `-> claude: (unresolved)`.
+
+#### Scenario: Routed opencode row shows the Claude Code model
+
+- **WHEN** an opencode worker row is routed and the same-named Claude Code agent file declares a model and effort
+- **THEN** the SETTING column shows `-> claude:` followed by that model and effort
+
+#### Scenario: Unreadable Claude Code agent shows unresolved
+
+- **WHEN** an opencode worker row is routed and no same-named Claude Code agent file can be read
+- **THEN** the SETTING column shows `-> claude: (unresolved)`
+
+### Requirement: Claude passthrough apply states the effective model
+
+After a Claude Code passthrough apply persists at least one opencode worker, setup SHALL print one line per routed worker stating that it runs through Claude Code, that its opencode model and variant are inert, and that the model and effort of its Claude Code agent file apply.
+
+#### Scenario: Apply prints the effective model notice
+
+- **WHEN** a Claude Code passthrough apply persists one or more opencode workers
+- **THEN** setup prints one line per routed worker naming the worker, the inert opencode tuning, and the effective Claude Code model and effort
+
+### Requirement: OpenCode harness screen offers the inverse route
+
+The opencode harness screen of the "Customize models" menu SHALL NOT offer `OpenCode passthrough`. It SHALL offer `Claude Code passthrough` for selected worker rows, SHALL read the `harness: claude` line of an opencode worker file to display the route, and SHALL write or remove that line only for eligible worker rows.
+
+#### Scenario: OpenCode screen offers only the inverse route
+
+- **WHEN** the opencode harness screen renders its provider selection for a worker selection
+- **THEN** it offers `Claude Code passthrough` and never `OpenCode passthrough`
+
+#### Scenario: OpenCode screen reads the routing line
+
+- **WHEN** an opencode worker file carries `harness: claude`
+- **THEN** the SETTING column shows the `-> claude:` form for that worker
+
+#### Scenario: Non-worker rows carry no routing line
+
+- **WHEN** the selection contains AGENT, ORCHESTRATOR, or UTILITY rows
+- **THEN** no `harness: claude` line is written for them

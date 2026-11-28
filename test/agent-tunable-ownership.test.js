@@ -83,7 +83,42 @@ function installTunableSeed(dir, sourceText, destText, harness = 'claude') {
 
 test('CLAUDE_TUNABLE_KEYS and OPENCODE_TUNABLE_KEYS declare the harness tunable sets', () => {
   assert.deepEqual(flow.CLAUDE_TUNABLE_KEYS, ['model', 'effort', 'harness']);
-  assert.deepEqual(flow.OPENCODE_TUNABLE_KEYS, ['model', 'variant']);
+  assert.deepEqual(flow.OPENCODE_TUNABLE_KEYS, ['model', 'variant', 'harness']);
+});
+
+test('E2 a hand-set harness line in an opencode agent file is a user-owned tunable', () => {
+  const source = '---\nname: sai-demo-worker\nmodel: opencode-go/source\nvariant: low\n---\n\nbody\n';
+  const handSet = '---\nname: sai-demo-worker\nmodel: opencode-go/tuned\nvariant: high\nharness: claude\n---\n\nbody\n';
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-tunable-harness-opencode-'));
+  try {
+    const { sourcePath, destinationPath } = writeFixture(dir, source, handSet);
+    const projection = { strategy: 'tunable-seed', harness: 'opencode', sourcePath, destinationPath };
+    assert.equal(flow.tunableSeedInstaller(projection), 'reused', 'a compatible file keeps the route line');
+    assert.equal(fs.readFileSync(destinationPath, 'utf8'), handSet);
+    assert.ok(flow.managedDefinitionBytes(Buffer.from(source), flow.OPENCODE_TUNABLE_KEYS)
+      .equals(flow.managedDefinitionBytes(Buffer.from(handSet), flow.OPENCODE_TUNABLE_KEYS)),
+    'doctor compares managed content after stripping the tunables');
+    const divergent = installTunableSeed(dir, source.replace('body', 'new body'), handSet, 'opencode');
+    assert.ok(divergent.includes('harness: claude') && divergent.includes('new body'), 'a reinstall keeps the routing');
+    assert.ok(!/^harness:/m.test(source), 'the opencode agent templates ship no harness line');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('E2 setup writes and removes the opencode route line on the separate model/variant shape', () => {
+  const { patchFrontmatter } = require('../bin/model-customization.js');
+  const keys = flow.OPENCODE_TUNABLE_KEYS;
+  const source = '---\nname: sai-demo-worker\nmodel: opencode-go/a\nvariant: low\n---\n\nbody\n';
+  const options = { separateVariant: true, passthroughHarness: 'claude' };
+  const routed = patchFrontmatter(source, keys, { harness: 'claude' }, options);
+  assert.equal(routed, '---\nname: sai-demo-worker\nmodel: opencode-go/a\nvariant: low\nharness: claude\n---\n\nbody\n',
+    'a routing-only setting keeps the inert model and variant lines and adds the route line');
+  assert.equal(patchFrontmatter(routed, keys, { harness: 'claude' }, options), routed, 'writing twice adds one line');
+  assert.equal(patchFrontmatter(routed, keys, { model: 'opencode-go/a', variant: 'low' }, options), source,
+    'choosing a model removes the route line');
+  assert.equal(patchFrontmatter(routed, ['model', 'variant'], { model: 'opencode-go/a', variant: 'low' }).includes('harness: claude'), true,
+    'a caller that does not manage harness never touches it');
 });
 
 test('first install writes source verbatim', () => {

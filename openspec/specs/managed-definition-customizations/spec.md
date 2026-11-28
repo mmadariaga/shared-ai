@@ -27,7 +27,7 @@ Every command wrapper, Generic Agent source, and routed-worker template for Clau
 
 ### Requirement: Refresh preserves harness-native tuning
 
-Current-name refresh SHALL preserve model and effort for Claude Code and model with optional variant for opencode. Opencode commands SHALL use model#variant notation; agents SHALL keep separate model and optional variant fields. Legacy commands with separate model and variant SHALL be normalized without losing their selection. Agent refresh SHALL preserve structured model blocks and intentional optional-tunable absence using the existing top-level structural anchor. It SHALL NOT transfer settings from retired definitions.
+Current-name refresh SHALL preserve model and effort for Claude Code and model with optional variant for opencode, and SHALL preserve the hand-set `harness` line of either harness's agent files. Opencode commands SHALL use model#variant notation; agents SHALL keep separate model and optional variant fields. Legacy commands with separate model and variant SHALL be normalized without losing their selection. Agent refresh SHALL preserve structured model blocks and intentional optional-tunable absence using the existing top-level structural anchor. It SHALL NOT transfer settings from retired definitions.
 
 #### Scenario: Claude settings survive
 - **WHEN** a Claude Code managed definition has custom model and effort
@@ -40,6 +40,10 @@ Current-name refresh SHALL preserve model and effort for Claude Code and model w
 #### Scenario: Optional agent tuning remains absent
 - **WHEN** an existing agent omits optional effort or variant
 - **THEN** refresh retains the omission rather than inserting the shipped value
+
+#### Scenario: Hand-set route line survives refresh
+- **WHEN** an opencode worker file carries `harness: claude`
+- **THEN** refresh retains that line while updating the managed content
 
 ### Requirement: Doctor and uninstall respect different customization boundaries
 

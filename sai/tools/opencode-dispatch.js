@@ -47,12 +47,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { extractInputFile, readInputFile, InputFileError } = require('./input-reader');
 const { resolveOpencode, SHIM_UNRESOLVED } = require('./opencode-launcher');
-const { resolveTempRoot } = require('./temp-root');
+const { acquireTurnLock, busyResult, emptyTokens, harnessOf, processAlive, turnLockDirectory: commonLockDirectory, BUSY_EXIT } = require('./dispatch-common');
 const usageKit = require('./usage');
 
 const AGENT = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const SESSION = /^[A-Za-z0-9_-]+$/;
-const HARNESS_KEY = /^harness:\s*(.*?)\s*$/;
 const OD = 'node sai/tools/opencode-dispatch.js';
 
 const USAGE = {
@@ -85,10 +84,6 @@ const USAGE = {
 };
 const PROBE_TIMEOUT_MS = 20000;
 const TURN_LOCK_DIR = 'opencode-turns';
-const BUSY_EXIT = 3;
-const CLAIM_STALE_MS = 10000;
-const CLAIM_ATTEMPTS = 100;
-const CLAIM_WAIT_MS = 20;
 
 /** A misuse of the command line (exit 2). */
 class UsageError extends Error {}
@@ -98,19 +93,6 @@ function claudeRoot() {
   const candidates = ['skills/fetch', 'skills/universal/fetch'].map(directory => path.resolve(__dirname, '..', '..', directory, 'harness-root.js'));
   const resolver = require(candidates.find(file => fs.existsSync(file)) ?? candidates[0]);
   return resolver.resolveGlobalRoot('claude');
-}
-
-/** The value of the `harness:` key in the frontmatter of an agent file, or `null` when it carries none. */
-function harnessOf(text) {
-  const lines = text.split(/\r?\n/);
-  if (lines[0] !== '---') return null;
-  const end = lines.indexOf('---', 1);
-  if (end === -1) return null;
-  for (const line of lines.slice(1, end)) {
-    const match = HARNESS_KEY.exec(line);
-    if (match) return match[1].replace(/^(['"])(.*)\1$/, '$2');
-  }
-  return null;
 }
 
 /** The agent file Claude Code resolves for `agent`: the project first, then the user-global root. `null` when absent. */
@@ -195,8 +177,6 @@ function runArguments({ agent, session }, message) {
   return [...args, '--', message];
 }
 
-const emptyTokens = () => ({ input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0 });
-
 /** The turn's facts from the JSON lines of `opencode run --format json`; lines that are not JSON objects are skipped. */
 function readEvents(stdout) {
   const result = { sessionID: null, text: '', tokens: emptyTokens(), cost: 0, error: null };
@@ -271,107 +251,12 @@ async function turn({ agent, session, message, cwd }, run = defaultRun) {
   };
 }
 
-/** Whether a process with this PID exists; a process this user cannot signal still exists. */
-function processAlive(pid) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return error.code === 'EPERM';
-  }
-}
-
-/** The PID a lock file holds, or `null` when it holds anything else. */
-function lockHolder(file) {
-  try {
-    const pid = Number(fs.readFileSync(file, 'utf8').trim());
-    return Number.isInteger(pid) && pid > 0 ? pid : null;
-  } catch {
-    return null;
-  }
-}
-
 /**
  * The directory of the turn locks under the Claude Code SAI temp root, created when missing; `null` when the root cannot be
  * resolved (a missing harness root on Linux, an unsafe one), which leaves the turn unguarded.
  */
 function turnLockDirectory() {
-  try {
-    const directory = path.join(resolveTempRoot('claude'), TURN_LOCK_DIR);
-    fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
-    return directory;
-  } catch {
-    return null;
-  }
-}
-
-/** Block this process for `milliseconds` without spinning. */
-function sleepSync(milliseconds) {
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
-}
-
-/**
- * Take the replacement claim of a lock: an exclusive-create file that one contender at a time holds while it removes a
- * stale lock. A claim older than CLAIM_STALE_MS belongs to a process that died inside that instant and is removed.
- */
-function takeClaim(claim) {
-  try {
-    fs.closeSync(fs.openSync(claim, 'wx', 0o600));
-    return true;
-  } catch (error) {
-    if (error.code !== 'EEXIST') throw error;
-  }
-  try {
-    if (Date.now() - fs.statSync(claim).mtimeMs > CLAIM_STALE_MS) fs.unlinkSync(claim);
-  } catch { /* the claim was released first */ }
-  return false;
-}
-
-/**
- * Take the turn lock of `session` in `directory`. The PID is written to a private file that is hard-linked to the lock
- * name, so the lock never exists empty and two processes never both create it. A lock whose PID is gone is replaced, and
- * only by the contender that holds the replacement claim, which removes the file only while it still holds the stale PID it
- * read: no contender can remove a lock that another one linked in the meantime, so two contenders over one stale lock never
- * both acquire it. `{ acquired: true, release }`, or `{ acquired: false, pid }` with the PID of the live holder.
- */
-function acquireTurnLock(directory, session, { pid = process.pid, alive = processAlive } = {}) {
-  const file = path.join(directory, `${session}.lock`);
-  const claim = `${file}.claim`;
-  const draft = path.join(directory, `${session}.${pid}.${Date.now()}.tmp`);
-  fs.writeFileSync(draft, String(pid), { mode: 0o600 });
-  try {
-    for (let attempt = 0; attempt < CLAIM_ATTEMPTS; attempt += 1) {
-      try {
-        fs.linkSync(draft, file);
-        return { acquired: true, release: () => { if (lockHolder(file) === pid) try { fs.unlinkSync(file); } catch { /* already gone */ } } };
-      } catch (error) {
-        if (error.code !== 'EEXIST') throw error;
-      }
-      const holder = lockHolder(file);
-      if (holder !== null && alive(holder)) return { acquired: false, pid: holder };
-      if (!takeClaim(claim)) {
-        sleepSync(CLAIM_WAIT_MS);
-        continue;
-      }
-      try {
-        if (lockHolder(file) === holder) fs.unlinkSync(file);
-      } catch { /* the lock is already gone */ } finally {
-        try { fs.unlinkSync(claim); } catch { /* the claim is gone */ }
-      }
-    }
-    return { acquired: false, pid: lockHolder(file) };
-  } finally {
-    try { fs.unlinkSync(draft); } catch { /* the draft is gone */ }
-  }
-}
-
-/** The result of a `continue` that was refused because an earlier turn of its session still runs. */
-function busyResult(session, pid) {
-  return {
-    status: 'busy', sessionID: session, text: '', tokens: emptyTokens(), cost: 0, exit_code: null,
-    error: `the previous turn of session ${session} is still running${pid ? ` (process ${pid})` : ''}; nothing was sent`,
-    ...(pid ? { busy_pid: pid } : {}),
-  };
+  return commonLockDirectory('claude', TURN_LOCK_DIR);
 }
 
 /**

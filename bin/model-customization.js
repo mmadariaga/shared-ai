@@ -10,11 +10,13 @@ const { resolveGlobalRoot } = require('../skills/universal/fetch/harness-root');
 const { createSettingsEditor, LANGUAGE_IDS, BACKLOG_PR_IDS, TELEMETRY_ID } = require('./project-settings-screen.js');
 const { runWarmingSetup, HARNESS_OPTIONS } = require('./warming-setup.js');
 const opencodeDispatch = require('../sai/tools/opencode-dispatch.js');
+const claudeDispatch = require('../sai/tools/claude-dispatch.js');
 const {
   promptSelect,
   promptChecklist: installFlowPromptChecklist,
   prepareLineInput,
   queryWaitControls,
+  OPENCODE_TUNABLE_KEYS,
   BACK,
   INPUT_CLOSED,
   CHECKLIST_SEPARATOR,
@@ -138,18 +140,28 @@ const CLAUDE_SETTINGS_CATALOG = Object.freeze({
   ]),
 });
 
-// The Claude Code agent file keeps its routing in the user-owned `harness:` line; `model` and `effort` stay beside it
-// as the fallback model of the runtime.
+// The routed agent file keeps its routing in the user-owned `harness:` line; on Claude Code the `model` and `effort`
+// lines stay beside it as the fallback model of the runtime, and on opencode the `model` and `variant` lines are inert
+// while the worker runs through Claude Code.
 const OPENCODE_PASSTHROUGH_LABEL = 'OpenCode passthrough';
+const CLAUDE_PASSTHROUGH_LABEL = 'Claude Code passthrough';
 const PASSTHROUGH_HARNESS = 'opencode';
+const CLAUDE_PASSTHROUGH_HARNESS = 'claude';
+// The harness a routed row runs in, keyed by the harness whose agent file carries the route line.
+const PASSTHROUGH_TARGET = Object.freeze({ claude: PASSTHROUGH_HARNESS, opencode: CLAUDE_PASSTHROUGH_HARNESS });
 const CLAUDE_MODEL_KEYS = Object.freeze(['model', 'effort']);
 const CLAUDE_TUNABLE_KEYS = Object.freeze([...CLAUDE_MODEL_KEYS, 'harness']);
-const PASSTHROUGH_FAMILIES = Object.freeze(['agent', 'worker']);
+// Claude Code agent files (AGENT and WORKER rows) can be routed through opencode; only opencode WORKER files can be
+// routed through Claude Code, because the Generic Agents keep their opencode dispatch.
+const PASSTHROUGH_FAMILIES = Object.freeze({
+  claude: Object.freeze(['agent', 'worker']),
+  opencode: Object.freeze(['worker']),
+});
 
-// Only agent files (AGENT and WORKER rows) can be routed through opencode: command wrappers run as the main session.
-function isPassthroughEligible(targetEntry) {
+// Only agent files can be routed: command wrappers run as the main session.
+function isPassthroughEligible(targetEntry, harnessKey = 'claude') {
   const family = typeof targetEntry === 'string' ? 'worker' : targetEntry && targetEntry.family;
-  return PASSTHROUGH_FAMILIES.includes(family);
+  return (PASSTHROUGH_FAMILIES[harnessKey] || PASSTHROUGH_FAMILIES.claude).includes(family);
 }
 
 const NO_VARIANT = Symbol('NO_VARIANT');
@@ -304,9 +316,18 @@ function splitFrontmatter(text) {
   return { lines, endIndex, lineEnding, trailingLineEnding };
 }
 
-function patchFrontmatter(text, tunableKeys, settings, { separateVariant = false } = {}) {
+function patchFrontmatter(text, tunableKeys, settings, { separateVariant = false, passthroughHarness = PASSTHROUGH_HARNESS } = {}) {
   const split = splitFrontmatter(text);
   if (split === null) return null;
+
+  // The `harness:` line is routing, not a model value: a passthrough setting writes it, a model setting removes it, and
+  // `keepHarness` or a setting that names no model leaves it as it is.
+  const managesHarness = tunableKeys.includes('harness');
+  let harnessAction = 'keep';
+  if (managesHarness && !settings.keepHarness) {
+    if (settings.harness === passthroughHarness) harnessAction = 'write';
+    else if (settings.harness === null || settings.model !== undefined) harnessAction = 'remove';
+  }
 
   // OpenCode commands keep their combined model#variant frontmatter. Agents
   // use separate model and variant fields; both accept legacy combined input.
@@ -319,11 +340,30 @@ function patchFrontmatter(text, tunableKeys, settings, { separateVariant = false
       : hashIndex === -1 ? undefined : rawModel.slice(hashIndex + 1) || undefined;
     const kept = [];
     let wroteModel = false;
+    let wroteHarness = false;
+    // A routing-only setting names no model and no variant: the file keeps both lines as they are.
+    const keepsTuning = settings.model === undefined && settings.variant === undefined;
     for (const line of split.lines.slice(1, split.endIndex)) {
       const match = TOP_LEVEL_SCALAR.exec(line);
-      if (match && match[1] === 'variant') continue;
+      if (match && match[1] === 'variant') {
+        if (keepsTuning) kept.push(line);
+        continue;
+      }
+      if (match && match[1] === 'harness') {
+        if (harnessAction === 'keep') kept.push(line);
+        else if (harnessAction === 'write' && !wroteHarness) {
+          kept.push(`harness: ${passthroughHarness}`);
+          wroteHarness = true;
+        }
+        continue;
+      }
       if (match && match[1] === 'model') {
         if (wroteModel) continue;
+        if (keepsTuning) {
+          kept.push(line);
+          wroteModel = true;
+          continue;
+        }
         kept.push(`model: ${model === undefined ? match[2].trim().split('#')[0] : model}`);
         if (variant) kept.push(`variant: ${variant}`);
         wroteModel = true;
@@ -335,6 +375,7 @@ function patchFrontmatter(text, tunableKeys, settings, { separateVariant = false
       kept.push(`model: ${model}`);
       if (variant) kept.push(`variant: ${variant}`);
     }
+    if (harnessAction === 'write' && !wroteHarness) kept.push(`harness: ${passthroughHarness}`);
     return [split.lines[0], ...kept, ...split.lines.slice(split.endIndex)]
       .join(split.lineEnding) + (split.trailingLineEnding ? split.lineEnding : '');
   }
@@ -399,14 +440,6 @@ function patchFrontmatter(text, tunableKeys, settings, { separateVariant = false
     return lines.join(split.lineEnding) + (split.trailingLineEnding ? split.lineEnding : '');
   }
 
-  // The `harness:` line is routing, not a model value: a passthrough setting writes it, a model setting removes it, and
-  // `keepHarness` or a setting that names no model leaves it as it is.
-  const managesHarness = tunableKeys.includes('harness');
-  let harnessAction = 'keep';
-  if (managesHarness && !settings.keepHarness) {
-    if (settings.harness === PASSTHROUGH_HARNESS) harnessAction = 'write';
-    else if (settings.harness === null || settings.model !== undefined) harnessAction = 'remove';
-  }
   const valueKeys = tunableKeys.filter(key => key !== 'harness');
   const selected = new Map(
     valueKeys
@@ -427,7 +460,7 @@ function patchFrontmatter(text, tunableKeys, settings, { separateVariant = false
     if (key === 'harness') {
       if (harnessAction === 'keep') patchedFrontmatter.push(line);
       else if (harnessAction === 'write' && !seen.has(key)) {
-        patchedFrontmatter.push(`harness: ${PASSTHROUGH_HARNESS}`);
+        patchedFrontmatter.push(`harness: ${passthroughHarness}`);
         seen.add(key);
       }
       continue;
@@ -447,7 +480,7 @@ function patchFrontmatter(text, tunableKeys, settings, { separateVariant = false
       patchedFrontmatter.push(`${key}: ${selected.get(key)}`);
     }
   }
-  if (harnessAction === 'write' && !seen.has('harness')) patchedFrontmatter.push(`harness: ${PASSTHROUGH_HARNESS}`);
+  if (harnessAction === 'write' && !seen.has('harness')) patchedFrontmatter.push(`harness: ${passthroughHarness}`);
 
   const lines = [
     split.lines[0],
@@ -498,7 +531,7 @@ function materializeLocalOverride({
     ? path.join(projectPath, '.claude', familyDirectory)
     : path.join(projectPath, '.opencode', familyDirectory);
   const destination = path.join(localDirectory, `${agentName}.md`);
-  const tunableKeys = harness === 'claude' ? CLAUDE_TUNABLE_KEYS : ['model', 'variant'];
+  const tunableKeys = harness === 'claude' ? CLAUDE_TUNABLE_KEYS : OPENCODE_TUNABLE_KEYS;
   const destinationExists = fs.existsSync(destination);
 
   let currentText;
@@ -527,6 +560,7 @@ function materializeLocalOverride({
 
   const patchedText = patchFrontmatter(currentText, tunableKeys, settings, {
     separateVariant: harness === 'opencode' && familyDirectory === 'agents',
+    passthroughHarness: PASSTHROUGH_TARGET[harness],
   });
   if (patchedText === null) {
     return materializationFailure(agentName, `Target ${agentName} has no valid frontmatter block.`);
@@ -614,13 +648,13 @@ function readHarnessLine(filePath) {
   }
 }
 
-// Whether the Claude Code agent file Claude Code resolves for an eligible row (the project file first, then the
-// user-global one) routes the agent through opencode.
-function isPassthroughRow(targetEntry, projectPath, globalAgentRoot) {
-  if (!isPassthroughEligible(targetEntry)) return false;
-  const local = path.join(projectPath, '.claude', 'agents', `${targetEntry.name}.md`);
+// Whether the agent file the harness resolves for an eligible row (the project file first, then the user-global one)
+// routes the agent to the other harness.
+function isPassthroughRow(targetEntry, projectPath, globalAgentRoot, { harnessKey = 'claude' } = {}) {
+  if (!isPassthroughEligible(targetEntry, harnessKey)) return false;
+  const local = path.join(projectPath, `.${harnessKey}`, 'agents', `${targetEntry.name}.md`);
   const file = fs.existsSync(local) ? local : (globalAgentRoot ? path.join(globalAgentRoot, `${targetEntry.name}.md`) : null);
-  return file !== null && readHarnessLine(file) === PASSTHROUGH_HARNESS;
+  return file !== null && readHarnessLine(file) === PASSTHROUGH_TARGET[harnessKey];
 }
 
 // The SETTING of a passthrough row: the model and variant of the same-named OpenCode agent, read when the menu draws.
@@ -630,10 +664,20 @@ function passthroughSetting(targetEntry, projectPath, opencodeAgentRoot) {
   return `-> opencode: ${setting || '(unresolved)'}`;
 }
 
-function effectiveSetting(targetEntry, projectPath, globalAgentRoot, globalCommandRoot, harness, opencodeAgentRoot) {
+// The SETTING of a Claude Code passthrough row: the model and effort of the same-named Claude Code agent.
+function claudePassthroughSetting(targetEntry, projectPath, claudeAgentRoot) {
+  const setting = readFrontmatterSettings(path.join(projectPath, '.claude', 'agents', `${targetEntry.name}.md`), 'claude')
+    || (claudeAgentRoot ? readFrontmatterSettings(path.join(claudeAgentRoot, `${targetEntry.name}.md`), 'claude') : null);
+  return `-> claude: ${setting || '(unresolved)'}`;
+}
+
+function effectiveSetting(targetEntry, projectPath, globalAgentRoot, globalCommandRoot, harness, opencodeAgentRoot, claudeAgentRoot) {
   if (harness === 'claude' && opencodeAgentRoot !== undefined && isPassthroughRow(targetEntry, projectPath, globalAgentRoot)) {
     // The OpenCode root is resolved only when a passthrough row needs it; a function defers that resolution.
     return passthroughSetting(targetEntry, projectPath, typeof opencodeAgentRoot === 'function' ? opencodeAgentRoot() : opencodeAgentRoot);
+  }
+  if (harness === 'opencode' && claudeAgentRoot !== undefined && isPassthroughRow(targetEntry, projectPath, globalAgentRoot, { harnessKey: 'opencode' })) {
+    return claudePassthroughSetting(targetEntry, projectPath, typeof claudeAgentRoot === 'function' ? claudeAgentRoot() : claudeAgentRoot);
   }
   const directory = targetEntry.family === 'command' || targetEntry.family === 'utility' ? 'commands' : 'agents';
   const localRoot = harness === 'claude' ? path.join(projectPath, '.claude', directory) : path.join(projectPath, '.opencode', directory);
@@ -714,7 +758,8 @@ function resetLocalOverrideToFactory({
   const destination = path.join(localDirectory, `${agentName}.md`);
   const sourceRoot = family === 'command' || family === 'utility' ? globalCommandRoot : globalAgentRoot;
   const source = sourceRoot ? path.join(sourceRoot, `${agentName}.md`) : null;
-  const tunableKeys = harness === 'claude' ? CLAUDE_MODEL_KEYS : ['model', 'variant'];
+  const tunableKeys = harness === 'claude' ? CLAUDE_TUNABLE_KEYS : OPENCODE_TUNABLE_KEYS;
+  const factoryKeys = harness === 'claude' ? CLAUDE_MODEL_KEYS : ['model', 'variant'];
 
   if (!fs.existsSync(destination)) {
     return {
@@ -769,7 +814,7 @@ function resetLocalOverrideToFactory({
   const factorySettings = {};
   for (const line of globalSplit.lines.slice(1, globalSplit.endIndex)) {
     const match = TOP_LEVEL_SCALAR.exec(line);
-    if (match && tunableKeys.includes(match[1]) && !(match[1] in factorySettings)) {
+    if (match && factoryKeys.includes(match[1]) && !(match[1] in factorySettings)) {
       const value = match[2].trim();
       if (value !== '') factorySettings[match[1]] = value;
     }
@@ -784,8 +829,11 @@ function resetLocalOverrideToFactory({
     };
   }
 
-  // The factory definition carries no `harness:` line, so a Claude Code reset removes the user-owned routing line too.
-  const patchedText = patchFrontmatter(localText, harness === 'claude' ? CLAUDE_TUNABLE_KEYS : tunableKeys, factorySettings);
+  // The factory definition carries no `harness:` line, so a reset removes the user-owned routing line too.
+  const patchedText = patchFrontmatter(localText, tunableKeys, factorySettings, {
+    separateVariant: harness === 'opencode' && familyDirectory === 'agents',
+    passthroughHarness: PASSTHROUGH_TARGET[harness],
+  });
   if (patchedText === null) {
     return materializationFailure(agentName, `Target ${agentName} has no valid frontmatter block.`);
   }
@@ -883,8 +931,8 @@ function isClaudeSettingsPair(settingsCatalog, settings) {
 }
 
 // A routing-only setting: it writes the `harness:` line and no model value.
-function isPassthroughSetting(settings) {
-  return Boolean(settings) && settings.harness === PASSTHROUGH_HARNESS && settings.model === undefined;
+function isPassthroughSetting(settings, target = PASSTHROUGH_HARNESS) {
+  return Boolean(settings) && settings.harness === target && settings.model === undefined;
 }
 
 async function selectClaudeSettings(subsetLabel, promptChoice, settingsCatalog, { offerPassthrough = false } = {}) {
@@ -1186,7 +1234,7 @@ function extractApiVariants(modelList, provider, model) {
   return ids;
 }
 
-async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand, queryOptions) {
+async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand, queryOptions, { offerPassthrough = false } = {}) {
   let catalogOutcome;
   try {
     catalogOutcome = await queryOpencode(['models'], 'Querying OpenCode models', runCommand, queryOptions);
@@ -1225,9 +1273,11 @@ async function opencodeSelectSettings(subsetLabel, promptChoice, runCommand, que
 
   for (;;) {
     if (screen === 'provider') {
-      const chosen = await promptChoice(`Provider for ${subsetLabel}:`, providers);
+      const options = offerPassthrough ? [CLAUDE_PASSTHROUGH_LABEL, ...providers] : providers;
+      const chosen = await promptChoice(`Provider for ${subsetLabel}:`, options);
       if (chosen === BACK) return BACK;
       if (chosen === null) return CANCELLED;
+      if (offerPassthrough && chosen === CLAUDE_PASSTHROUGH_LABEL) return { harness: CLAUDE_PASSTHROUGH_HARNESS };
       if (!providers.includes(chosen)) return null;
       provider = chosen;
       screen = 'model';
@@ -1372,20 +1422,35 @@ function createOpencodeAdapter({
   packageRoot = DEFAULT_PACKAGE_ROOT,
   globalAgentRoot,
   globalCommandRoot,
+  claudeGlobalAgentRoot,
   loadManifest: loadManifestOverride = loadInstallManifest,
   promptChoice = promptSelect,
   runCommand = defaultRunCommand,
   queryTimeoutMs = OPENCODE_QUERY_TIMEOUT_MS,
   cleanupTimeoutMs = OPENCODE_CLEANUP_TIMEOUT_MS,
   waitControls = queryWaitControls,
+  checkClaudeAgents = claudeDispatch.checkAgents,
 } = {}) {
   const effectiveAgentRoot = globalAgentRoot !== undefined ? globalAgentRoot : defaultOpencodeGlobalAgentRoot();
   const effectiveCommandRoot = globalCommandRoot !== undefined ? globalCommandRoot : defaultOpencodeGlobalCommandRoot();
+  // The Claude Code agent root is resolved once, and only when a passthrough row or an apply needs it.
+  let claudeAgentRootValue;
+  const claudeAgentRoot = () => {
+    if (claudeAgentRootValue === undefined) {
+      claudeAgentRootValue = claudeGlobalAgentRoot !== undefined ? claudeGlobalAgentRoot : path.join(resolveGlobalRoot('claude'), 'agents');
+    }
+    return claudeAgentRootValue;
+  };
   return {
     enumerateWorkers: () => enumerateWorkers(packageRoot, loadManifestOverride, 'opencode'),
     enumerateCommands: () => enumerateCommands(packageRoot, loadManifestOverride, 'opencode'),
     enumerateTargets: () => enumerateProjectionTargets(packageRoot, loadManifestOverride, 'opencode'),
-    effectiveSetting: (targetEntry) => effectiveSetting(targetEntry, projectPath, effectiveAgentRoot, effectiveCommandRoot, 'opencode'),
+    effectiveSetting: (targetEntry) => effectiveSetting(targetEntry, projectPath, effectiveAgentRoot, effectiveCommandRoot, 'opencode', undefined, claudeAgentRoot),
+    // Whether the worker file of an eligible row routes through Claude Code today; the preset save records it.
+    isPassthrough: (targetEntry) => isPassthroughRow(targetEntry, projectPath, effectiveAgentRoot, { harnessKey: 'opencode' }),
+    // One Claude Code probe for every named worker: `{ [agent]: cause | null }` (see `claude-dispatch.js` `checkAgents`).
+    // The probe reads `<harness root>/agents/<name>.md`, so the agents directory configured here is converted back.
+    checkPassthrough: (agentNames) => checkClaudeAgents(agentNames, { cwd: projectPath, harnessRoot: path.dirname(claudeAgentRoot()) }),
     factorySetting: (targetEntry) => factorySetting(targetEntry, projectPath, effectiveAgentRoot, effectiveCommandRoot, 'opencode'),
     localOverrideExists: (targetEntry) => localOverrideExists(targetEntry, projectPath, 'opencode'),
     resetLocalOverride: (target) => {
@@ -1400,12 +1465,16 @@ function createOpencodeAdapter({
         family,
       });
     },
-    selectSettings: subsetLabel => opencodeSelectSettings(subsetLabel, promptChoice, runCommand, { queryTimeoutMs, cleanupTimeoutMs, waitControls }),
+    selectSettings: (subsetLabel, { offerPassthrough = false } = {}) => opencodeSelectSettings(subsetLabel, promptChoice, runCommand, { queryTimeoutMs, cleanupTimeoutMs, waitControls }, { offerPassthrough }),
     createLocalOverride: (target, settings) => {
       const family = typeof target === 'string' ? 'worker' : target.family;
       const targetName = typeof target === 'string' ? target : target.name;
-      if (!settings || typeof settings.model !== 'string' || settings.model === ''
-          || (settings.variant !== undefined && typeof settings.variant !== 'string')) {
+      if (isPassthroughSetting(settings, CLAUDE_PASSTHROUGH_HARNESS) && !isPassthroughEligible(target, 'opencode')) {
+        return materializationFailure(targetName, `${CLAUDE_PASSTHROUGH_LABEL} applies only to worker files; ${targetName} is not eligible.`);
+      }
+      if (!isPassthroughSetting(settings, CLAUDE_PASSTHROUGH_HARNESS)
+          && (!settings || typeof settings.model !== 'string' || settings.model === ''
+            || (settings.variant !== undefined && typeof settings.variant !== 'string'))) {
         return materializationFailure(targetName, 'Selected OpenCode settings are invalid.');
       }
       return materializeLocalOverride({
@@ -1502,6 +1571,8 @@ function isValidPresetEntry(entry, harnessKey) {
     return true;
   }
   if ('variant' in entry && (typeof entry.variant !== 'string' || entry.variant.trim() === '')) return false;
+  // The opencode form records the inverse route: `"claude"` routes the worker, `null` does not.
+  if ('harness' in entry && entry.harness !== CLAUDE_PASSTHROUGH_HARNESS && entry.harness !== null) return false;
   return true;
 }
 
@@ -1511,7 +1582,7 @@ function effectiveRawSetting(targetEntry, projectPath, globalAgentRoot, globalCo
     ? path.join(projectPath, '.claude', directory)
     : path.join(projectPath, '.opencode', directory);
   const globalRoot = directory === 'commands' ? globalCommandRoot : globalAgentRoot;
-  const tunableKeys = harnessKey === 'claude' ? ['model', 'effort'] : ['model', 'variant'];
+  const tunableKeys = harnessKey === 'claude' ? ['model', 'effort'] : ['model', 'variant', 'harness'];
   const tryRead = (filePath) => {
     try {
       if (!filePath || !fs.existsSync(filePath)) return null;
@@ -1556,7 +1627,7 @@ function formatRawSetting(raw, harnessKey) {
   if (harnessKey === 'claude') {
     return `anthropic/${raw.model}${raw.effort ? ` (${raw.effort})` : ''}${raw.harness === PASSTHROUGH_HARNESS ? ' -> opencode' : ''}`;
   }
-  return `${raw.model}${raw.variant ? ` (${raw.variant})` : ''}`;
+  return `${raw.model}${raw.variant ? ` (${raw.variant})` : ''}${raw.harness === CLAUDE_PASSTHROUGH_HARNESS ? ' -> claude' : ''}`;
 }
 
 function allTableHeader(nameWidth) {
@@ -1710,6 +1781,7 @@ async function runPostSetupMenuInternal({
             packageRoot,
             globalAgentRoot: effectiveOpencodeAgentRoot,
             globalCommandRoot: effectiveOpencodeCommandRoot,
+            claudeGlobalAgentRoot,
             promptChoice,
           })
           : module.exports.createClaudeAdapter({
@@ -1828,6 +1900,8 @@ async function runPostSetupMenuInternal({
           } else {
             const filtered = { model: raw.model };
             if (raw.variant) filtered.variant = raw.variant;
+            // Every new opencode entry records whether the worker routes through Claude Code.
+            filtered.harness = typeof adapter.isPassthrough === 'function' && adapter.isPassthrough(entry) ? CLAUDE_PASSTHROUGH_HARNESS : null;
             presetData[entry.value] = filtered;
           }
         }
@@ -1853,6 +1927,7 @@ async function runPostSetupMenuInternal({
             packageRoot,
             globalAgentRoot: effectiveOpencodeAgentRoot,
             globalCommandRoot: effectiveOpencodeCommandRoot,
+            claudeGlobalAgentRoot,
             promptChoice,
           })
           : module.exports.createClaudeAdapter({
@@ -1951,6 +2026,10 @@ async function runPostSetupMenuInternal({
           } else {
             const filtered = { model: value.model };
             if (typeof value.variant === 'string' && value.variant !== '') filtered.variant = value.variant;
+            // The opencode form applies the same rule on its worker rows.
+            const loadEntry = loadSelectable.find(candidate => candidate.value === key);
+            if (!('harness' in value) || !isPassthroughEligible(loadEntry, 'opencode')) filtered.keepHarness = true;
+            else filtered.harness = value.harness;
             presetKnown[key] = filtered;
           }
         }
@@ -2017,9 +2096,10 @@ async function runPostSetupMenuInternal({
           loadFailed.push(entry.name);
           loadDiagnostics.push(loadResult.diagnostic);
         }
+        const loadHarnessKey = harness === 'OpenCode' ? 'opencode' : 'claude';
         warnPassthroughUnavailable(adapter, loadSelectable.filter(entry => presetKnown[entry.value]
-          && presetKnown[entry.value].harness === PASSTHROUGH_HARNESS
-          && !loadFailed.includes(entry.name)));
+          && presetKnown[entry.value].harness === PASSTHROUGH_TARGET[loadHarnessKey]
+          && !loadFailed.includes(entry.name)), loadHarnessKey);
         for (const diagnostic of loadDiagnostics) {
           console.error(`Post-setup customization: ${diagnostic}`);
         }
@@ -2054,6 +2134,7 @@ async function runPostSetupMenuInternal({
             packageRoot,
             globalAgentRoot: effectiveOpencodeAgentRoot,
             globalCommandRoot: effectiveOpencodeCommandRoot,
+            claudeGlobalAgentRoot,
             promptChoice,
           })
           : module.exports.createClaudeAdapter({
@@ -2156,6 +2237,7 @@ async function runPostSetupMenuInternal({
             packageRoot,
             globalAgentRoot: effectiveOpencodeAgentRoot,
             globalCommandRoot: effectiveOpencodeCommandRoot,
+            claudeGlobalAgentRoot,
             promptChoice,
           })
           : module.exports.createClaudeAdapter({
@@ -2218,8 +2300,11 @@ async function runPostSetupMenuInternal({
         continue;
       }
 
-      // The passthrough option is a Claude Code routing choice: it is offered when a selected row is an agent file.
-      const offerPassthrough = harness === 'Claude Code' && selectedTargets.some(isPassthroughEligible);
+      // The passthrough option is a routing choice: Claude Code agent rows route to opencode, and opencode worker
+      // rows route to Claude Code.
+      const offerPassthrough = harness === 'Claude Code'
+        ? selectedTargets.some(entry => isPassthroughEligible(entry))
+        : selectedTargets.some(entry => isPassthroughEligible(entry, 'opencode'));
       settings = await adapter.selectSettings(selectedTargets.map(target => target.value).join(', '), { offerPassthrough });
       if (settings === BACK) {
         screen = 'targets';
@@ -2237,7 +2322,8 @@ async function runPostSetupMenuInternal({
         if (harness === 'OpenCode') { screen = 'menu'; continue; }
         return skippedOutcome('cancelled');
       }
-      if (!isPassthroughSetting(settings) && (!settings || typeof settings.model !== 'string' || settings.model === '')) {
+      if (!isPassthroughSetting(settings, harness === 'OpenCode' ? CLAUDE_PASSTHROUGH_HARNESS : PASSTHROUGH_HARNESS)
+          && (!settings || typeof settings.model !== 'string' || settings.model === '')) {
         return failedCustomization('No valid model setting was returned for the selected targets.');
       }
       retainedTargets.delete(`${harness}:${scope}`);
@@ -2295,18 +2381,28 @@ async function runPostSetupMenuInternal({
     const skippedAgents = [];
     const failedAgents = [];
     const diagnostics = [];
-    // Passthrough applies only to agent files; the other selected rows keep their setting and a warning names them.
+    const passthroughHarnessKey = harness === 'OpenCode' ? 'opencode' : 'claude';
+    const passthroughTarget = PASSTHROUGH_TARGET[passthroughHarnessKey];
+    const passthroughLabel = passthroughHarnessKey === 'claude' ? OPENCODE_PASSTHROUGH_LABEL : CLAUDE_PASSTHROUGH_LABEL;
+    const routedSetting = isPassthroughSetting(settings, passthroughTarget);
+    // Passthrough applies only to the harness's agent files; the other selected rows keep their setting and a warning
+    // names them.
     let applyTargets = selectedTargets;
-    if (isPassthroughSetting(settings)) {
-      applyTargets = selectedTargets.filter(isPassthroughEligible);
-      const notRouted = selectedTargets.filter(entry => !isPassthroughEligible(entry)).map(entry => entry.name);
+    if (routedSetting) {
+      applyTargets = selectedTargets.filter(entry => isPassthroughEligible(entry, passthroughHarnessKey));
+      const notRouted = selectedTargets.filter(entry => !isPassthroughEligible(entry, passthroughHarnessKey)).map(entry => entry.name);
       if (notRouted.length > 0) {
-        console.warn(`Post-setup customization: ${OPENCODE_PASSTHROUGH_LABEL} applies only to agent files, so ${notRouted.join(', ')} keep${notRouted.length === 1 ? 's' : ''} the current setting.`);
+        const scopeName = passthroughHarnessKey === 'claude' ? 'agent files' : 'worker files';
+        console.warn(`Post-setup customization: ${passthroughLabel} applies only to ${scopeName}, so ${notRouted.join(', ')} keep${notRouted.length === 1 ? 's' : ''} the current setting.`);
       }
     }
+    const routedApplied = [];
     for (const target of applyTargets) {
       const result = adapter.createLocalOverride(target, settings);
-      if (result.status === 'persisted') continue;
+      if (result.status === 'persisted') {
+        if (routedSetting) routedApplied.push(target);
+        continue;
+      }
       if (result.status === 'skipped') {
         skippedAgents.push(target.name);
         diagnostics.push(result.diagnostic || `Skipped ${target.name}: installed source is unavailable.`);
@@ -2322,8 +2418,13 @@ async function runPostSetupMenuInternal({
       diagnostics.push(result.diagnostic);
     }
 
-    if (isPassthroughSetting(settings)) {
-      warnPassthroughUnavailable(adapter, applyTargets.filter(entry => !failedAgents.includes(entry.name) && !skippedAgents.includes(entry.name)));
+    if (routedSetting) {
+      warnPassthroughUnavailable(adapter, applyTargets.filter(entry => !failedAgents.includes(entry.name) && !skippedAgents.includes(entry.name)), passthroughHarnessKey);
+      if (passthroughHarnessKey === 'opencode') {
+        for (const entry of routedApplied) {
+          console.log(`Post-setup customization: ${entry.name} runs through Claude Code; its opencode model and variant are inert, and the model and effort of its Claude Code agent file apply.`);
+        }
+      }
     }
 
     for (const diagnostic of diagnostics) {
@@ -2336,9 +2437,9 @@ async function runPostSetupMenuInternal({
   }
 }
 
-// One opencode check for every agent a passthrough apply wrote. The line is already written: the runtime falls back to
-// the Claude Code model while opencode or the same-named OpenCode agent is missing, so a missing piece only warns.
-function warnPassthroughUnavailable(adapter, targets) {
+// One probe for every agent a passthrough apply wrote. The line is already written: the runtime falls back to the
+// harness's own model while the other harness or its same-named agent file is missing, so a missing piece only warns.
+function warnPassthroughUnavailable(adapter, targets, harnessKey = 'claude') {
   if (targets.length === 0 || typeof adapter.checkPassthrough !== 'function') return;
   let causes;
   try {
@@ -2347,11 +2448,14 @@ function warnPassthroughUnavailable(adapter, targets) {
     return;
   }
   if (!causes || typeof causes !== 'object') return;
+  const dispatch = harnessKey === 'claude' ? opencodeDispatch : claudeDispatch;
+  const routed = harnessKey === 'claude' ? 'opencode' : 'Claude Code';
+  const native = harnessKey === 'claude' ? 'Claude Code' : 'opencode';
   for (const entry of targets) {
     const cause = causes[entry.name];
     if (cause === null || cause === undefined) continue;
-    const missing = opencodeDispatch.FALLBACK_CAUSES[cause] || cause;
-    console.warn(`Post-setup customization: ${entry.name} is set to run through opencode, but ${missing}. It runs through Claude Code with the model of its Claude Code agent file until opencode can run it.`);
+    const missing = dispatch.FALLBACK_CAUSES[cause] || cause;
+    console.warn(`Post-setup customization: ${entry.name} is set to run through ${routed}, but ${missing}. It runs through ${native} with the model of its ${native} agent file until ${routed} can run it.`);
   }
 }
 
@@ -2414,6 +2518,10 @@ module.exports = {
   formatRawSetting,
   allTableHeader,
   OPENCODE_PASSTHROUGH_LABEL,
+  CLAUDE_PASSTHROUGH_LABEL,
+  PASSTHROUGH_HARNESS,
+  CLAUDE_PASSTHROUGH_HARNESS,
+  PASSTHROUGH_TARGET,
   isPassthroughEligible,
   isPassthroughRow,
   isPassthroughSetting,

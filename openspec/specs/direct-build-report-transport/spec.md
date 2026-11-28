@@ -216,7 +216,7 @@ An invalid report SHALL be an obstacle of the step under `sai/policies/obstacle-
 
 ### Requirement: Optional harness line after the report directory
 
-`sai/policies/worker-report-transport.md` § Author boundary SHALL define an optional second task-disclosure line `--harness <claude|opencode>`, right after the `--report-dir` line, naming the coordinator's harness whose SAI temp root holds the report directory. A worker SHALL strip that line before parsing its invocation envelope, retain it through all same-worker continuations, and pass its value as `--harness` to every `temp-root.js` or `transfer.js` call it makes that takes one. Without the line, those tools SHALL infer the harness from the installed root the worker runs from. The harness SHALL travel only as this envelope line, never as a free-standing instruction appended to a message.
+`sai/policies/worker-report-transport.md` § Author boundary SHALL define an optional second task-disclosure line `--harness <claude|opencode>`, right after the `--report-dir` line, naming the coordinator's harness whose SAI temp root holds the report directory. A worker SHALL strip that line before parsing its invocation envelope, retain it through all same-worker continuations, and pass its value as `--harness` to every `temp-root.js` or `transfer.js` call it makes that takes one. Without the line, those tools SHALL infer the harness from the installed root the worker runs from. A Claude-routed worker, whose coordinator runs opencode and whose tools come from the Claude Code install, SHALL receive `--harness opencode` this way. The harness SHALL travel only as this envelope line, never as a free-standing instruction appended to a message.
 
 #### Scenario: Worker uses the harness line
 - **WHEN** a task message opens with `--report-dir <path>` followed by `--harness claude`
@@ -225,3 +225,7 @@ An invalid report SHALL be an obstacle of the step under `sai/policies/obstacle-
 #### Scenario: No harness line
 - **WHEN** a task message carries `--report-dir` with no `--harness` line
 - **THEN** the worker's tools infer the harness from their installed root, as before
+
+#### Scenario: Claude-routed worker receives the coordinator harness
+- **WHEN** an opencode coordinator discloses a task with `--report-dir` to a Claude-routed worker
+- **THEN** the second line of the message is `--harness opencode`, and the worker passes that value to its `transfer.js` and `temp-root.js` calls

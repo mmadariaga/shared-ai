@@ -102,3 +102,27 @@ A Claude Code preset entry SHALL accept an optional `harness` key whose value is
 
 - **WHEN** a Claude Code preset entry carries a `harness` value other than `"opencode"` or `null`
 - **THEN** preset validation rejects the entry
+
+### Requirement: OpenCode preset entries carry the passthrough state
+
+An OpenCode preset entry SHALL accept an optional `harness` key whose value is `"claude"` or `null`; preset validation MUST reject any other value. "Save preset" SHALL write the key on every new OpenCode worker entry, `"claude"` when the opencode agent file routes the worker through Claude Code and `null` otherwise. "Load preset" SHALL write the `harness: claude` line for a worker entry whose value is `"claude"`, SHALL remove the line for an entry whose value is `null`, and SHALL leave the line as it is for an entry without the key. The state of an agent, command, or utility row SHALL NOT be applied.
+
+#### Scenario: Save records the opencode route state
+
+- **WHEN** the user saves an OpenCode preset while one worker is routed through Claude Code and another is not
+- **THEN** the routed worker's entry carries `"harness": "claude"` and the other entry carries `"harness": null`
+
+#### Scenario: Load applies the opencode route state
+
+- **WHEN** the user loads an OpenCode preset whose worker entries carry `"harness": "claude"` and `"harness": null`
+- **THEN** the first opencode worker file gains the `harness: claude` line and the second loses its `harness:` line
+
+#### Scenario: Older OpenCode entry leaves the routing line
+
+- **WHEN** the user loads an OpenCode preset entry that has no `harness` key
+- **THEN** the worker file keeps its current `harness:` line, present or absent
+
+#### Scenario: Invalid opencode harness value rejected
+
+- **WHEN** an OpenCode preset entry carries a `harness` value other than `"claude"` or `null`
+- **THEN** preset validation rejects the entry

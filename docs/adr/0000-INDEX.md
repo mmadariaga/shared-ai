@@ -577,6 +577,8 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0219 — Coordinators recover undelivered worker reports with a background watch](./0219-coordinators-recover-undelivered-worker-reports-with-a-background-watch.md) — Refs 0214, Refs 0218
 - [0220 — opencode dispose closes the worker's cache-warm chain](./0220-opencode-dispose-closes-the-workers-cache-warm-chain.md) — **Amends** 0213
 - [0221 — Claude Code dispatches opencode-routed agents through the OpenCode CLI](./0221-claude-code-dispatches-opencode-routed-agents-through-the-opencode-cli.md) — **Amends** 0077, **Amends** 0133
+- [0240 — Opencode dispatches Claude-routed workers through the Claude Code CLI](./0240-opencode-dispatches-claude-routed-workers-through-the-claude-code-cli.md) — Pair with 0221
+- [0241 — A Claude-routed worker runs as the Claude Code session agent](./0241-claude-routed-worker-runs-as-claude-code-session-agent.md) — Refs 0221, Refs 0240
 - [0231 — Budget agents deliver results as saved report references](./0231-budget-agents-deliver-results-as-saved-report-references.md)
 - [0234 — Coordinators receive worker reports in one recording call](./0234-coordinators-receive-worker-reports-in-one-recording-call.md) — **Amends** 0219
 

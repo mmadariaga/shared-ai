@@ -305,13 +305,17 @@ test('E7 Save preset records the passthrough state of every Claude Code row, and
   }
 });
 
-test('E7 a preset entry accepts harness opencode or null and rejects anything else; OpenCode entries ignore it', () => {
+test('E7 a preset entry accepts its route value or null and rejects anything else', () => {
   assert.equal(isValidPresetEntry({ model: 'opus', effort: 'high', harness: 'opencode' }, 'claude'), true);
   assert.equal(isValidPresetEntry({ model: 'opus', harness: null }, 'claude'), true);
   assert.equal(isValidPresetEntry({ model: 'opus' }, 'claude'), true);
   for (const bad of ['claude', '', true, 1]) assert.equal(isValidPresetEntry({ model: 'opus', harness: bad }, 'claude'), false, String(bad));
-  assert.equal(isValidPresetEntry({ model: 'a/b', harness: 'whatever' }, 'opencode'), true);
+  assert.equal(isValidPresetEntry({ model: 'a/b', variant: 'low', harness: 'claude' }, 'opencode'), true);
+  assert.equal(isValidPresetEntry({ model: 'a/b', harness: null }, 'opencode'), true);
+  assert.equal(isValidPresetEntry({ model: 'a/b' }, 'opencode'), true);
+  for (const bad of ['opencode', '', true, 1]) assert.equal(isValidPresetEntry({ model: 'a/b', harness: bad }, 'opencode'), false, String(bad));
   assert.match(formatRawSetting({ model: 'opus', effort: 'high', harness: 'opencode' }, 'claude'), /-> opencode$/);
+  assert.match(formatRawSetting({ model: 'a/b', variant: 'low', harness: 'claude' }, 'opencode'), /-> claude$/);
 });
 
 test('E8 in a mixed selection passthrough applies to the agent rows only and a warning names the others', async () => {
@@ -344,29 +348,43 @@ test('E8 the adapter refuses to route a command wrapper', () => {
   }
 });
 
-test('E9 the OpenCode screen neither offers passthrough nor reads or writes the harness line', async () => {
+test('E9 the OpenCode screen routes a worker to Claude Code and removes the line again', () => {
   const dirs = fixture();
   try {
     const opencodeAgent = path.join(dirs.opencodeAgents, `${WORKER}.md`);
-    fs.writeFileSync(opencodeAgent, ['---', `name: ${WORKER}`, 'model: opencode-go/a', 'variant: low', 'harness: opencode', '---', '', 'body', ''].join('\n'));
+    fs.writeFileSync(opencodeAgent, ['---', `name: ${WORKER}`, 'model: opencode-go/a', 'variant: low', '---', '', 'body', ''].join('\n'));
+    const agentRow = { family: 'worker', name: WORKER, value: `worker:${WORKER}` };
     const adapter = createOpencodeAdapter({
       projectPath: dirs.project,
       packageRoot: REPO_ROOT,
       globalAgentRoot: dirs.opencodeAgents,
       globalCommandRoot: dirs.opencodeCommands,
+      claudeGlobalAgentRoot: dirs.claudeAgents,
+      checkClaudeAgents: names => Object.fromEntries(names.map(name => [name, null])),
     });
-    assert.equal(adapter.effectiveSetting({ family: 'worker', name: WORKER }), 'opencode-go/a (low)');
-    assert.equal(typeof adapter.isPassthrough, 'undefined');
-    assert.equal(typeof adapter.checkPassthrough, 'undefined');
-    const result = adapter.createLocalOverride({ family: 'worker', name: WORKER }, { model: 'opencode-go/b', variant: 'high' });
-    assert.equal(result.status, 'persisted');
-    const text = read(result.destination);
-    assert.ok(text.includes('model: opencode-go/b') && text.includes('variant: high'));
-    assert.ok(text.includes('harness: opencode'), 'the OpenCode patch leaves the line as it found it');
+    assert.equal(adapter.effectiveSetting(agentRow), 'opencode-go/a (low)');
+    assert.equal(adapter.isPassthrough(agentRow), false);
+    assert.equal(typeof adapter.checkPassthrough, 'function');
 
-    await runMenu(dirs, { answers: ['Model customization', 'Save preset', 'OpenCode', 'Yes', null] });
-    const saved = JSON.parse(read(path.join(dirs.presets, 'mix.json')));
-    assert.deepEqual(saved[`worker:${WORKER}`], { model: 'opencode-go/b', variant: 'high' }, 'an OpenCode preset entry carries no harness');
+    const routed = adapter.createLocalOverride(agentRow, { harness: 'claude' });
+    assert.equal(routed.status, 'persisted');
+    let text = read(routed.destination);
+    assert.ok(text.includes('harness: claude') && text.includes('model: opencode-go/a') && text.includes('variant: low'),
+      'the route line joins the untouched model and variant');
+    assert.equal(adapter.isPassthrough(agentRow), true);
+    assert.equal(adapter.effectiveSetting(agentRow), '-> claude: anthropic/haiku (low)', 'the SETTING column reads the Claude Code agent');
+
+    const model = adapter.createLocalOverride(agentRow, { model: 'opencode-go/b', variant: 'high' });
+    assert.equal(model.status, 'persisted');
+    text = read(model.destination);
+    assert.ok(!text.includes('harness'), 'choosing a model removes the route line');
+    assert.ok(text.includes('model: opencode-go/b') && text.includes('variant: high'));
+
+    const refused = adapter.createLocalOverride(
+      { family: 'agent', name: 'budget-explorer', value: 'agent:budget-explorer' },
+      { harness: 'claude' }
+    );
+    assert.equal(refused.status, 'persistence-failed', 'the opencode Generic Agents are never routed');
   } finally {
     dirs.cleanup();
   }

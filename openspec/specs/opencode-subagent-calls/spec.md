@@ -6,22 +6,26 @@ TBD - created by archiving change opencode-v2-subagent-only. Update Purpose afte
 ## Requirements
 
 ### Requirement: opencode instructions create subagents with the v2 subagent tool in background mode
-Every installable opencode instruction that creates a subagent SHALL use the opencode v2 `subagent` tool as `subagent(agent: <agent>, description: <role label>, prompt: <prompt>, background: true)`, and SHALL NOT name the opencode v1 `task` tool or `task_id`. The `description` SHALL be a short fixed role label: `{{phase}} worker` in the opencode worker binding template, and the agent name (`budget-explorer`, `budget-executor`, `budget-subagent`) in the opencode budget skills. The dispatcher SHALL capture the `sessionID` the call returns as the subagent's handle.
+Every installable opencode instruction that creates a subagent SHALL use the opencode v2 `subagent` tool as `subagent(agent: <agent>, description: <role label>, prompt: <prompt>, background: true)`, and SHALL NOT name the opencode v1 `task` tool or `task_id`, except that a worker whose opencode agent file carries `harness: claude` is created through `claude-dispatch.js start` as `sai/policies/claude-dispatch.md` says, with the same ready prompt and without the native `subagent` call. The `description` SHALL be a short fixed role label: `{{phase}} worker` in the opencode worker binding template, and the agent name (`budget-explorer`, `budget-executor`, `budget-subagent`) in the opencode budget skills. The dispatcher SHALL capture the `sessionID` the call returns as the subagent's handle.
 
 #### Scenario: Binding template creates the worker in the background
 - **WHEN** the opencode standalone worker binding template is rendered for a worker
-- **THEN** its create call is `subagent(agent: "<worker name>", description: "<phase> worker", prompt: <ready prompt>, background: true)` and the returned `sessionID` is the worker's handle for the run
+- **THEN** its `opencode` route create call is `subagent(agent: "<worker name>", description: "<phase> worker", prompt: <ready prompt>, background: true)` and the returned `sessionID` is the worker's handle for the run
+
+#### Scenario: Claude-routed worker is created through its route
+- **WHEN** the opencode standalone worker binding queries the route of a worker and it answers `claude`
+- **THEN** the ready prompt is written to the message directory and `claude-dispatch.js start` runs, and its `sessionID` is the worker's handle
 
 #### Scenario: Budget skill names the v2 dispatch
 - **WHEN** an opencode `budget-explorer`, `budget-executor`, or `budget-subagent` skill is read by a dispatcher
 - **THEN** it names `subagent(agent: "<agent name>", description: "<agent name>", prompt: <prompt>, background: true)` and no `task` tool call
 
 ### Requirement: opencode continuations reuse the creation agent and the captured sessionID
-Every opencode continuation SHALL be `subagent(agent: <agent used at creation>, description: <role label>, sessionID: <captured sessionID>, prompt: <message>, background: true)`. A continuation without `agent` SHALL be treated as invalid. A dispatcher SHALL continue an opencode subagent only after that subagent's completion notification has arrived, and SHALL NOT sleep, poll, or continue a subagent whose last status is `running`, with one exception stated in the opencode standalone worker binding template: a `running` notification whose background-work list holds only `wait.js warm` commands (every entry is the worker's own cache-warm wait) SHALL mark an idle worker, whose message the coordinator SHALL process (a report reference, or a reply without one under `sai/policies/worker-report-transport.md` § Undelivered reports) and which it MAY continue. When the harness refuses such a continuation, the refusal SHALL be one attempt of the step's obstacle: the coordinator SHALL stop the worker's shells with `dispose-shells.js` (which also ends its cache warming) and send the continuation again, and a further failure SHALL follow the replacement and escalation of `sai/policies/obstacle-escalation.md`. The Claude Code worker binding template SHALL NOT carry this `running` exception, because Claude Code has no `running` notification state: it reports a worker waiting on its own cache-warm wait as `completed`, and its continuation timing is that of `sai/policies/worker-lifecycle.md` § Continuation timing.
+Every opencode continuation SHALL be `subagent(agent: <agent used at creation>, description: <role label>, sessionID: <captured sessionID>, prompt: <message>, background: true)` on the `opencode` route, and a new `claude-dispatch.js continue --session <captured sessionID>` turn on the `claude` route. A continuation without `agent` SHALL be treated as invalid. A dispatcher SHALL continue an opencode subagent only after that subagent's completion notification has arrived, and SHALL NOT sleep, poll, or continue a subagent whose last status is `running`, with one exception stated in the opencode standalone worker binding template: a `running` notification whose background-work list holds only `wait.js warm` commands (every entry is the worker's own cache-warm wait) SHALL mark an idle worker, whose message the coordinator SHALL process (a report reference, or a reply without one under `sai/policies/worker-report-transport.md` § Undelivered reports) and which it MAY continue. When the harness refuses such a continuation, the refusal SHALL be one attempt of the step's obstacle: the coordinator SHALL stop the worker's shells with `dispose-shells.js` (which also ends its cache warming) and send the continuation again, and a further failure SHALL follow the replacement and escalation of `sai/policies/obstacle-escalation.md`. A Claude-routed worker is continued only after the dispatch shell of its earlier turn completed, as `sai/policies/claude-dispatch.md` § Continue states, and a `busy` answer of its turn lock is resent once after that shell's completion. The Claude Code worker binding template SHALL NOT carry this `running` exception, because Claude Code has no `running` notification state: it reports a worker waiting on its own cache-warm wait as `completed`, and its continuation timing is that of `sai/policies/worker-lifecycle.md` § Continuation timing.
 
 #### Scenario: Worker continuation carries agent and sessionID
 - **WHEN** an opencode coordinator sends a task message to a worker it created
-- **THEN** it calls `subagent` with the same `agent` used at creation, the captured `sessionID`, and `background: true`
+- **THEN** it calls `subagent` with the same `agent` used at creation, the captured `sessionID`, and `background: true`, or runs the new `continue` turn of the worker's recorded Claude route
 
 #### Scenario: No continuation while the subagent is running
 - **WHEN** an opencode subagent's last status is `running` with background work other than its own `wait.js warm`, and its completion notification has not arrived
@@ -34,6 +38,10 @@ Every opencode continuation SHALL be `subagent(agent: <agent used at creation>, 
 #### Scenario: A refused continuation is recovered through dispose-shells
 - **WHEN** the harness refuses the continuation of a worker that still reports `running`
 - **THEN** the coordinator counts one obstacle attempt, removes the worker's shells with `dispose-shells.js`, and sends the continuation again
+
+#### Scenario: Claude-routed worker continuation uses its route
+- **WHEN** the OpenCode coordinator continues a worker whose route query answered `claude`
+- **THEN** it runs a new `claude-dispatch.js continue` turn instead of a `subagent` continuation
 
 ### Requirement: Background completion notifications are matched by sessionID
 An opencode dispatcher SHALL await each background subagent's completion notification on its own turn, and SHALL dispatch in the background only from a main agent, routed SAI coordinator, or routed SAI worker whose lifetime outlives the child. When several opencode subagents are started in one turn, each SHALL be tracked by its own `sessionID`, and each completion notification SHALL be matched to its subagent by that `sessionID`, in any arrival order. A worker that dispatches its own helper SHALL wait for the helper's completion notification within its own turn before returning its result.

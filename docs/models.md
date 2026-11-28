@@ -99,8 +99,9 @@ presets and project model selections stay unchanged until you apply a preset.
 Command and agent instructions remain managed even after you select a different
 model. Installation preserves the selected `model` and `effort` (Claude Code),
 or `model` and `variant` (opencode), the `harness: opencode` line of a Claude Code
-agent file, whether you chose **OpenCode passthrough** in setup or added it by
-hand (see below), and the exact text after
+agent file and the `harness: claude` line of an opencode worker file, whether you
+chose the passthrough option in setup or added the line by hand (see below), and
+the exact text after
 `<!-- User customizations below this line -->`. The rest of each definition is
 replaced. Legacy files without the marker retain only their tunables, with no
 backup of other edits. OpenCode commands keep the variant in `model#variant`;
@@ -172,4 +173,58 @@ file, and the coordinator prints one notice naming the agent and the cause.
 Limits: each turn adds a few seconds of process startup, an OpenCode-routed agent
 gets no cache warming, an `ask` permission in its OpenCode agent is rejected
 instead of prompting you (nothing is auto-approved), and an OpenCode `shell`
-deny is not a sandbox. With opencode as your harness nothing changes.
+deny is not a sandbox. With opencode as your harness the inverse applies, below.
+
+## Run an opencode agent on a Claude Code model
+
+With opencode as your harness, you can run any worker on the model and harness of
+its Claude Code agent. In `setup`, choose **Model customization** → **Customize
+models**, then **OpenCode**, select worker rows, and pick **Claude Code
+passthrough** in the provider list. Setup then writes one line in the project's
+`.opencode/agents/<name>.md`:
+
+```yaml
+harness: claude
+```
+
+You can also add the line by hand to `~/.config/opencode/agents/<name>.md` or to
+the project file. Setup writes it only when you choose **Claude Code
+passthrough**; installation never writes a default `harness:` line, keeps the
+line across installs and project refreshes, and `doctor` reports no drift for it.
+
+The option only routes the worker. It leaves the `model` and `variant` lines of
+the opencode file as they are, and they are inert while the worker is routed: the
+model, effort, `tools:`, and `permissionMode:` of the Claude Code agent file
+apply. Model and effort are never passed as flags, because the file carries
+them; the tools and the permission mode are, as `--allowedTools` and
+`--permission-mode`. The SETTING column of a routed
+row reads `-> claude: anthropic/<model> (<effort>)` from that Claude Code agent
+file, or `-> claude: (unresolved)` when the file cannot be read. Only opencode
+worker rows are routed: the three Generic Agents (AGENT rows) and command
+wrappers never are, and in a selection that mixes both kinds the option applies
+to the worker rows only and a warning names the others. If the `claude` command,
+its signed-in session, or the same-named Claude Code agent file is missing, setup
+still writes the line and warns, naming the worker and the missing piece.
+
+Choosing an opencode model on a routed row removes the `harness:` line. **Reset to
+default models** also removes it. **Save preset** records for each opencode
+worker whether it is routed (`"harness": "claude"` or `null`), and **Load
+preset** writes or removes the line from that value; an entry of an older preset
+without the value leaves the line as it is.
+
+An opencode coordinator then runs that worker through `claude -p`, one process
+per turn, and continues it with the session UUID the first turn returns.
+Claude Code must be installed, signed in, and have an agent of the same name;
+the model, effort, permissions, and tools come from that Claude Code agent, not
+from the opencode file. Without the line, or with any other value, the worker
+runs through opencode as before.
+
+When the `claude` command, its signed-in session, or the same-named Claude Code
+agent file is missing, or the first turn fails, the worker runs through opencode
+with the `model` of its opencode file, and the coordinator prints one notice
+naming the worker and the cause.
+
+Limits: each turn adds a few seconds of process startup, a Claude-routed worker
+gets no cache warming, a tool call outside its Claude Code `tools:` list is
+denied instead of prompting you (nothing is auto-approved), and with Claude Code
+as your harness nothing changes.
