@@ -13,10 +13,18 @@ const { BACK } = require('./install-flow.js');
 
 const LANGUAGE_IDS = Object.freeze(['explore.readyToProposeLanguage', 'explore.chatPublicLanguage', 'pr.language']);
 const BACKLOG_PR_IDS = Object.freeze(['backlog.provider', 'pr.provider', 'publication.autoApprove']);
+// The adversarial expert review mode per offering command; its rows show the effective behavior.
+const EXPERT_REVIEW_IDS = Object.freeze(['expertReview.explore', 'expertReview.plan', 'expertReview.build']);
 const TELEMETRY_ID = 'experimental.changeTelemetry';
-const SETTING_IDS = Object.freeze([...LANGUAGE_IDS, ...BACKLOG_PR_IDS, TELEMETRY_ID]);
+const SETTING_IDS = Object.freeze([...LANGUAGE_IDS, ...BACKLOG_PR_IDS, ...EXPERT_REVIEW_IDS, TELEMETRY_ID]);
 // Keys that the menu edits as a boolean: the choices are `On` and `Off`.
 const BOOLEAN_IDS = Object.freeze([TELEMETRY_ID, 'publication.autoApprove']);
+// The expert review choices: the label the picker shows and the value it saves.
+const EXPERT_REVIEW_CHOICES = Object.freeze([
+  Object.freeze({ label: 'No', value: 'no' }),
+  Object.freeze({ label: 'Yes, decide the corrections', value: 'auto' }),
+  Object.freeze({ label: 'Yes, ask me before keeping them', value: 'ask' }),
+]);
 // The two provider settings share the catalogue label `Provider`; their submenu rows name the topic.
 const ROW_LABELS = Object.freeze({ 'backlog.provider': 'Backlog provider', 'pr.provider': 'Pull requests provider' });
 const REGISTRIES = Object.freeze([
@@ -53,6 +61,7 @@ const labelOf = id => ROW_LABELS[id] ?? CATALOGUE[id].label;
 
 function valueChoices(id, providerIds, prProviderIds) {
   if (BOOLEAN_IDS.includes(id)) return [ON, OFF];
+  if (EXPERT_REVIEW_IDS.includes(id)) return [absentText(id), ...EXPERT_REVIEW_CHOICES.map(choice => choice.label)];
   if (id === 'backlog.provider') return [ASK, ...providerIds];
   if (id === 'pr.provider') return [ASK, ...prProviderIds];
   // `pr.language` reads `English` when absent, so its first choice and `English` are one.
@@ -160,7 +169,10 @@ function createSettingsEditor({
       if (value === BACK) return { status: 'back' };
     } else {
       // `On` saves true; `Off` removes the key, except in the local file, where it saves false so a shared true cannot apply.
-      const chosen = BOOLEAN_IDS.includes(id) ? (choice === ON ? true : isLocal ? false : undefined) : choice;
+      // An expert review choice saves its mode, and the row's unset text removes the key.
+      const chosen = EXPERT_REVIEW_IDS.includes(id)
+        ? (choice === absentText(id) ? undefined : EXPERT_REVIEW_CHOICES.find(item => item.label === choice)?.value)
+        : BOOLEAN_IDS.includes(id) ? (choice === ON ? true : isLocal ? false : undefined) : choice;
       if (chosen === undefined || (CATALOGUE[id].absent && chosen === CATALOGUE[id].absent)) {
         value = undefined;
       } else {
@@ -216,4 +228,4 @@ function createSettingsEditor({
   return { rowText, editSetting, runSection };
 }
 
-module.exports = { SETTING_IDS, LANGUAGE_IDS, BACKLOG_PR_IDS, TELEMETRY_ID, OTHER_LANGUAGE, providerIdsFrom, prProviderIdsFrom, createSettingsEditor };
+module.exports = { SETTING_IDS, LANGUAGE_IDS, BACKLOG_PR_IDS, EXPERT_REVIEW_IDS, EXPERT_REVIEW_CHOICES, TELEMETRY_ID, OTHER_LANGUAGE, providerIdsFrom, prProviderIdsFrom, createSettingsEditor };

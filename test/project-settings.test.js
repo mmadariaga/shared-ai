@@ -687,3 +687,22 @@ test('pr.language: a language name, normalized like the explore languages, none 
   assert.deepEqual(settings.readPr({ cwd, providerIds }).config, { provider: 'github' });
   assert.equal(settings.CATALOGUE['pr.language'].label, 'PR/MR language');
 });
+
+test('E1/E9: the expert review keys store ask as a real value, normalize it, and drop an invalid value with a warning', () => {
+  assert.deepEqual(settings.get('expertReview.explore', { cwd: project() }), { value: null, source: 'absent', warnings: [] });
+  const stored = project({ '.sai/settings.jsonc': '{"expertReview":{"explore":" ASK ","plan":"Auto","build":"no"}}' });
+  assert.deepEqual(settings.get('expertReview.explore', { cwd: stored }), { value: 'ask', source: 'setting', warnings: [] });
+  assert.deepEqual(settings.get('expertReview.plan', { cwd: stored }), { value: 'auto', source: 'setting', warnings: [] });
+  assert.deepEqual(settings.get('expertReview.build', { cwd: stored }), { value: 'no', source: 'setting', warnings: [] });
+  const localAsk = project({
+    '.sai/settings.jsonc': '{"expertReview":{"explore":"auto"}}',
+    '.sai/settings.local.jsonc': '{"expertReview":{"explore":"ask"}}',
+  });
+  assert.deepEqual(settings.get('expertReview.explore', { cwd: localAsk }), { value: 'ask', source: 'setting', warnings: [] });
+  const invalid = settings.get('expertReview.explore', { cwd: project({ '.sai/settings.jsonc': '{"expertReview":{"explore":"sometimes"}}' }) });
+  assert.equal(invalid.value, null);
+  assert.deepEqual(invalid.warnings,
+    ['Setting expertReview.explore in .sai/settings.jsonc must be no, auto, or ask; the command behaves as if the key were absent.']);
+  assert.deepEqual(settings.get('expertReview.plan', { cwd: project({ '.sai/settings.jsonc': '{"expertReview":{"plan":3}}' }) }).warnings,
+    ['Setting expertReview.plan in .sai/settings.jsonc must be no, auto, or ask; the command behaves as if the key were absent.']);
+});

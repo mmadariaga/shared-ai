@@ -104,3 +104,35 @@ The checkpoint SHALL write no repository report file, and a command's own review
 
 - **WHEN** the build checkpoint keeps corrections after `review.md` was written
 - **THEN** `review.md` SHALL stay unchanged and the closing report SHALL state that the corrections are absent from it.
+
+### Requirement: Direct Build checkpoint position and product
+
+The Direct Build checkpoint SHALL run at `step-2c`, after the Step 2b suite gate and before the Step 3 backfill preparation, inside the run's first no-commit guard window, and only when the resolved answer is `auto`. Its mode SHALL be mutations, and its product and allowed write paths SHALL be the production files of the run's first-seen changed-path union, excluding test files and every path of the dirty git state recorded before the implementer dispatch that the run did not change. A write outside the product SHALL be reverted and reported.
+
+#### Scenario: Placement between suite gate and backfill
+
+- **WHEN** the Step 2b suite gate is green or skipped and the resolved expert review answer is `auto`
+- **THEN** the checkpoint runs at `step-2c`, before the Step 3 staging and backfill preparation.
+
+#### Scenario: Test file excluded from the product
+
+- **WHEN** the reviewer changes a test file during the Direct Build checkpoint
+- **THEN** the change is reverted and reported, and the finding counts as discarded.
+
+### Requirement: Direct Build checkpoint verification and commit rule
+
+After kept corrections, the Direct Build checkpoint SHALL run once the tests `test-select.js` selects for the corrected paths under `sai/policies/test-execution.md`, and only a new failure against the Step 2b classification SHALL count; a flaky or pre-existing failure SHALL NOT, and with no test suite found no test SHALL be rerun. The checkpoint SHALL create no commit, no guard window, and no commit grant, and its kept corrections SHALL stay in the working tree for the archive step's commit.
+
+#### Scenario: Kept correction fails a new test
+
+- **WHEN** a kept correction produces a test failure that the Step 2b classification did not record as flaky or pre-existing
+- **THEN** every worker change is reverted, one line reports the failing test, and the route continues as after `no`.
+
+### Requirement: Direct Build checkpoint answer recording
+
+The Direct Build run SHALL record the resolved answer as `expert_review` and the handled checkpoint as `expert_review_checkpoint` (`done`, or `skipped` when it ran nothing) in `direct-build-run@1` on the explore route, and in the conversation for `/sai-direct-build`. A resumed run SHALL reuse the recorded answer and SHALL NOT run the checkpoint twice.
+
+#### Scenario: Resumed run reuses the recorded checkpoint
+
+- **WHEN** a resumed Direct Build run finds `expert_review_checkpoint` recorded as `done`
+- **THEN** it does not run the checkpoint again, and the kept corrections already on disk travel in the archive commit.

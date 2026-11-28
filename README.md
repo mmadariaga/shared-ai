@@ -132,18 +132,23 @@ does not use the same RED → GREEN process; check its results before publishing
 ### Adversarial expert review
 
 Each product is reviewed by the workers and framing that produced it, so a defect
-that producer and reviewer share can reach you. Three commands offer an
+that producer and reviewer share can reach you. Four command entries offer an
 independent, adversarial opinion at the moment their product is about to settle,
 on a model you choose in `setup` for the `sai-adversarial-expert-review-worker`
-role:
+role. Each one resolves its answer from the `--expert-review [no|auto|ask]` flag
+where it has one, the answer a resumed run recorded, and its project setting
+(`expertReview.explore`, `expertReview.plan`, or `expertReview.build`), then asks
+when none answered:
 
 - **`/sai-explore`** asks right after it prints the crystallized change documents,
-  before the backlog, branch, route, and publication questions. The reviewer reads
-  every document of the set against its agreed Goal, Scope, Capabilities, and Edge
-  cases, and returns findings in the shared artifact review format with corrected
-  copies of the documents it would change. You decide once whether to keep the
-  recommended corrections, keep all of them, or discard all of them, and each kept
-  correction is re-validated and re-emitted as an amendment, then printed again.
+  before the backlog, branch, route, and publication questions, unless
+  `expertReview.explore` answers. The reviewer reads every document of the set
+  against its agreed Goal, Scope, Capabilities, and Edge cases, and returns
+  findings in the shared artifact review format with corrected copies of the
+  documents it would change. You decide once whether to keep the recommended
+  corrections, keep all of them, or discard all of them (with `auto` the
+  coordinator decides), and each kept correction is re-validated and re-emitted as
+  an amendment, then printed again.
 - **`/sai-plan`** asks at its start, beside the publication question:
   `--expert-review [no|auto|ask]`, where a bare flag is `auto`. With `auto` or
   `ask`, the reviewer reads the design segment's plan documents, plan tests, and
@@ -159,6 +164,17 @@ role:
   in its own commit. A finding about a missing or weak test is reported, not
   fixed, for a later `/sai-3-implement` run, and `review.md` stays as the review
   segment wrote it.
+- **Direct Build** (the `/sai-explore` route and `/sai-direct-build`) runs the
+  checkpoint at `step-2c`, after the suite gate and before backfill, when
+  `expertReview.build` resolves to `auto`; `/sai-direct-build` also accepts
+  `--expert-review [no|auto|ask]`. The reviewer reads the production files the run
+  changed, and its corrections stay in the working tree for the archive step's
+  commit. `ask` and `no` skip it without a question, because the route is
+  unattended.
+
+In the unattended routes (Plan - Unattended and both Direct Build entries) only
+`auto` runs the checkpoint. The three settings are editable in the **Expert
+review** section of the post-setup menu; see [project settings](docs/project-settings.md#expert-review).
 
 In every case the worker corrects only what it is allowed to touch: a correction
 outside its allowed paths is reverted and reported, and a kept correction that

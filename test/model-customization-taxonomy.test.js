@@ -145,3 +145,11 @@ test('effective model annotation prefers project-local frontmatter for both harn
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('every routed worker in the matrix has a profile row, and the reviewer carries the user choice', () => {
+  const manifest = require('../sai/install-manifest.json');
+  const workers = manifest['worker-matrix'].entries.map(entry => `worker:${entry.workerName}`).sort();
+  const profiled = Object.keys(customization.TARGET_PROFILE).filter(value => value.startsWith('worker:')).sort();
+  assert.deepEqual(profiled, workers, 'every routed worker needs a TARGET_PROFILE row');
+  assert.deepEqual(customization.TARGET_PROFILE['worker:sai-adversarial-expert-review-worker'], { context: 'Medium', difficulty: '↑↑↑' });
+});

@@ -68,7 +68,7 @@ test('the benchmark classifies the route by the same closing literal the card pr
 test('the command holds a coordinator profile that delegates to the Direct Build workers only', () => {
   assert.equal(manifest.capabilities.assignments.commands['sai-direct-build'], 'direct-build-command');
   const resolved = resolveProfile(manifest.capabilities, 'direct-build-command');
-  assert.deepEqual(resolved.delegate, ['executor', 'explorer', 'sai-direct-build-worker', 'sai-backfill-worker', 'sai-archive-worker']);
+  assert.deepEqual(resolved.delegate, ['executor', 'explorer', 'sai-direct-build-worker', 'sai-backfill-worker', 'sai-archive-worker', 'sai-adversarial-expert-review-worker']);
   assert.equal(resolved.stopTask, true);
   assert.equal(resolved.write, 'temp');
   for (const harness of ['claude', 'opencode']) {

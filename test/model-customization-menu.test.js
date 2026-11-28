@@ -4813,6 +4813,6 @@ test('guided warming pairs are grouped per harness and list each installed (prov
 });
 
 test('the main menu lists the topics in order and the Model customization submenu keeps its four actions', () => {
-  assert.deepEqual(modelCustomization.mainMenuOptions('Telemetry: off'), ['Model customization', 'Language settings', 'Backlog and PR settings', 'Telemetry: off', 'Cache warming', 'Exit']);
+  assert.deepEqual(modelCustomization.mainMenuOptions('Telemetry: off'), ['Model customization', 'Language settings', 'Backlog and PR settings', 'Expert review', 'Telemetry: off', 'Cache warming', 'Exit']);
   assert.deepEqual([...modelCustomization.MODEL_MENU_OPTIONS], ['Customize models', 'Reset to default models', 'Save preset', 'Load preset']);
 });

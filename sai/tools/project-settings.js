@@ -95,6 +95,16 @@ function validateWarming(value) {
   return null;
 }
 
+// The `expertReview.*` keys: the adversarial expert review mode of the command that owns
+// each key. `no`, `auto`, and `ask` are all real values, so a key with `askIsValue` keeps
+// `ask` as its value instead of reading it as the absence marker.
+const EXPERT_REVIEW_COMMANDS = ['explore', 'plan', 'build'];
+const EXPERT_REVIEW_MODES = ['no', 'auto', 'ask'];
+const expertReviewMode = value => (typeof value === 'string' && EXPERT_REVIEW_MODES.includes(value.trim().toLowerCase())
+  ? null
+  : 'must be no, auto, or ask');
+const expertReviewLabel = command => command.charAt(0).toUpperCase() + command.slice(1);
+
 // The model family of an Anthropic runtime id: `claude-opus-5-5` belongs to `opus`. It is derived by pattern, so a new
 // model version needs no change here; an id of another shape, or another provider, has no family.
 const ANTHROPIC_FAMILY = /^claude-([a-z]+)(?:-|$)/;
@@ -127,7 +137,8 @@ function resolveWarmingValue(value, { provider, model, role, harness }) {
 // The setting id catalogue: the single source of known ids, their validation, and
 // their presentation. An entry may add `normalize`, which maps a valid value to the one
 // the gates compare. `label` names a key in the post-setup menu, whose grouping is fixed in `bin/project-settings-screen.js`; `absent` is
-// the text the menu shows for a key with no value, where `ask` does not fit. `fallback` words what an invalid value
+// the text the menu shows for a key with no value, where `ask` does not fit. `askIsValue` makes `ask` a stored value of the key
+// instead of the absence marker. `fallback` words what an invalid value
 // leads to in its warning, for a key with no question.
 const CATALOGUE = {
   warming: { validate: validateWarming, label: 'Cache warming', absent: 'off' },
@@ -169,6 +180,17 @@ const CATALOGUE = {
     absent: 'off',
     fallback: 'it reads as false and every publication approval is asked',
   },
+  // The adversarial expert review mode of `/sai-explore`, `/sai-plan`, and `/sai-build`.
+  // A real `ask` value (`askIsValue`) makes a configured ask mode distinguishable from an
+  // unset key; an absent key keeps the command's current behavior (E1, E2).
+  ...Object.fromEntries(EXPERT_REVIEW_COMMANDS.map(command => [`expertReview.${command}`, {
+    validate: expertReviewMode,
+    normalize: value => value.trim().toLowerCase(),
+    askIsValue: true,
+    label: expertReviewLabel(command),
+    absent: command === 'explore' ? 'ask each set' : 'ask at start',
+    fallback: 'the command behaves as if the key were absent',
+  }])),
   // An absent key reads as false.
   'experimental.changeTelemetry': {
     validate: value => (typeof value === 'boolean' ? null : 'must be true or false'),
@@ -247,7 +269,7 @@ function validate(parsed, label, ids, effect = BASE_EFFECT) {
   for (const [id, value] of flatten(parsed)) {
     if (!CATALOGUE[id]) { warnings.push(`Unknown setting id ${id} in ${label} is ignored.`); continue; }
     present.add(id);
-    if (typeof value === 'string' && isKeyword(value, 'ask')) continue;
+    if (typeof value === 'string' && isKeyword(value, 'ask') && !CATALOGUE[id].askIsValue) continue;
     const problem = CATALOGUE[id].validate(value, ids);
     if (problem) warnings.push(`Setting ${id} in ${label} ${problem}; ${CATALOGUE[id].fallback ?? 'its question stays normal'}.`);
     else values[id] = CATALOGUE[id].normalize ? CATALOGUE[id].normalize(value) : value;
@@ -299,7 +321,8 @@ function projectRoot(cwd = process.cwd()) {
 /**
  * Read every catalogue value: { values: {id: value}, origins: {id: base|local}, baseValues, localValues, source: setting|absent, warnings, root, notices? }.
  * `.sai/settings.local.jsonc`, beside the base file, overrides the base file key by key: a key the local file holds
- * replaces the base value even when its own value is `ask` or invalid, which leaves the question normal.
+ * replaces the base value even when its own value is `ask` or invalid, which leaves the question normal (except in a
+ * key whose catalogue entry sets `askIsValue`, where `ask` is a value).
  * `providerIds` validates `backlog.provider`, `prProviderIds` validates `pr.provider`; `locate: false` reads the cwd itself.
  */
 function readSettings({ cwd = process.cwd(), providerIds, prProviderIds, locate = true } = {}) {

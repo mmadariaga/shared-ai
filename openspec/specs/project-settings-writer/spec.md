@@ -7,7 +7,7 @@ Saves project settings into `.sai/settings.jsonc` in place, keeping comments, un
 
 ### Requirement: Catalogue-validated values
 
-`bin/project-settings-writer.js` SHALL validate every value through the `CATALOGUE` of `sai/tools/project-settings.js` before writing, with the supplied backlog provider ids for `backlog.provider` and the supplied to-pr provider ids for `pr.provider`, and SHALL write the canonical form the catalogue returns. A value that equals `ask` case-insensitively after trimming SHALL be written as the string `"ask"`. An id outside the catalogue or an invalid value SHALL make the whole save fail without writing.
+`bin/project-settings-writer.js` SHALL validate every value through the `CATALOGUE` of `sai/tools/project-settings.js` before writing, with the supplied backlog provider ids for `backlog.provider` and the supplied to-pr provider ids for `pr.provider`, and SHALL write the canonical form the catalogue returns. A value that equals `ask` case-insensitively after trimming SHALL be written as the string `"ask"`; for a catalogue key whose entry declares `askIsValue`, the value SHALL instead be validated through that entry's own rules. An id outside the catalogue or an invalid value SHALL make the whole save fail without writing.
 
 #### Scenario: Invalid values refuse the save
 - **WHEN** a save sets `backlog.provider` to an id that no supplied provider list contains, `explore.readyToProposeLanguage` to `none`, or the unknown id `backlog.type`

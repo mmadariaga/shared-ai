@@ -22,7 +22,7 @@ const isObject = value => value !== null && typeof value === 'object' && !Array.
 function checkValue(id, value, providerIds, prProviderIds) {
   const entry = CATALOGUE[id];
   if (!entry) return { ok: false, problem: `Unknown setting id ${id}` };
-  if (typeof value === 'string' && isKeyword(value, 'ask')) return { ok: true, value: 'ask' };
+  if (typeof value === 'string' && isKeyword(value, 'ask') && !entry.askIsValue) return { ok: true, value: 'ask' };
   const problem = entry.validate(value, { providerIds, prProviderIds });
   if (problem) return { ok: false, problem: `${id} ${problem}` };
   return { ok: true, value: entry.normalize ? entry.normalize(value) : value };

@@ -16,7 +16,7 @@ SAI SHALL ship a `/sai-direct-build` command on Claude Code and opencode whose w
 
 ### Requirement: Block reference arguments
 
-The command SHALL drop every `--fast-track` and `--supervised` token silently, with no banner. It SHALL then require exactly one `--document-file <path>` and exactly one `--document-hash <sha256>`, on separate lines or in either order, and nothing else. When either is missing or repeated, or the arguments hold anything else (a pasted document, a change name, another option, or a retired `--block-file` or `--block-hash` line), the command SHALL print `Cannot start /sai-direct-build: pass --document-file <path> and --document-hash <sha256> (the pair that sai-state block --export returns).` and end the run, writing nothing.
+The command SHALL drop every `--fast-track` and `--supervised` token silently, with no banner. It SHALL take `--expert-review [no|auto|ask]` out, in the separate or the attached `--expert-review=<value>` form, where a bare flag is `auto` and the argument wins over the `expertReview.build` setting; a value other than `no`, `auto`, or `ask`, or a second `--expert-review`, SHALL end the run before anything is written with `Cannot start /sai-direct-build: --expert-review takes no, auto or ask.` It SHALL then require exactly one `--document-file <path>` and exactly one `--document-hash <sha256>`, on separate lines or in either order, and nothing else. When either is missing or repeated, or the arguments hold anything else (a pasted document, a change name, any other option, or a retired `--block-file` or `--block-hash` line), the command SHALL print `Cannot start /sai-direct-build: pass --document-file <path> and --document-hash <sha256> (the pair that sai-state block --export returns).` and end the run, writing nothing.
 
 #### Scenario: Pasted block instead of a reference
 
@@ -61,12 +61,12 @@ The command SHALL dispose every worker and helper still alive before its closing
 
 ### Requirement: Direct Build command capability profile
 
-`sai/install-manifest.json` SHALL assign `sai-direct-build` the `direct-build-command` capability profile: a mutation coordinator with temp-only native writes, task stop, the `safe-operations` and `fetch` skills, shell access including `transfer.js`, and delegation limited to the executor, the explorer, `sai-direct-build-worker`, `sai-backfill-worker`, and `sai-archive-worker`, translated for both Claude Code and opencode.
+`sai/install-manifest.json` SHALL assign `sai-direct-build` the `direct-build-command` capability profile: a mutation coordinator with temp-only native writes, task stop, the `safe-operations` and `fetch` skills, shell access including `transfer.js`, and delegation limited to the executor, the explorer, `sai-direct-build-worker`, `sai-backfill-worker`, `sai-archive-worker`, and `sai-adversarial-expert-review-worker`, translated for both Claude Code and opencode.
 
 #### Scenario: Delegation limited to the Direct Build workers
 
 - **WHEN** the `direct-build-command` profile is resolved
-- **THEN** its delegates are exactly the executor, the explorer, `sai-direct-build-worker`, `sai-backfill-worker`, and `sai-archive-worker`
+- **THEN** its delegates are exactly the executor, the explorer, `sai-direct-build-worker`, `sai-backfill-worker`, `sai-archive-worker`, and `sai-adversarial-expert-review-worker`
 
 ### Requirement: Model customization for the command
 
