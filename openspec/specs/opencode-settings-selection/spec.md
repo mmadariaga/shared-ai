@@ -7,19 +7,37 @@ _TBD: purpose not yet written._
 
 ### Requirement: Dependent provider-to-model-to-variant selection
 
-For an OpenCode customization run with a non-empty confirmed agent subset, the OpenCode settings selector SHALL present exactly two mandatory dependent navigable single-select screens in this order: provider, then model scoped to the selected provider. The selector SHALL present one conditional variant screen after the model screen, only when the selected model exposes variants. The provider screen SHALL be offered only for the OpenCode harness; the Claude Code harness SHALL use its own static-catalog model screen followed by an effort screen, including explicit `Default (no effort)` confirmation for model-only entries, and SHALL NOT present a provider screen. Claude Code's navigation change SHALL NOT alter OpenCode's provider, model, or variant selection behavior.
+For an OpenCode customization run with a non-empty confirmed agent subset, the OpenCode settings selector SHALL present exactly two mandatory dependent navigable single-select screens in this order: provider, then model scoped to the selected provider. The selector SHALL present one conditional variant screen after the model screen, only when the selected model exposes variants. When the confirmed subset contains at least one worker file, the provider screen SHALL list `Claude Code passthrough` before the discovered providers; choosing it SHALL skip the model and variant screens and return exactly `{ harness: 'claude' }`, and it SHALL NOT be offered when no selected row is a worker file. The provider screen SHALL be offered only for the OpenCode harness; the Claude Code harness SHALL use its own static-catalog model screen followed by an effort screen, including explicit `Default (no effort)` confirmation for model-only entries, and SHALL NOT present a provider screen. Claude Code's navigation change SHALL NOT alter OpenCode's provider, model, or variant selection behavior.
 
 #### Scenario: full dependent flow resolves provider, model, and variant
+
 - **WHEN** the user runs OpenCode customization and the selected model exposes variants
 - **THEN** the selector presents the provider screen, then the model screen scoped to that provider, then the variant screen, in that order
 
 #### Scenario: provider screen is OpenCode-specific
+
 - **WHEN** the user runs Claude Code customization
 - **THEN** no provider screen is presented and Claude's static-catalog model screen is followed by its model-specific effort or explicit no-effort confirmation screen
 
 #### Scenario: variant screen is skipped for a model without variants
+
 - **WHEN** the selected model exposes no variants
 - **THEN** the selector presents exactly the two mandatory provider and model screens and completes without a variant screen
+
+#### Scenario: provider screen offers the inverse route
+
+- **WHEN** the confirmed OpenCode subset contains a worker file
+- **THEN** the provider screen lists `Claude Code passthrough` before the discovered providers
+
+#### Scenario: inverse route is not offered without a worker row
+
+- **WHEN** the confirmed OpenCode subset contains no worker file
+- **THEN** the provider screen lists no `Claude Code passthrough` option
+
+#### Scenario: routing-only choice skips the model screens
+
+- **WHEN** the user chooses `Claude Code passthrough` on the provider screen
+- **THEN** the selector presents no model or variant screen and returns exactly `{ harness: 'claude' }`
 
 ### Requirement: Variant screen default sentinel
 The variant screen SHALL offer exactly one no-variant option plus the discovered variants of the selected model. The no-variant option SHALL be represented internally by a sentinel distinct from every possible variant string and SHALL be labeled `Default (no variant)`; selecting it SHALL omit the variant from the returned settings. The screen SHALL present unique display labels backed by a display-to-value mapping, derived by a general collision-free scheme: the no-variant option uses the pinned `Default (no variant)` display label, each discovered variant initially displays as its exact identifier, and whenever a proposed display label is already used by another option, the scheme SHALL iterate — for example by repeatedly appending a disambiguating suffix, or by assigning stable numeric prefixes to every option — until every option has a distinct label. No two options SHALL ever share a display label, whatever the discovered variant identifiers, and the mapping SHALL always resolve each display label back to its exact variant identifier or to the no-variant sentinel. A discovered variant whose identifier is literally `Default`, `default`, or `Default (no variant)` SHALL remain a separate selectable option, SHALL NOT be conflated with the no-variant sentinel, and SHALL carry its exact identifier as the `variant` value.

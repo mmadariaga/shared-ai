@@ -17,18 +17,6 @@ The Claude installer MUST declare user-owned tunable keys as exactly model, effo
 - **WHEN** each Claude agent projection rule is inspected
 - **THEN** no rule has a field naming a tunable key
 
-### Requirement: opencode tunable keys
-
-The opencode installer MUST declare the user-owned tunable keys as exactly the two strings `model` and `variant`. The declaration MUST be a single per-harness constant, not a per-projection annotation; the opencode agent projections declared by the manifest MUST NOT carry any tunable-key metadata.
-
-#### Scenario: opencode tunable set is model and variant
-- **WHEN** the opencode installer's tunable-keys constant is read
-- **THEN** it contains exactly the strings `model` and `variant` and no others
-
-#### Scenario: no opencode projection carries tunable metadata
-- **WHEN** the install manifest is loaded
-- **THEN** no opencode agent projection rule has any field that names a tunable key
-
 ### Requirement: seed on create
 
 When an agent destination does not exist, the installer MUST write the projection's source bytes verbatim, using compiled sourceText when the projection supplies it. Source tunable seeds MUST become the first destination tunables without later re-seeding. Capability projection SHALL resolve placeholders before installation.
@@ -126,10 +114,11 @@ Uninstall SHALL identify matching managed agents by comparing destination body a
 
 ### Requirement: Doctor accepts tunable-only agent differences
 
-Doctor SHALL compare compiled managed agent content using the body-and-non-tunable identity rule, reading the tunable keys from the per-harness tunable-key constants of the installer. User-owned tunable differences SHALL NOT be reported as managed-content drift.
+Doctor SHALL compare compiled managed agent content using the body-and-non-tunable identity rule, reading the tunable keys from the per-harness tunable-key constants of the installer. User-owned tunable differences SHALL NOT be reported as managed-content drift, including a hand-set `harness` line in a Claude Code agent file or in an opencode agent file.
 
 #### Scenario: Tuned agent passes identity inspection
-- **WHEN** doctor inspects an agent whose only differences are model or effort or variant settings, or a hand-set `harness` line in a Claude Code agent file
+
+- **WHEN** doctor inspects an agent whose only differences are model or effort or variant settings, or a hand-set `harness` line in a Claude Code or opencode agent file
 - **THEN** its managed-content identity check reports compatible content
 
 ### Requirement: No shipped Claude agent carries the harness key
@@ -147,3 +136,41 @@ No Claude Code agent source, agent template, or generated Claude Code agent SHAL
 #### Scenario: Setup-written harness line survives install
 - **WHEN** setup writes `harness: opencode` in a Claude Code agent file and installation runs again with a changed managed body
 - **THEN** the destination keeps the `harness: opencode` line and doctor reports no drift for it
+
+### Requirement: opencode tunable keys include the route key
+
+The opencode installer SHALL declare the user-owned tunable keys as exactly the strings `model`, `variant`, and `harness`. The declaration SHALL be a single per-harness constant, not a per-projection annotation; the opencode agent projections declared by the manifest SHALL NOT carry any tunable-key metadata. The `harness` key SHALL be the hand-set routing key of `sai/policies/claude-dispatch.md`.
+
+#### Scenario: opencode tunable set includes the route key
+
+- **WHEN** the opencode installer's tunable-keys constant is read
+- **THEN** it contains exactly the strings `model`, `variant`, and `harness` and no others
+
+#### Scenario: no opencode projection carries tunable metadata
+
+- **WHEN** the install manifest is loaded
+- **THEN** no opencode agent projection rule has any field that names a tunable key
+
+### Requirement: No shipped opencode agent carries the harness key
+
+No opencode agent source, agent template, or generated opencode agent SHALL carry a `harness:` frontmatter line, and installation SHALL NOT write a default `harness:` line. The line SHALL be set only by the user: by hand, or by the setup "Customize models" menu when the user chooses `Claude Code passthrough`, which also removes it when the user chooses an opencode model or resets to default models. Install, project refresh, doctor, and uninstall SHALL preserve or ignore the line as a tunable, whichever way it was set.
+
+#### Scenario: Shipped opencode sources carry no harness line
+
+- **WHEN** the opencode agent sources, the worker template, and the generated opencode agents are read
+- **THEN** none of them carries a `harness:` frontmatter line
+
+#### Scenario: Hand-set harness line survives install
+
+- **WHEN** a user adds `harness: claude` to an installed opencode agent file and installation runs again
+- **THEN** the destination keeps the `harness: claude` line while its managed content is updated
+
+#### Scenario: Doctor reports no drift for the route line
+
+- **WHEN** doctor inspects an opencode agent whose only difference from its source is a hand-set `harness: claude` line
+- **THEN** its managed-content identity check reports compatible content
+
+#### Scenario: Uninstall ignores the route line
+
+- **WHEN** uninstall evaluates an opencode agent whose body and non-tunable frontmatter match its source and whose only difference is the `harness: claude` line
+- **THEN** it treats the file as managed and consults no sidecar for the identity decision

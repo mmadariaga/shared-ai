@@ -8,7 +8,7 @@ TBD - created by archiving change tool-usage-help. Update Purpose after archive.
 
 ### Requirement: Agent-facing tools declare their usage as data rendered by one shared module
 
-Each of the 36 agent-facing deterministic tools (`commit`, `to-pr`, `to-backlog`, `from-backlog`, `from-next-backlog-item`, `file-manifest`, `check-delta-headers`, `scenario-coverage`, `test-select`, `validate-backfill-drafts`, `backfill-no-specs`, `worker-report-validator`, `risk-signals`, `change-document`, `change-telemetry`, `decision-records`, `tool-access`, `prereqs`, `change-picker`, `transfer`, `temp-root`, `dispose-shells`, `project-settings`, `archive-plan`, `check-cited-paths`, `lint`, `merge`, `worktree`, `review-delta`, `slice-path-scope`, `no-commit-guard`, `status`, `opencode-dispatch`, `new-change-branch`, `retrospective`, and `bin/sai-state`) SHALL declare its usage once, as an exported data constant beside its parser: a map of each subcommand to its usage lines and at least one real example, or one general entry for a tool without subcommands. `sai/tools/usage.js` SHALL be the only renderer of that text, for both the usage error and `--help`; no tool SHALL format usage text on its own. Requiring a tool's file SHALL NOT run the tool.
+Each of the 38 agent-facing deterministic tools (`commit`, `to-pr`, `to-backlog`, `from-backlog`, `from-next-backlog-item`, `file-manifest`, `check-delta-headers`, `scenario-coverage`, `test-select`, `validate-backfill-drafts`, `backfill-no-specs`, `worker-report-validator`, `risk-signals`, `change-document`, `issue-precheck`, `change-telemetry`, `decision-records`, `tool-access`, `prereqs`, `change-picker`, `transfer`, `temp-root`, `dispose-shells`, `project-settings`, `archive-plan`, `check-cited-paths`, `lint`, `merge`, `worktree`, `review-delta`, `slice-path-scope`, `no-commit-guard`, `status`, `opencode-dispatch`, `claude-dispatch`, `new-change-branch`, `retrospective`, and `bin/sai-state`) SHALL declare its usage once, as an exported data constant beside its parser: a map of each subcommand to its usage lines and at least one real example, or one general entry for a tool without subcommands. `sai/tools/usage.js` SHALL be the only renderer of that text, for both the usage error and `--help`; no tool SHALL format usage text on its own. Requiring a tool's file SHALL NOT run the tool.
 
 #### Scenario: A tool's declaration is required without running it
 
@@ -102,7 +102,7 @@ A tool whose usage error is text SHALL print the block to stderr on an error and
 
 ### Requirement: A test guards the usage declaration of every agent-facing tool
 
-The repository SHALL keep a test that walks the fixed list of the 36 agent-facing tools and fails when a tool has no usage declaration, when a subcommand its parser accepts has no declaration, or when an example uses a subcommand or flag its declaration does not list.
+The repository SHALL keep a test that walks the fixed list of the 38 agent-facing tools and fails when a tool has no usage declaration, when a subcommand its parser accepts has no declaration, or when an example uses a subcommand or flag its declaration does not list.
 
 #### Scenario: A tool without a declaration fails the test
 

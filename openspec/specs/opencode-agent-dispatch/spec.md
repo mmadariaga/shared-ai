@@ -51,15 +51,17 @@ TBD - created by archiving change opencode-worker-dispatch. Update Purpose after
 
 ### Requirement: Dispatch policy is the single source
 
-`sai/policies/opencode-dispatch.md` SHALL be the single source for how a Claude Code coordinator, or a Claude Code worker that dispatches helpers, creates, continues, and disposes an opencode-routed agent. The Claude Code routed-worker binding template, the three Claude Code budget skills, the design overview step, and the Claude Code creation step of explore's explorer two-phase startup SHALL point to it instead of restating it, and each SHALL state the route query of that policy as an unconditional step before every creation of the agent, a replacement included, without reading the agent file to decide whether the route applies: the `Agent` call creates the agent when the query answers `claude`, and the policy creates, continues, and disposes it when the query answers `opencode`. With opencode as the main harness, dispatch SHALL stay as each card and skill write it, and opencode dispatch sites and templates SHALL NOT carry the routing key.
+`sai/policies/opencode-dispatch.md` SHALL be the single source for how a Claude Code coordinator, or a Claude Code worker that dispatches helpers, creates, continues, and disposes an opencode-routed agent. The Claude Code routed-worker binding template, the three Claude Code budget skills, the design overview step, and the Claude Code creation step of explore's explorer two-phase startup SHALL point to it instead of restating it, and each SHALL state the route query of that policy as an unconditional step before every creation of the agent, a replacement included, without reading the agent file to decide whether the route applies: the `Agent` call creates the agent when the query answers `claude`, and the policy creates, continues, and disposes it when the query answers `opencode`. An opencode coordinator SHALL NOT load this policy. Its worker dispatch SHALL stay as each card and skill write it, except that a worker whose opencode agent file carries `harness: claude` is created, continued, and disposed through `sai/policies/claude-dispatch.md`, whose route query the opencode routed-worker binding template SHALL state as an unconditional step before every creation, a replacement included, without reading the agent file first; opencode dispatch sites and templates SHALL NOT carry the `harness: opencode` routing key.
 
 #### Scenario: Dispatch sites point to the policy
+
 - **WHEN** the Claude Code standalone worker binding template, the Claude Code `budget-explorer`, `budget-executor`, and `budget-subagent` skills, `sai/commands/design/steps/overview.md`, and the Claude Code creation step of § Explorer two-phase startup in `sai/commands/explore/body.md` are read
 - **THEN** each points to `sai/policies/opencode-dispatch.md` and states its route query as an unconditional step before the agent is created, never conditional on the agent file
 
 #### Scenario: opencode as main harness is unchanged
+
 - **WHEN** the opencode dispatch sites and templates are read
-- **THEN** none of them carries the `harness:` routing key or the opencode dispatch policy
+- **THEN** none of them carries the `harness: opencode` routing key or the opencode dispatch policy, and the opencode routed-worker binding template states only the inverse route query of `sai/policies/claude-dispatch.md`
 
 ### Requirement: Create and continue an opencode-routed agent
 

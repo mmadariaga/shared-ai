@@ -49,6 +49,7 @@ const TOOLS = [
   { name: 'no-commit-guard', file: 'sai/tools/no-commit-guard.js', kind: 'text', subcommands: ['snapshot', 'verify'] },
   { name: 'status', file: 'sai/tools/status.js', kind: 'text', subcommands: ['panel', 'bulk'] },
   { name: 'opencode-dispatch', file: 'sai/tools/opencode-dispatch.js', kind: 'text', subcommands: ['route', 'start', 'continue'] },
+  { name: 'claude-dispatch', file: 'sai/tools/claude-dispatch.js', kind: 'text', subcommands: ['route', 'start', 'continue', 'stop'] },
   { name: 'new-change-branch', file: 'sai/tools/new-change-branch.js', kind: 'json', keep: { status: 'failed' }, subcommands: ['inspect', 'name', 'base', 'create'] },
   { name: 'retrospective', file: 'sai/tools/retrospective.js', kind: 'json', keep: {}, errorKeys: ['error'], subcommands: ['index', 'cost', 'excerpt'] },
   { name: 'sai-state', file: 'bin/sai-state.js', kind: 'text', subcommands: ['spawn', 'emit', 'block', 'reset', 'close'] },
@@ -84,9 +85,9 @@ const declarationOf = tool => {
   return loaded.get(tool.name);
 };
 
-test('E11 the fixed list names the 37 agent-facing tools', () => {
-  assert.equal(TOOLS.length, 37);
-  assert.equal(new Set(TOOLS.map(tool => tool.name)).size, 37);
+test('E11 the fixed list names the 38 agent-facing tools', () => {
+  assert.equal(TOOLS.length, 38);
+  assert.equal(new Set(TOOLS.map(tool => tool.name)).size, 38);
 });
 
 test('E11 every tool exports a usage declaration whose subcommands are the ones its parser accepts, and whose examples use only declared subcommands and flags', () => {

@@ -1,27 +1,30 @@
 'use strict';
 
 /**
- * opencode-launcher — which opencode executable runs, and how it is spawned (sai/policies/opencode-dispatch.md).
+ * opencode-launcher — which opencode or Claude Code executable runs, and how it is spawned
+ * (sai/policies/opencode-dispatch.md, sai/policies/claude-dispatch.md).
  *
- * Every SAI tool that starts `opencode` asks this module for the command first, so a route that answers `opencode` is
- * never followed by a turn or a stop that cannot find the binary. The command it returns is always spawned without a
- * shell: a worker message is multi-line free text that must reach opencode as one argument, and `cmd.exe` would break
- * its line breaks and expand `%` and `^`.
+ * Every SAI tool that starts `opencode` or `claude` asks this module for the command first, so a route that answers
+ * for one harness is never followed by a turn or a stop that cannot find the binary. The command it returns is always
+ * spawned without a shell: a worker message is multi-line free text that must reach the child as one argument, and
+ * `cmd.exe` would break its line breaks and expand `%` and `^`.
  *
- * On Linux and macOS the command is `opencode`, found on `PATH` by the spawn itself. On Windows Node cannot execute the
- * `.cmd` shim that npm writes, so the launcher walks the `PATH` directories in order, with no process spawned, and in
- * the first directory that holds an `opencode` entry takes `opencode.exe`, else the `.exe` that `opencode.cmd` names.
- * `PATH` order decides which install runs, as it does in a terminal. An extensionless entry is the sh shim npm writes
- * beside the `.cmd` and is skipped. A shim whose `.exe` the launcher cannot read, or whose `.exe` is absent (a pnpm,
- * yarn, or scoop shim, or a `.ps1`-only install), is `opencode-shim-unresolved` and names the shim path.
+ * On Linux and macOS the command is the binary's own name, found on `PATH` by the spawn itself. On Windows Node cannot
+ * execute the `.cmd` shim that npm writes, so the launcher walks the `PATH` directories in order, with no process
+ * spawned, and in the first directory that holds a `<binary>` entry takes `<binary>.exe`, else the `.exe` that
+ * `<binary>.cmd` names. `PATH` order decides which install runs, as it does in a terminal. An extensionless entry is
+ * the sh shim npm writes beside the `.cmd` and is skipped. A shim whose `.exe` the launcher cannot read, or whose
+ * `.exe` is absent (a pnpm, yarn, or scoop shim, or a `.ps1`-only install), is `<binary>-shim-unresolved` and names
+ * the shim path.
  *
- * `resolveOpencode` takes the platform, the environment, and the file-system reads as inputs, so the Windows branch
+ * `resolveBinary` takes the platform, the environment, and the file-system reads as inputs, so the Windows branch
  * runs on any operating system.
  */
 
 const fs = require('node:fs');
 const win = require('node:path').win32;
 
+// The opencode causes keep their spelling: the dispatch and setup surfaces name them.
 const SHIM_UNRESOLVED = 'opencode-shim-unresolved';
 const MISSING = 'opencode-missing';
 const QUOTED_EXE = /"([^"\r\n]+\.exe)"/gi;
@@ -51,31 +54,36 @@ function shimTarget(text, directory) {
   return null;
 }
 
-function resolveWindows({ env, exists, read }) {
+function resolveWindows(binary, { env, exists, read }) {
   for (const directory of windowsDirectories(env)) {
-    const exe = win.join(directory, 'opencode.exe');
+    const exe = win.join(directory, `${binary}.exe`);
     if (exists(exe)) return { command: exe, shim: null, cause: null };
-    const cmd = win.join(directory, 'opencode.cmd');
+    const cmd = win.join(directory, `${binary}.cmd`);
     if (exists(cmd)) {
       let target = null;
       try { target = shimTarget(read(cmd), directory); } catch { target = null; }
       if (target !== null && exists(target)) return { command: target, shim: cmd, cause: null };
-      return { command: null, shim: cmd, cause: SHIM_UNRESOLVED };
+      return { command: null, shim: cmd, cause: `${binary}-shim-unresolved` };
     }
-    const script = win.join(directory, 'opencode.ps1');
-    if (exists(script)) return { command: null, shim: script, cause: SHIM_UNRESOLVED };
+    const script = win.join(directory, `${binary}.ps1`);
+    if (exists(script)) return { command: null, shim: script, cause: `${binary}-shim-unresolved` };
   }
-  return { command: null, shim: null, cause: MISSING };
+  return { command: null, shim: null, cause: `${binary}-missing` };
 }
 
 /**
- * The opencode command: `{ command, shim, cause }`. `command` is what to spawn (without a shell) or `null` when none
- * can run, and `cause` is then `opencode-missing` or `opencode-shim-unresolved` (with the `shim` path). On Linux and
- * macOS the command is `opencode` and a missing binary shows up as the spawn's own error.
+ * The command of one CLI binary: `{ command, shim, cause }`. `command` is what to spawn (without a shell) or `null`
+ * when none can run, and `cause` is then `<binary>-missing` or `<binary>-shim-unresolved` (with the `shim` path). On
+ * Linux and macOS the command is the binary name and a missing binary shows up as the spawn's own error.
  */
-function resolveOpencode({ platform = process.platform, env = process.env, exists = isFile, read = readText } = {}) {
-  if (platform !== 'win32') return { command: 'opencode', shim: null, cause: null };
-  return resolveWindows({ env, exists, read });
+function resolveBinary(binary, { platform = process.platform, env = process.env, exists = isFile, read = readText } = {}) {
+  if (platform !== 'win32') return { command: binary, shim: null, cause: null };
+  return resolveWindows(binary, { env, exists, read });
 }
 
-module.exports = { resolveOpencode, shimTarget, SHIM_UNRESOLVED, MISSING };
+/** The opencode command, as `resolveBinary` returns it. */
+function resolveOpencode(options = {}) {
+  return resolveBinary('opencode', options);
+}
+
+module.exports = { resolveBinary, resolveOpencode, shimTarget, SHIM_UNRESOLVED, MISSING };

@@ -27,7 +27,7 @@ When several Claude Code agents run at once, each rejected continuation SHALL wa
 
 ### Requirement: Stop calls and opencode dispatch keep their current rules
 
-A stop call at a dispose point (`TaskStop`) SHALL NOT be a continuation and SHALL NOT wait for a notification. opencode as the main harness, and agents routed through `opencode-dispatch.js`, SHALL keep their rule of continuing a subagent only after its turn has ended. For agents routed through `opencode-dispatch.js`, that rule SHALL be enforced by the tool's per-session turn lock: a `continue` while an earlier turn of the same session still runs SHALL send nothing and answer `status: busy` at exit 3, and the coordinator SHALL resend the same message once after the earlier turn's completion notification, as `sai/policies/opencode-dispatch.md` § Continue states. The opencode dispatch sources `sai/orchestration/workers/bindings/opencode/standalone-worker-template.md` and `skills/opencode/budget-*/SKILL.md` SHALL stay unchanged. The worker contracts and the ready prompt SHALL stay unchanged.
+A stop call at a dispose point (`TaskStop`) SHALL NOT be a continuation and SHALL NOT wait for a notification. opencode as the main harness, and agents routed through `opencode-dispatch.js`, SHALL keep their rule of continuing a subagent only after its turn has ended. For agents routed through `opencode-dispatch.js`, that rule SHALL be enforced by the tool's per-session turn lock: a `continue` while an earlier turn of the same session still runs SHALL send nothing and answer `status: busy` at exit 3, and the coordinator SHALL resend the same message once after the earlier turn's completion notification, as `sai/policies/opencode-dispatch.md` § Continue states. A Claude-routed worker of an opencode coordinator SHALL follow the same wait, as `sai/policies/claude-dispatch.md` § Continue states: its next message is a new `continue` turn started only after the dispatch shell of the earlier turn completed, and a `busy` answer is resent once after that shell's completion notification. The opencode dispatch sources `sai/orchestration/workers/bindings/opencode/standalone-worker-template.md` and `skills/opencode/budget-*/SKILL.md` SHALL keep their dispatch rules, except that the standalone worker template adds the inverse route query of `sai/policies/claude-dispatch.md`; the budget skills SHALL stay unchanged. The worker contracts and the ready prompt SHALL stay unchanged.
 
 #### Scenario: Dispose without waiting
 - **WHEN** a Claude Code coordinator reaches a dispose point for a worker whose `completed` notification has not arrived
@@ -40,6 +40,10 @@ A stop call at a dispose point (`TaskStop`) SHALL NOT be a continuation and SHAL
 #### Scenario: opencode main harness
 - **WHEN** an opencode coordinator continues a worker it created
 - **THEN** it sends the continuation only after the worker's completion notification has arrived
+
+#### Scenario: Claude-routed worker continuation waits for its shell
+- **WHEN** an opencode coordinator continues a Claude-routed worker
+- **THEN** it runs the next `continue` turn only after the earlier turn's dispatch shell completed, and a `busy` answer is resent once after that shell's completion notification
 
 ### Requirement: Claude Code continuations use an optimistic send
 
