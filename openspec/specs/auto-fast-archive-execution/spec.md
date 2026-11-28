@@ -124,15 +124,34 @@ In the Direct Build execution continuation, `sai/commands/archive/worker.md` SHA
 
 ### Requirement: The Direct Build archive commit SHALL carry the archived change's closing lines
 
-When the Direct Build archive execution creates its one local commit, the worker SHALL add the closing lines that `sai/policies/commit-rules.md` § Closing Lines defines for the archived change. They SHALL follow the retired-capability body lines and come before the complete message is passed to `git commit -F -`. The rule SHALL add no extra commit, no amend, and no push.
+When the Direct Build archive execution creates its one local commit, the worker SHALL add the closing lines that `sai/policies/commit-rules.md` § Closing Lines defines for the archived change. They SHALL follow the retired-capability body lines and come before the complete message is passed to `git commit -F -`. The worker's rule SHALL add no extra commit, no amend by the worker, and no push.
+
+After the worker's clean `completed` result, the coordinator SHALL compare the last non-empty line of that commit's message with the archive plan's `closing_line` and SHALL amend the same local commit's message when the line is missing, appears earlier but not last, or sits beside another `Closes` line; an additional `Closes` line SHALL be kept above the plan's line. The amendment SHALL stage nothing, SHALL never create a second commit, SHALL never push, and SHALL stop the run before the telemetry commit and before publication when it fails.
 
 #### Scenario: Direct Build archive commit closes the backlog origin
+
 - **WHEN** the Direct Build archive execution commits a change whose archived `.openspec.yaml` carries a GitHub `backlog_origin`
 - **THEN** the single local commit message carries one `Closes owner/repo#N` line for that origin
 
 #### Scenario: No origin adds no closing line
+
 - **WHEN** the archived change has no `backlog_origin`
 - **THEN** the Direct Build archive commit carries no closing line
+
+#### Scenario: A missing footer is amended on the same commit
+
+- **WHEN** the archive worker returned a clean `completed` result and the commit message lacks the plan's `closing_line`
+- **THEN** the coordinator appends the line, amends that same local commit's message, and reports the amended short SHA
+
+#### Scenario: A moved or additional footer is corrected
+
+- **WHEN** the plan's line appears earlier but not last, or the message also carries a `Closes` line for another issue
+- **THEN** the coordinator keeps the other line, puts the plan's line last, amends the same local commit, and reports the corrected deviation
+
+#### Scenario: A failed amendment stops the run before publication
+
+- **WHEN** the amendment of the archive commit's message fails
+- **THEN** the commit stays as it is, the run reports the affected commit and the lines it holds, and it stops before the telemetry commit and before publication
 
 ### Requirement: The Direct Build archive commit excludes foreign index entries
 

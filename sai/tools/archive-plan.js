@@ -25,6 +25,8 @@
  *   node sai/tools/archive-plan.js plan <change-name> [--json] [--cwd <root>]
  *     [--implementer-paths-file <path>] [--implementer-path <path>]...
  *     [--drafts-dir <dir>]
+ *   node sai/tools/archive-plan.js footer --commit <rev> --closing-line <line>
+ *     --output <path> [--json] [--cwd <root>]
  *
  *   --implementer-paths-file  one repository-relative path per line: the paths
  *                             the implementer changed (Direct Build), deletions
@@ -35,6 +37,13 @@
  *                             `.openspec.yaml` and `proposal.md` of a no-specs
  *                             change that no backfill worker wrote yet; they
  *                             stand in for the change files that do not exist.
+ *   --commit                  the archive commit the footer check reads
+ *                             (default HEAD); it never changes the commit.
+ *   --closing-line            the plan's `closing_line`, the only line the
+ *                             check accepts as the last non-empty line.
+ *   --output                  where the corrected message is written when the
+ *                             footer needs an amendment; the caller amends the
+ *                             local commit with `git commit --amend --only -F`.
  *
  * stdout is one JSON object. Exit codes: 0 = a plan (`ok: true`); 1 = the plan
  * is refused (`ok: false`, `refused: true`, with `reason` and a `summary` to
@@ -358,6 +367,70 @@ function closingLineOf(origin) {
 }
 
 // ---------------------------------------------------------------------------
+// the closing footer of the archive commit (Direct Build)
+// ---------------------------------------------------------------------------
+
+const CLOSING_LINE_RE = /^Closes\s+(?:\S+#|#)\d+$/i;
+
+/** The issue a `Closes` line names, with a bare `#N` read in `defaultRepository`, or null. */
+function closingIssue(line, defaultRepository) {
+  const match = /^Closes\s+(?:(\S+)#)?#?(\d+)$/i.exec(String(line).trim());
+  if (!match) return null;
+  return { repository: (match[1] || defaultRepository || '').toLowerCase(), number: Number(match[2]) };
+}
+
+/**
+ * The relation of a commit message to the plan's closing line, as the Direct
+ * Build footer check reads it: `present` (the closing line is already the last
+ * non-empty line), `missing` (no closing line for the plan's issue and no other
+ * `Closes` line), `moved` (the plan's issue appears earlier in another form but
+ * not last) or `additional` (the message also carries a `Closes` line for
+ * another issue). Every line except the plan's issue stays as written; only
+ * trailing blank lines are trimmed, and the plan's line is appended last after
+ * a blank separator. `corrected` is the complete message to amend with, or null
+ * when nothing is amended.
+ */
+function closingFooterStatus(message, closingLine) {
+  const target = typeof closingLine === 'string' ? closingLine.trim() : '';
+  const lines = String(message ?? '').replace(/\r\n/g, '\n').split('\n');
+  while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+  const last = lines.length ? lines[lines.length - 1].trim() : '';
+  if (!target || last === target) return { status: 'present', last_line: last, kept: [], corrected: null };
+  const targetMatch = /^Closes\s+(.+)#(\d+)$/i.exec(target);
+  const targetRepository = targetMatch ? targetMatch[1].toLowerCase() : '';
+  const targetIssue = targetMatch ? `${targetRepository}#${Number(targetMatch[2])}` : '';
+  const kept = [];
+  let same = false;
+  for (const line of lines) {
+    const issue = closingIssue(line, targetRepository);
+    if (issue && targetIssue && `${issue.repository}#${issue.number}` === targetIssue) { same = true; continue; }
+    kept.push(line);
+  }
+  while (kept.length && kept[kept.length - 1].trim() === '') kept.pop();
+  const others = kept.map((line) => line.trim()).filter((line) => CLOSING_LINE_RE.test(line));
+  const body = kept.length && kept[kept.length - 1].trim() !== '' ? [...kept, '', target] : [...kept, target];
+  const status = same ? 'moved' : others.length ? 'additional' : 'missing';
+  return { status, last_line: last, kept: others, corrected: body.join('\n') };
+}
+
+/** The footer verdict of a commit, and the corrected message written to `--output` when one is needed. */
+function footerReport(root, options) {
+  const rev = options.commit || 'HEAD';
+  const shown = git(['show', '-s', '--format=%B', rev], root);
+  if (shown.status !== 0) throw new ToolError(`git show failed for ${rev}: ${(shown.stderr || '').trim() || `exit ${shown.status}`}`);
+  const short = git(['rev-parse', '--short', rev], root);
+  const verdict = closingFooterStatus(shown.stdout, options.closingLine);
+  let correctedFile = null;
+  if (verdict.corrected !== null) {
+    if (!options.output) throw new ToolError('--output is required when the closing line needs an amendment');
+    correctedFile = path.resolve(options.output);
+    fs.mkdirSync(path.dirname(correctedFile), { recursive: true });
+    fs.writeFileSync(correctedFile, `${verdict.corrected}\n`);
+  }
+  return { ok: true, commit: (short.stdout || '').trim(), status: verdict.status, last_line: verdict.last_line, kept: verdict.kept, corrected_file: correctedFile };
+}
+
+// ---------------------------------------------------------------------------
 // the plan
 // ---------------------------------------------------------------------------
 
@@ -676,11 +749,23 @@ const USAGE = {
       flags: { '--json': false, '--cwd': true, '--implementer-paths-file': true, '--implementer-path': true, '--drafts-dir': true },
       positionals: { min: 1, max: 1, names: ['change-name'] },
     },
+    footer: {
+      usage: ['node sai/tools/archive-plan.js footer --commit <rev> --closing-line <line> --output <path> [--json] [--cwd <root>]'],
+      notes: [
+        'Checks the last non-empty line of the commit message of <rev> (default HEAD) against the plan closing line and prints',
+        '`present`, `missing`, `moved` or `additional`. --output receives the corrected message when an amendment is needed; the',
+        'tool never changes the commit itself. Exit codes: 0 = a verdict; 2 = usage or tooling error.',
+      ],
+      examples: [
+        'node sai/tools/archive-plan.js footer --commit HEAD --closing-line "Closes owner/repo#12" --output /tmp/archive-message.txt --json --cwd /path/to/project',
+      ],
+      flags: { '--json': false, '--cwd': true, '--commit': true, '--closing-line': true, '--output': true },
+    },
   },
 };
 function parseArgs(argv) {
-  const options = { command: null, change: null, cwd: process.cwd(), implementerPathsFile: null, implementerPaths: [], draftsDir: null, help: false };
-  const valued = { '--cwd': 'cwd', '--implementer-paths-file': 'implementerPathsFile', '--drafts-dir': 'draftsDir' };
+  const options = { command: null, change: null, cwd: process.cwd(), implementerPathsFile: null, implementerPaths: [], draftsDir: null, commit: 'HEAD', closingLine: null, output: null, help: false };
+  const valued = { '--cwd': 'cwd', '--implementer-paths-file': 'implementerPathsFile', '--drafts-dir': 'draftsDir', '--commit': 'commit', '--closing-line': 'closingLine', '--output': 'output' };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--help' || arg === '-h') options.help = true;
@@ -711,9 +796,14 @@ function main(argv, stdout = process.stdout) {
   try {
     const options = parseArgs(argv);
     if (options.help) { stdout.write(`${usage()}\n`); return 0; }
-    if (options.command !== 'plan') throw new ToolError('expected the command: plan <change-name>');
-    if (!options.change) throw new ToolError('change name required');
+    if (options.command !== 'plan' && options.command !== 'footer') throw new ToolError('expected the command: plan <change-name> or footer --commit <rev> --closing-line <line>');
     const root = path.resolve(options.cwd);
+    if (options.command === 'footer') {
+      if (!options.closingLine) throw new ToolError('closing line required');
+      print(footerReport(root, options));
+      return 0;
+    }
+    if (!options.change) throw new ToolError('change name required');
     try {
       print(computePlan(root, options.change, options));
       return 0;
@@ -730,4 +820,4 @@ function main(argv, stdout = process.stdout) {
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
 
-module.exports = { computePlan, parseMetadata, parseDelta, emptiesCapability, closingLineOf, main, USAGE };
+module.exports = { computePlan, parseMetadata, parseDelta, emptiesCapability, closingLineOf, closingFooterStatus, main, USAGE };

@@ -209,17 +209,57 @@ For GitHub and GitLab destinations, `query` SHALL compute the closing set from t
 - An issue on another host SHALL be left out of the closing set and reported in `warnings`.
 - When the commit log cannot be read, `query` SHALL compute no closing references and SHALL report that in `warnings`.
 
+`query` and `publish` SHALL also accept two optional fields for GitHub and GitLab destinations. `closing_change` SHALL name a change whose `backlog_origin` supplies a reference, read from `openspec/changes/<name>/.openspec.yaml` and, only when that file is absent, from the change's archived directory; an active `.openspec.yaml` SHALL be authoritative once it exists, so a change whose active metadata carries no origin adds no reference. `closing_line` SHALL be a complete `Closes owner/repo#N` line of the destination host and SHALL take precedence over `closing_change`. A missing or unreadable change metadata, and a non-canonical origin, SHALL add a warning and no reference and SHALL NOT block publication; an origin whose host differs from the destination, Azure DevOps ones included, SHALL add neither a line nor a warning. The origin reference SHALL join the closing set before the branch-id parent rule is evaluated, SHALL count as coverage for that rule, and SHALL appear once. Both fields SHALL enter the query proposal, so a `publish` whose values differ from the approved ones SHALL fail the approval check. `/sai-build` SHALL send `closing_change`; the Direct Build publication SHALL send the archived change name and the archive plan's `closing_line`; and the `/sai-plan` publication SHALL send neither field.
+
 #### Scenario: Keyword issues are normalized against the destination
+
 - **WHEN** the commits contain `Closes #5`, `Fixes: other/repo#6`, a closing keyword before a destination issue URL for issue 7, and `Refs: #8`
 - **THEN** the closing block lists `Closes #5`, `Closes other/repo#6`, and `Closes #7`, and it omits issue 8
 
 #### Scenario: An issue on another host is not closable
+
 - **WHEN** a commit closes an issue URL on a host other than the destination
 - **THEN** that issue is left out of the block and `query` returns a warning naming it as on another host
 
 #### Scenario: An empty closing set adds no block
+
 - **WHEN** no commit in `base..HEAD` carries a closing keyword before an issue reference
 - **THEN** the description is published without a closing block and `query` returns no warnings
+
+#### Scenario: The change's origin closes its issue
+
+- **WHEN** a query carries `closing_change` for a change whose active `.openspec.yaml` holds a canonical GitHub or GitLab `backlog_origin` for the destination repository
+- **THEN** the closing block lists that issue as `Closes #N` and the proposal carries `closing_change`
+
+#### Scenario: Archived metadata answers when the active file is absent
+
+- **WHEN** the active `.openspec.yaml` of `closing_change` does not exist and the change's archived directory holds the `backlog_origin`
+- **THEN** the closing block lists the archived origin's issue
+
+#### Scenario: An explicit closing line wins and needs no metadata
+
+- **WHEN** a query carries `closing_line` as `Closes team/repo#42` and names no change
+- **THEN** the closing block lists `Closes team/repo#42`, the proposal carries `closing_line`, and no change metadata is read
+
+#### Scenario: A non-canonical origin warns without a line
+
+- **WHEN** the change's `backlog_origin` is a pull-request URL on the destination host
+- **THEN** `query` returns one warning and the description carries no origin closing line
+
+#### Scenario: A foreign-host or Azure DevOps origin adds nothing
+
+- **WHEN** the change's `backlog_origin` is on another host or is an Azure DevOps URL
+- **THEN** the description carries no origin closing line and `query` returns no warning for it
+
+#### Scenario: Missing change metadata warns without blocking
+
+- **WHEN** `closing_change` names a change with no `.openspec.yaml` in its active or archived directory
+- **THEN** the description carries no origin closing line, `query` returns one warning, and the proposal is still published
+
+#### Scenario: The closing fields bind the approval
+
+- **WHEN** a query approved with one set of closing fields is followed by a `publish` with a different `closing_line`
+- **THEN** `publish` fails the approval check and performs no mutation
 
 ### Requirement: Branch-id parent closes only when every child is covered
 

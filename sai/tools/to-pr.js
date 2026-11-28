@@ -14,6 +14,7 @@ const usageKit = require('./usage');
 const riskSignals = require('./risk-signals');
 const riskComments = require('./to-pr-comments');
 const planPublication = require('./plan-publication');
+const { closingLineOf, parseMetadata } = require('./archive-plan');
 const { readBacklog } = projectSettings;
 const digest = value => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
 function prepare(request, options = {}) {
@@ -201,6 +202,75 @@ function uniqueReferences(refs) {
   const seen = new Set();
   return refs.filter(ref => !seen.has(issueKey(ref)) && seen.add(issueKey(ref)));
 }
+const CLOSING_LINE = /^Closes\s+(\S+)#(\d+)$/;
+// The change's backlog origin (I1-I3): the active `.openspec.yaml` first, then its archived directory.
+function originIn(text) {
+  if (text === null) return null;
+  let origin;
+  try { origin = parseMetadata(text).backlog_origin; } catch (error) { return { state: 'unreadable', reason: error.message }; }
+  return typeof origin === 'string' && origin ? { state: 'found', origin } : { state: 'none' };
+}
+function changeOrigin(name, io) {
+  const cwd = io.cwd || process.cwd();
+  const read = file => { try { return fs.readFileSync(file, 'utf8'); } catch (error) { if (error.code === 'ENOENT') return null; throw error; } };
+  const active = read(path.join(cwd, 'openspec', 'changes', name, '.openspec.yaml'));
+  // An active .openspec.yaml is authoritative once it exists: without an origin it adds nothing, archived or not.
+  if (active !== null) return originIn(active);
+  const archiveRoot = path.join(cwd, 'openspec', 'changes', 'archive');
+  let archived = [];
+  try {
+    const pattern = new RegExp(`^(?:\\d{4}-\\d{2}-\\d{2}-)?${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
+    archived = fs.readdirSync(archiveRoot, { withFileTypes: true }).filter(entry => entry.isDirectory() && pattern.test(entry.name)).map(entry => entry.name).sort().reverse();
+  } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  let sawMetadata = false;
+  for (const directory of archived) {
+    const text = read(path.join(archiveRoot, directory, '.openspec.yaml'));
+    if (text === null) continue;
+    sawMetadata = true;
+    return originIn(text);
+  }
+  return { state: sawMetadata ? 'none' : 'missing' };
+}
+// The origin-driven reference of the closing set (I3): the explicit line first, then `closing_change` metadata.
+function closingOrigin(request, selected, io, warnings) {
+  if (request.closing_line) {
+    const match = CLOSING_LINE.exec(request.closing_line.trim());
+    if (!match) return {};
+    // The explicit line carries no host; when the change metadata is readable, its origin host decides (E4).
+    if (request.closing_change) {
+      const origin = changeOrigin(request.closing_change, io);
+      if (origin.state === 'found') {
+        let host = null;
+        try { host = new URL(origin.origin).hostname; } catch { /* Not a URL: no host to compare. */ }
+        if (host && host.toLowerCase() !== selected.target.host.toLowerCase()) return {};
+      }
+    }
+    return { ref: { host: selected.target.host, repository: match[1], number: Number(match[2]) } };
+  }
+  if (!request.closing_change) return {};
+  const origin = changeOrigin(request.closing_change, io);
+  if (origin.state === 'missing') {
+    warnings.push(`The change ${request.closing_change} has no .openspec.yaml in its active or archived directory, so no closing reference was added.`);
+    return {};
+  }
+  if (origin.state === 'unreadable') {
+    warnings.push(`The .openspec.yaml of ${request.closing_change} cannot be read (${origin.reason}), so no closing reference was added.`);
+    return {};
+  }
+  if (origin.state !== 'found') return {};
+  let host = null;
+  try { host = new URL(origin.origin).hostname; } catch { /* Not a URL: closingLineOf reports it below. */ }
+  // An origin on another host, Azure included, adds no line and no warning.
+  if (host && host.toLowerCase() !== selected.target.host.toLowerCase()) return {};
+  const closing = closingLineOf(origin.origin);
+  if (closing.status === 'unsupported-provider') return {};
+  if (closing.warning) {
+    warnings.push(`${closing.warning}; ${request.closing_change} gets no closing reference`);
+    return {};
+  }
+  const match = CLOSING_LINE.exec(closing.line || '');
+  return match ? { ref: { host: selected.target.host, repository: match[1], number: Number(match[2]) } } : {};
+}
 // E5: the branch id closes its issue only when it has children and all are covered.
 async function branchParent(request, selected, provider, covered, io) {
   const id = /^[^/]+\/([1-9]\d*)_/.exec(selected.source)?.[1];
@@ -235,7 +305,8 @@ async function withClosingBlock(request, selected, io) {
   }
   const stripped = request.description.replace(CLOSING_BLOCK, '');
   const text = stripped.trimEnd();
-  const found = uniqueReferences(closingReferences(log, selected.target));
+  const origin = closingOrigin(request, selected, io, warnings);
+  const found = uniqueReferences([...(origin.ref ? [origin.ref] : []), ...closingReferences(log, selected.target)]);
   const manual = closingReferences(text, selected.target);
   const parent = await branchParent(request, selected, provider, new Set([...found, ...manual].map(issueKey)), io);
   if (parent.warning) warnings.push(parent.warning);
@@ -276,6 +347,8 @@ async function prepareQuery(request, io) {
   // state of an existing one; false creates a missing request ready for review and marks an existing draft ready.
   if (request.draft !== undefined || request.ready !== undefined) throw new Error('The draft and ready request fields are retired; send publish_pr_as_draft');
   if (request.publish_pr_as_draft !== undefined && typeof request.publish_pr_as_draft !== 'boolean') throw new Error('publish_pr_as_draft must be a boolean');
+  if (request.closing_change !== undefined && (typeof request.closing_change !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9-]*$/.test(request.closing_change))) throw new Error('closing_change must be a change name');
+  if (request.closing_line !== undefined && (typeof request.closing_line !== 'string' || !CLOSING_LINE.test(request.closing_line.trim()))) throw new Error('closing_line must be a complete Closes owner/repo#N line');
   const asDraft = request.publish_pr_as_draft !== false;
   const violations = checkPrTitleRules(request.provider === 'gitlab' ? request.title.replace(/^Draft:\s*/i, '') : request.title);
   if (violations.length) throw new Error(`Invalid request title: ${JSON.stringify(violations)}`);
@@ -297,7 +370,12 @@ async function prepareQuery(request, io) {
   if (attribution.length) throw new Error(`Invalid request description: ${JSON.stringify(attribution)}`);
   if (inherent_risk && request.allow_attribution !== true && checkAiAttribution(inherent_risk.body, 'risk comment').length) throw new Error('Invalid risk comment: AI_ATTRIBUTION');
   const applied = rows[0] ? { warnings: [] } : await labelling(request, selected, provider, io);
-  const build = (assignee, labels) => ({ provider: request.provider, ...selected, existing: rows[0] ? baseline(rows[0]) : null, title: request.title, description,
+  // The closing fields enter the proposal, so the approval digest binds them (I1).
+  const closing = {
+    ...(request.closing_change !== undefined ? { closing_change: request.closing_change } : {}),
+    ...(request.closing_line !== undefined ? { closing_line: request.closing_line.trim() } : {}),
+  };
+  const build = (assignee, labels) => ({ provider: request.provider, ...selected, ...closing, existing: rows[0] ? baseline(rows[0]) : null, title: request.title, description,
     ...(inherent_risk ? { inherent_risk } : {}), publish_pr_as_draft: asDraft,
     ...(assignee ? { assignee } : {}), ...(labels ? { labels } : {}), ...(warning ? { concurrency_warning: warning } : {}), ...approvalField(autoApproved(io)) });
   const proposal = build(applied.assignee, applied.labels);

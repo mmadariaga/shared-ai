@@ -31,12 +31,13 @@ Fetch `@sai/commands/explore/direct-build-coordinator.md` and follow it exactly 
 - **No assignment.** Skip `backlog-implementation-start.md` in Step 1. This command performs no remote operation, and the document's `Backlog origin:` line stays provenance for the backfill and the archive.
 - **One commit.** The card's two-commit grant is cut to the archived change. Record no change telemetry and make no second commit; the card's Change telemetry paragraph does not run, and the report says no telemetry was recorded.
 - **Expert review.** The card's Step 2c keeps its placement, product, and rule; the `--expert-review` argument of Start step 1 answers before the `expertReview.build` setting, and both the answer and the handled checkpoint stay in the conversation because this command has no store and no resume (E8). `ask` and `no` skip the checkpoint without a question, as E3 says.
+- **Closing footer.** The card's closing-footer check runs after the archive worker's clean result and before this command's closing report, with the archive plan's `closing_line`. An amendment that fails reports the affected commit and ends the run without the closing literal.
 - **Unattended.** An escalation of the card follows `@sai/policies/obstacle-escalation.md` through the native picker. A run that cannot reach a user, or whose question is dismissed, ends as an unanswered escalation: the stop report is printed and the closing literal is not.
 
 ## Close
 
 The run closes when the card's goal is met, when a stop was reported, or when the user chose to stop or dismissed an escalation. Dispose every worker and helper still alive under `worker-lifecycle.md` before the report, in every outcome, then close with the card's terminal report, following `@sai/policies/implementation-closing-report.md`.
 
-Only when the archive worker returned a clean `completed` result and the archive commit is confirmed, print this as the last line of the output, alone on its line and with nothing after it: `Direct build done.`
+Only when the archive worker returned a clean `completed` result, the archive commit is confirmed, and the closing-footer check reported `present` or a successful amendment (or the plan has no `closing_line`), print this as the last line of the output, alone on its line and with nothing after it: `Direct build done.`
 
 Print no closing line after a stop, a cancellation, or an escalation. The report names what completed and what remains, and a stopped run keeps its retry guidance in the `Next step` section.

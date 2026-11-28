@@ -7,7 +7,7 @@ TBD - created by archiving change archive-plan-computed-deterministic-tool. Upda
 
 ### Requirement: A deterministic read-only tool SHALL compute the archive plan
 
-`sai/tools/archive-plan.js` SHALL compute the archive plan with `plan <change-name> --json --cwd <root>`, accepting the optional implementer path set (`--implementer-paths-file <path>` or one `--implementer-path <path>` per path) and, on the no-specs route, `--drafts-dir <dir>`. It SHALL print one JSON object on every exit: exit 0 for a plan, exit 1 for a refusal, and exit 2 for a usage or tooling error. A plan SHALL carry the confirming `report_lines`, the CORE gate verdict and AUDIT line, the delta-sync summary, `retired_capabilities` and `retirement.declaration` (`none`, `write`, or `present`), the date-prefixed `archive_destination`, `affected_main_specs`, `owned_staging_paths`, `already_staged_deletions`, `omitted_ignored_paths`, `omitted_absent_paths`, `covering_paths`, `commit_body_lines`, `closing_line`, and `plan_fingerprint`. The tool SHALL spawn only `git` and `check-delta-headers.js` and SHALL write nothing. It SHALL be installed by the existing `sai-tools` projection for Claude Code and opencode.
+`sai/tools/archive-plan.js` SHALL compute the archive plan with its `plan` subcommand, `plan <change-name> --json --cwd <root>`, accepting the optional implementer path set (`--implementer-paths-file <path>` or one `--implementer-path <path>` per path) and, on the no-specs route, `--drafts-dir <dir>`. It SHALL print one JSON object on every exit: exit 0 for a plan, exit 1 for a refusal, and exit 2 for a usage or tooling error. A plan SHALL carry the confirming `report_lines`, the CORE gate verdict and AUDIT line, the delta-sync summary, `retired_capabilities` and `retirement.declaration` (`none`, `write`, or `present`), the date-prefixed `archive_destination`, `affected_main_specs`, `owned_staging_paths`, `already_staged_deletions`, `omitted_ignored_paths`, `omitted_absent_paths`, `covering_paths`, `commit_body_lines`, `closing_line`, and `plan_fingerprint`. The `plan` subcommand SHALL spawn only `git` and `check-delta-headers.js` and SHALL write nothing; the `footer` subcommand is governed by the footer requirement below. It SHALL be installed by the existing `sai-tools` projection for Claude Code and opencode.
 
 #### Scenario: The plan matches the archive and git
 
@@ -115,3 +115,32 @@ When `openspec archive` fails after a plan that was not refused, for a validatio
 
 - **WHEN** the test suite runs on a machine without the `openspec` binary
 - **THEN** the fixtures that run `openspec archive` are skipped
+
+### Requirement: The footer subcommand SHALL judge the archive commit's closing footer
+
+`sai/tools/archive-plan.js footer --commit <rev> --closing-line <line> --output <path> [--json] [--cwd <root>]` SHALL read the message of `<rev>` (default `HEAD`) without changing the commit and SHALL report `present`, `missing`, `moved`, or `additional`; `additional` means the message also carries another `Closes` line. When the plan's line is not the last non-empty line, it SHALL write the complete corrected message to `--output`. It SHALL change no commit and SHALL exit 2 on a usage or tooling error.
+
+#### Scenario: A present footer is left unchanged
+
+- **WHEN** the plan's closing line already is the last non-empty line of the commit message
+- **THEN** the verdict is `present` and no corrected message is written
+
+#### Scenario: A missing footer is appended last
+
+- **WHEN** the message carries no closing line and no other `Closes` line
+- **THEN** the verdict is `missing` and the corrected message keeps every line and appends the plan's line last after a blank separator
+
+#### Scenario: A moved footer is moved to the end
+
+- **WHEN** the plan's line appears earlier in the message but not last
+- **THEN** the verdict is `moved` and the corrected message keeps every other line and carries the plan's line once, last
+
+#### Scenario: An additional closing line is kept above the plan's line
+
+- **WHEN** the message also carries a `Closes` line for another issue, bare or differently cased
+- **THEN** the verdict is `additional`, that line is kept as written, and the plan's line is last
+
+#### Scenario: A missing closing line is a usage error
+
+- **WHEN** the subcommand is invoked without `--closing-line`
+- **THEN** it prints one JSON object and exits 2

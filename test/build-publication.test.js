@@ -172,3 +172,34 @@ test('a Direct Build slice hands the request state to the publication card from 
   assert.match(selector, /BRANCH_STRATEGY_ALREADY_RECORDED/);
   assert.match(selector, /record the set's branch strategy when it is final/);
 });
+
+test('the publication closes the issue through the caller closing fields, and the plan publication passes neither', () => {
+  assert.match(publication, /carries `closing_change` with the completed change name/);
+  assert.match(publication, /it also carries `closing_line` when its caller hands one over, as the Direct Build close does with the archive plan's line/);
+  assert.match(publication, /`\/sai-build` hands none, so the line comes from the change's `backlog_origin`/);
+  assert.match(publication, /The `publish` request repeats the same two closing fields, so the approval digest binds them/);
+  assert.match(publication, /`query` with `publish_pr_as_draft`, `closing_change`, the caller's `closing_line` when it handed one over/);
+  const plan = read('sai/commands/plan/publication.md');
+  assert.match(plan, /The request passes neither `closing_change` nor `closing_line`/);
+  assert.match(plan, /its pull request never closes the issue linked to the change/);
+});
+test('the Direct Build run checks the archive commit footer against the plan closing line', () => {
+  const coordinator = read('sai/commands/explore/direct-build-coordinator.md');
+  assert.match(coordinator, /footer --commit HEAD --closing-line/);
+  assert.match(coordinator, /`present` leaves the commit unchanged; `missing`, `moved`, and `additional` amend the same local commit's message with `git commit --amend --only -F <corrected_file>`/);
+  assert.match(coordinator, /it stages nothing, and it is never a second commit and never a push/);
+  assert.match(coordinator, /stops the run before the telemetry commit and before publication/);
+  assert.match(coordinator, /a plan that genuinely carries no `closing_line` runs no check/);
+  assert.match(coordinator, /follow it with the archived change's name, the archive plan's `closing_line`/);
+  const direct = read('sai/commands/direct-build/coordinator.md');
+  assert.match(direct, /The card's closing-footer check runs after the archive worker's clean result and before this command's closing report/);
+  assert.match(direct, /An amendment that fails reports the affected commit and ends the run without the closing literal/);
+  assert.match(coordinator, /archive-plan\.json/);
+  assert.match(coordinator, /After Archive converged, a missing plan file or `closing_line` is a missing verification reference/);
+  assert.match(coordinator, /run the footer check again on the amended `HEAD`/);
+  assert.match(direct, /the closing-footer check reported `present`/);
+  const skill = read('skills/universal/to-pr/SKILL.md');
+  assert.match(skill, /`closing_change`/);
+  assert.match(skill, /fails the approval check/);
+  assert.match(skill, /The `\/sai-plan`\s+publication sends neither and closes no issue/);
+});
