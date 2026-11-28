@@ -333,7 +333,10 @@ test('E16: Claude Code and opencode render the same standalone merge binding fro
   const entries = manifest['worker-matrix'].entries;
   const matrix = defineWorkerMatrix(entries, manifest.capabilities);
   const templates = Object.fromEntries(Object.entries(manifest['worker-matrix'].templates).map(([name, file]) => [name, read(file)]));
-  const rendered = materializeWorkerMatrix(matrix, templates).filter(item => item.kind === 'binding' && item.phase === 'merge');
+  const contracts = Object.fromEntries(entries
+    .filter(entry => entry.selfContained === true)
+    .map(entry => [entry.workerName, read(entry.workerContract)]));
+  const rendered = materializeWorkerMatrix(matrix, templates, contracts).filter(item => item.kind === 'binding' && item.phase === 'merge');
   assert.deepEqual(rendered.map(item => [item.harness, item.templateName]), [['claude', 'claudeStandaloneBinding'], ['opencode', 'opencodeStandaloneBinding']]);
   for (const item of rendered) {
     assert.equal(item.destinationName, 'merge-worker.md');

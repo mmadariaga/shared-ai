@@ -312,10 +312,14 @@ test('OpenCode worker generation omits optional variant without changing Claude 
   const templates = {
     claudeBinding: '{{canonicalFetch}}', opencodeBinding: '{{canonicalFetch}}',
     claudeStandaloneBinding: '{{canonicalFetch}}', opencodeStandaloneBinding: '{{canonicalFetch}}',
-    claudeAgent: 'model: {{model}}\neffort: {{effort}}',
+    claudeAgent: '---\nmodel: {{model}}\neffort: {{effort}}\n---\n\n{{canonicalFetch}}\n\n<!-- User customizations below this line -->',
     opencodeAgent: fs.readFileSync(path.join(__dirname, '..', 'agents/opencode/worker-template.md'), 'utf8'),
   };
-  const outputs = materializeWorkerMatrix(defineWorkerMatrix(entries), templates);
+  const contracts = {
+    'sai-adversarial-expert-review-worker': fs.readFileSync(
+      path.join(__dirname, '..', 'sai/commands/adversarial-expert-review/worker.md'), 'utf8'),
+  };
+  const outputs = materializeWorkerMatrix(defineWorkerMatrix(entries), templates, contracts);
   const generated = outputs.find(item => item.kind === 'agent' && item.harness === 'opencode'
     && item.workerName === worker.workerName).text;
   assert.match(generated, /^model: opencode-go\/deepseek-v4\.1-flash$/m);

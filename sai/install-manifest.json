@@ -362,6 +362,8 @@
         "workerContract": "sai/commands/adversarial-expert-review/worker.md",
         "bindingStem": "adversarial-expert-review",
         "tier": "expert",
+        "selfContained": true,
+        "dispatchPrompt": "Return event: ready now; await task disclosure in the same-worker continuation.\n\nReturn exactly:\n```yaml\nevent: ready\nchanged_files: []\n```",
         "claudeAgent": {
           "agentName": "sai-adversarial-expert-review-worker",
           "description": "Adversarial expert review worker for /sai-explore, /sai-plan, and /sai-build, dispatched only by their coordinators. Reviews a product against its approved scope and corrects the defects it finds.",

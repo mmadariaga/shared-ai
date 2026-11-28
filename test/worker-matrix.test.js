@@ -592,6 +592,97 @@ test('materializeWorkerMatrix requires a matrix and all four templates', () => {
     'a non-string opencodeStandaloneBinding template should be rejected');
 });
 
+const MARKED_AGENT_TEMPLATE = [
+  '---',
+  'name: {{workerName}}',
+  '---',
+  '',
+  '{{canonicalFetch}}',
+  '',
+  '<!-- User customizations below this line -->',
+].join('\n');
+
+const PROMPT_BINDING_TEMPLATE = [
+  'Bind the {{phase}} worker for harness {{harness}}.',
+  'prompt: "{{dispatchPrompt}}"',
+].join('\n');
+
+function selfContainedEntries() {
+  return twelveEntries().map(item => item.phase === 'expert-review'
+    ? {
+      ...item,
+      selfContained: true,
+      dispatchPrompt: 'Return event: ready now; await task disclosure in the same-worker continuation.\n\nReturn exactly:\n```yaml\nevent: ready\nchanged_files: []\n```',
+    }
+    : item);
+}
+
+test('defineWorkerMatrix pairs selfContained with a dispatchPrompt in both directions', () => {
+  assert.throws(
+    () => defineWorkerMatrix(twelveEntries().map(item => item.phase === 'expert-review'
+      ? { ...item, selfContained: true } : item)),
+    error => String(error && error.message || error).includes('self-contained and must declare a dispatchPrompt'),
+    'a self-contained entry without a dispatch prompt should be rejected');
+  assert.throws(
+    () => defineWorkerMatrix(twelveEntries().map(item => item.phase === 'expert-review'
+      ? { ...item, dispatchPrompt: 'Ready.' } : item)),
+    error => String(error && error.message || error).includes('declares a dispatchPrompt without selfContained'),
+    'a dispatch prompt without selfContained should be rejected');
+  for (const value of ['yes', 1, null]) {
+    assert.throws(
+      () => defineWorkerMatrix(twelveEntries().map(item => item.phase === 'expert-review'
+        ? { ...item, selfContained: value } : item)),
+      error => String(error && error.message || error).includes('selfContained must be a boolean'),
+      `a non-boolean selfContained value (${JSON.stringify(value)}) should be rejected`);
+  }
+  assert.throws(
+    () => defineWorkerMatrix(twelveEntries().map(item => item.phase === 'expert-review'
+      ? { ...item, selfContained: true, dispatchPrompt: '  ' } : item)),
+    error => String(error && error.message || error).includes('dispatchPrompt must be a non-empty string'),
+    'a blank dispatch prompt should be rejected');
+  assert.ok(defineOrNull(selfContainedEntries()), 'a self-contained entry with its dispatch prompt should validate');
+});
+
+test('materializeWorkerMatrix inlines a self-contained contract and renders its ready-only prompt', () => {
+  const contractBody = '# Adversarial expert review worker\n\nSelf-contained contract.';
+  const matrix = defineOrNull(selfContainedEntries());
+  assert.ok(matrix, 'the self-contained matrix should validate');
+  const templates = {
+    claudeStandaloneBinding: PROMPT_BINDING_TEMPLATE,
+    opencodeStandaloneBinding: PROMPT_BINDING_TEMPLATE,
+    claudeAgent: MARKED_AGENT_TEMPLATE,
+    opencodeAgent: MARKED_AGENT_TEMPLATE,
+  };
+  assert.throws(() => materializeWorkerMatrix(matrix, templates),
+    error => String(error && error.message || error).includes('Missing Worker Matrix contract body for self-contained worker sai-adversarial-expert-review-worker'),
+    'a self-contained entry without its contract body should be rejected');
+  const projections = materializeWorkerMatrix(matrix, templates, {
+    'sai-adversarial-expert-review-worker': contractBody,
+  });
+  for (const harness of ['claude', 'opencode']) {
+    const agent = projections.find(item =>
+      item.kind === 'agent' && item.harness === harness && item.phase === 'expert-review');
+    assert.equal(agent.text,
+      `---\nname: sai-adversarial-expert-review-worker\n---\n\n${contractBody}\n\n<!-- User customizations below this line -->`,
+      `${harness} should inline the contract between the frontmatter and the customization marker`);
+    const binding = projections.find(item =>
+      item.kind === 'binding' && item.harness === harness && item.phase === 'expert-review');
+    assert.ok(binding.text.includes('prompt: "Return event: ready now; await task disclosure in the same-worker continuation.\\n\\nReturn exactly:\\n```yaml\\nevent: ready\\nchanged_files: []\\n```"'),
+      `${harness} should render the entry's ready-only dispatch prompt`);
+    assert.equal(binding.text.includes('Worker contract: Fetch'), false,
+      `${harness} should skip the canonical fetch prompt for the self-contained entry`);
+  }
+  const design = projections.find(item =>
+    item.kind === 'agent' && item.harness === 'opencode' && item.phase === 'design');
+  assert.equal(design.text,
+    '---\nname: sai-2-design-worker\n---\n\nFetch `@sai/commands/design/worker.md` and follow it exactly.\n\n<!-- User customizations below this line -->',
+    'every other entry should keep the canonical fetch body');
+  const designBinding = projections.find(item =>
+    item.kind === 'binding' && item.harness === 'opencode' && item.phase === 'design');
+  assert.ok(designBinding.text.includes('prompt: "Worker contract: Fetch `@sai/commands/design/worker.md` and follow it exactly.\\n\\nReturn event: ready now; await task disclosure in the same-worker continuation.\\n\\nReturn exactly:\\n```yaml\\nevent: ready\\nchanged_files: []\\n```"'),
+    'every other entry should keep the canonical create prompt byte for byte');
+});
+
 test('defineWorkerMatrix rejects unknown role worker identities naming the role', () => {
   const unknown = twelveEntries().map((item, index) =>
     index === 12 ? implementEntry('sai-4-review-worker', { workerName: 'sai-4-amber-worker' }) : item);

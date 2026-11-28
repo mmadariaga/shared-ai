@@ -277,8 +277,13 @@ const CLAUDE_REVIEW_WORKER_AGENT = MANAGED_WORKERS['sai-4-review-worker'].claude
 const MANAGED_WORKER_CONTRACTS = Object.freeze(Object.fromEntries(
   loadInstallManifest(REPOSITORY_ROOT)['worker-matrix'].entries.map(entry => [entry.workerName, entry.workerContract])
 ));
+const MATRIX_ENTRY_BY_WORKER = Object.freeze(Object.fromEntries(
+  loadInstallManifest(REPOSITORY_ROOT)['worker-matrix'].entries.map(entry => [entry.workerName, entry])
+));
 
 function expectedDispatchPrompt(workerName) {
+  const entry = MATRIX_ENTRY_BY_WORKER[workerName];
+  if (entry && typeof entry.dispatchPrompt === 'string') return entry.dispatchPrompt;
   const contract = MANAGED_WORKER_CONTRACTS[workerName];
   return `Worker contract: Fetch \`@${contract}\` and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.\n\nReturn exactly:\n\`\`\`yaml\nevent: ready\nchanged_files: []\n\`\`\``;
 }
