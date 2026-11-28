@@ -473,10 +473,10 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0203 — Fetch resolution runs through a deterministic tool granted to every profile](./0203-fetch-resolution-runs-through-a-deterministic-tool.md) — Refs 0009
 - [0205 — Instruction references are written inside inline code spans](./0205-instruction-references-are-written-in-inline-code-spans.md) — Refs 0203, Refs 0146b
 - [0208 — Fetch resolves several subpaths in path mode](./0208-fetch-resolves-several-subpaths-in-path-mode.md) — **Amends** 0203 — Superseded by 0247
-- [0247 — Fetch resolves instruction loads as a dependency tree](./0247-fetch-resolves-instruction-loads-as-a-dependency-tree.md) — Supersedes 0208 — Superseded by 0249
+- [0247 — Fetch resolves instruction loads as a dependency tree](./0247-fetch-resolves-instruction-loads-as-a-dependency-tree.md) — Supersedes 0208 — Superseded by 0249a
 - [0248 — Conditional directives carry the ? marker and the section gate](./0248-conditional-directives-carry-the-marker-and-section-gate.md) — Pair with 0247
-- [0249 — Remove the fetch tree's section line](./0249-remove-the-fetch-tree-section-line.md) — Supersedes 0247, **Amends** 0248
-- [0249 — The agent decides fetch directive conditionality](./0249-the-agent-decides-fetch-directive-conditionality.md) — **Amends** 0248
+- [0249a — Remove the fetch tree's section line](./0249a-remove-the-fetch-tree-section-line.md) — Supersedes 0247, **Amends** 0248
+- [0249b — The agent decides fetch directive conditionality](./0249b-the-agent-decides-fetch-directive-conditionality.md) — **Amends** 0248
 
 ### Harness portability & mirror discipline
 

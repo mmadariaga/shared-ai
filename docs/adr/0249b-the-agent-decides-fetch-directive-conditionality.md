@@ -1,4 +1,4 @@
-# ADR 0249: The agent decides fetch directive conditionality
+# ADR 0249b: The agent decides fetch directive conditionality
 
 <!-- adr-index: amends 0248 -->
 

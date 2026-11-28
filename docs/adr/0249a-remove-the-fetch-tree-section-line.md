@@ -1,4 +1,4 @@
-# ADR 0249: Remove the fetch tree's section line
+# ADR 0249a: Remove the fetch tree's section line
 
 <!-- adr-index: supersedes 0247, amends 0248 -->
 
