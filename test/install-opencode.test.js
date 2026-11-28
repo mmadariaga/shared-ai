@@ -409,11 +409,17 @@ test('installOpencode projects every routed binding into neutral destinations', 
       const destination = path.join(tmpDir, 'sai', 'orchestration', 'workers', 'bindings', bindingName);
       assert.equal(fs.existsSync(destination), true, `${workerName} (${phase}) binding should use a neutral destination`);
       const text = fs.readFileSync(destination, 'utf8');
-      assert.equal(
-        (text.match(new RegExp(`Fetch \`@sai/commands/${phase}/worker\\.md\` and follow it exactly\\.`, 'g')) || []).length,
-        1,
-        `${workerName} (${phase}) binding should carry exactly one canonical worker Fetch`
-      );
+      const canonicalFetches =
+        (text.match(new RegExp(`Fetch \`@sai/commands/${phase}/worker\\.md\` and follow it exactly\\.`, 'g')) || []).length;
+      if (workerName === 'sai-adversarial-expert-review-worker') {
+        assert.equal(canonicalFetches, 0,
+          `${workerName} (${phase}) binding renders the self-contained agent's ready-only prompt`);
+        assert.match(text, /prompt: "Return event: ready now; await task disclosure in the same-worker continuation\./,
+          `${workerName} (${phase}) binding should carry the ready-only create prompt`);
+      } else {
+        assert.equal(canonicalFetches, 1,
+          `${workerName} (${phase}) binding should carry exactly one canonical worker Fetch`);
+      }
       assert.match(text, /subagent\s*\(/, `${workerName} (${phase}) binding should preserve the subagent dispatch primitive`);
     }
   } finally {
@@ -1292,10 +1298,19 @@ test('Step 1 Claude agent rows remain byte-preserving without ownership sidecars
       const text = fs.readFileSync(agentPath, 'utf8').replaceAll('\r\n', '\n');
       assert.equal((text.match(/^---\r?\n/gm) || []).length, 2,
         `specs/managed-worker-registry/spec.md: ${workerName} should contain exactly one frontmatter block`);
-      assert.equal(
-        (text.match(/^Fetch `@sai\/commands\/[^\s`]+\.md` and follow it exactly\.$/gm) || []).length,
-        1,
-        `specs/managed-worker-registry/spec.md: ${workerName} should carry exactly one canonical worker Fetch`);
+      if (workerName === 'sai-adversarial-expert-review-worker') {
+        assert.equal(
+          (text.match(/^Fetch `@sai\/commands\/[^\s`]+\.md` and follow it exactly\.$/gm) || []).length,
+          0,
+          `specs/managed-worker-registry/spec.md: ${workerName} carries its contract inline, with no canonical worker Fetch`);
+        assert.match(text, /^# Adversarial expert review worker$/m,
+          `specs/managed-worker-registry/spec.md: ${workerName} should inline its worker contract as the body`);
+      } else {
+        assert.equal(
+          (text.match(/^Fetch `@sai\/commands\/[^\s`]+\.md` and follow it exactly\.$/gm) || []).length,
+          1,
+          `specs/managed-worker-registry/spec.md: ${workerName} should carry exactly one canonical worker Fetch`);
+      }
       const projection = active.find(candidate => candidate.destinationPath === agentPath);
       assert.ok(projection, `${workerName} should be an active Claude projection`);
       const source = path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/');
@@ -1518,12 +1533,21 @@ test('Step 3 install seeds the managed opencode worker agent files with their ca
       const text = fs.readFileSync(agentPath, 'utf8').replaceAll('\r\n', '\n');
       assert.equal((text.match(/^---\r?\n/gm) || []).length, 2,
         `specs/managed-worker-registry/spec.md: ${worker} should contain exactly one frontmatter block`);
-      assert.equal(
-        (text.match(/^Fetch `@sai\/commands\/[^\s`]+\.md` and follow it exactly\.$/gm) || []).length,
-        1,
-        `specs/managed-worker-registry/spec.md: ${worker} should carry exactly one canonical worker Fetch`);
-      assert.ok(text.includes(`Fetch \`@sai/commands/${WORKER_CONTRACT_BY_NAME[worker].phase}/worker.md\` and follow it exactly.`),
-        `specs/managed-worker-registry/spec.md: ${worker} should target its own worker contract`);
+      if (worker === 'sai-adversarial-expert-review-worker') {
+        assert.equal(
+          (text.match(/^Fetch `@sai\/commands\/[^\s`]+\.md` and follow it exactly\.$/gm) || []).length,
+          0,
+          `specs/managed-worker-registry/spec.md: ${worker} carries its contract inline, with no canonical worker Fetch`);
+        assert.match(text, /^# Adversarial expert review worker$/m,
+          `specs/managed-worker-registry/spec.md: ${worker} should inline its worker contract as the body`);
+      } else {
+        assert.equal(
+          (text.match(/^Fetch `@sai\/commands\/[^\s`]+\.md` and follow it exactly\.$/gm) || []).length,
+          1,
+          `specs/managed-worker-registry/spec.md: ${worker} should carry exactly one canonical worker Fetch`);
+        assert.ok(text.includes(`Fetch \`@sai/commands/${WORKER_CONTRACT_BY_NAME[worker].phase}/worker.md\` and follow it exactly.`),
+          `specs/managed-worker-registry/spec.md: ${worker} should target its own worker contract`);
+      }
       const projection = active.find(candidate => candidate.destinationPath === agentPath);
       assert.ok(projection, `specs/managed-worker-registry/spec.md: ${worker} should be an active opencode projection`);
       const source = path.relative(repoRoot, projection.sourcePath).split(path.sep).join('/');

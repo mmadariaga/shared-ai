@@ -20,7 +20,7 @@ the route yourself. Take the branch it answers:
   below, with the one notice that policy prints.
 
 ```
-subagent(agent: "{{workerName}}", description: "{{phase}} worker", prompt: "Worker contract: Fetch `@{{workerContract}}` and follow it exactly.\n\nReturn event: ready now; await task disclosure in the same-worker continuation.\n\nReturn exactly:\n```yaml\nevent: ready\nchanged_files: []\n```", background: true)
+subagent(agent: "{{workerName}}", description: "{{phase}} worker", prompt: "{{dispatchPrompt}}", background: true)
 ```
 
 The worker's completion notification reaches the coordinator's conversation

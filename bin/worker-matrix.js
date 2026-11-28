@@ -132,6 +132,8 @@ const PHASE_CONTRACT_DIR = Object.freeze({
 const PHASE_WORKER_IDENTITY = /^sai-[12567]-[a-z-]+-worker$|^sai-commit-worker$|^sai-archive-worker$|^sai-backfill-worker$|^sai-merge-worker$/;
 const INVOCATION_ENVELOPE_FIELD = 'arguments_value';
 const RETIRED_INVOCATION_ENVELOPE_FIELD = ['wrapper', 'echo', 'value'].join('_');
+const CUSTOMIZATION_MARKER = '<!-- User customizations below this line -->';
+const READY_RETURN = 'Return event: ready now; await task disclosure in the same-worker continuation.\n\nReturn exactly:\n```yaml\nevent: ready\nchanged_files: []\n```';
 
 
 function clone(value) {
@@ -165,6 +167,19 @@ function validateEntry(entry, index) {
   }
   for (const field of REQUIRED_FIELDS) {
     if (entry[field] === undefined || entry[field] === null || entry[field] === '') invalidEntry(index, field);
+  }
+  if (entry.selfContained !== undefined && typeof entry.selfContained !== 'boolean') {
+    throw new Error(`Worker Matrix entry ${index} selfContained must be a boolean`);
+  }
+  if (entry.dispatchPrompt !== undefined
+      && (typeof entry.dispatchPrompt !== 'string' || entry.dispatchPrompt.trim() === '')) {
+    throw new Error(`Worker Matrix entry ${index} dispatchPrompt must be a non-empty string`);
+  }
+  if (entry.selfContained === true && entry.dispatchPrompt === undefined) {
+    throw new Error(`Worker Matrix entry ${index} is self-contained and must declare a dispatchPrompt`);
+  }
+  if (entry.selfContained !== true && entry.dispatchPrompt !== undefined) {
+    throw new Error(`Worker Matrix entry ${index} declares a dispatchPrompt without selfContained`);
   }
   if (autoRole) {
     if (entry.workerContract !== autoRole.workerContract) {
@@ -252,14 +267,51 @@ function renderWorkerTemplate(template, parameters) {
   return rendered;
 }
 
-function materializeWorkerMatrix(matrix, templates) {
+function canonicalDispatchPrompt(entry) {
+  return `Worker contract: Fetch \`@${entry.workerContract}\` and follow it exactly.\n\n${READY_RETURN}`;
+}
+
+// The create prompt sits inside a double-quoted dispatch argument, so its line
+// breaks and quotes travel escaped; JSON's string body is exactly that form.
+function escapeDispatchPrompt(prompt) {
+  return JSON.stringify(prompt).slice(1, -1);
+}
+
+// A self-contained agent carries its whole contract as the body: the rendered
+// template keeps the frontmatter and the user-customizations marker, and the
+// worker contract replaces the canonical fetch chain between them.
+function inlineSelfContainedBody(rendered, contractBody, workerName) {
+  const frontmatterEnd = rendered.indexOf('\n---\n');
+  const markerIndex = rendered.indexOf(CUSTOMIZATION_MARKER);
+  if (frontmatterEnd === -1 || markerIndex === -1 || markerIndex < frontmatterEnd) {
+    throw new Error(`Self-contained agent template for ${workerName} must carry the frontmatter and the user-customizations marker`);
+  }
+  const head = rendered.slice(0, frontmatterEnd + '\n---\n'.length);
+  return `${head}\n${contractBody.trim()}\n\n${rendered.slice(markerIndex)}`;
+}
+
+function materializeWorkerMatrix(matrix, templates, contracts = {}) {
   if (!matrix || !Array.isArray(matrix.entries) || !templates) throw new Error('Worker Matrix and templates are required');
   const requiredTemplates = ['claudeStandaloneBinding', 'opencodeStandaloneBinding', 'claudeAgent', 'opencodeAgent'];
   for (const name of requiredTemplates) {
     if (typeof templates[name] !== 'string') throw new Error(`Missing Worker Matrix template: ${name}`);
   }
   return matrix.entries.flatMap(entry => {
-    const common = { ...entry, canonicalFetch: `Fetch \`@${entry.workerContract}\` and follow it exactly.` };
+    const common = {
+      ...entry,
+      canonicalFetch: `Fetch \`@${entry.workerContract}\` and follow it exactly.`,
+      dispatchPrompt: escapeDispatchPrompt(entry.dispatchPrompt === undefined ? canonicalDispatchPrompt(entry) : entry.dispatchPrompt),
+    };
+    const contractBody = entry.selfContained === true ? contracts[entry.workerName] : undefined;
+    if (entry.selfContained === true && (typeof contractBody !== 'string' || contractBody.trim() === '')) {
+      throw new Error(`Missing Worker Matrix contract body for self-contained worker ${entry.workerName}`);
+    }
+    const renderAgent = (template, parameters) => {
+      const rendered = renderWorkerTemplate(template, parameters);
+      return entry.selfContained === true
+        ? inlineSelfContainedBody(rendered, contractBody, entry.workerName)
+        : rendered;
+    };
     return [
       {
         kind: 'binding',
@@ -286,7 +338,7 @@ function materializeWorkerMatrix(matrix, templates) {
         workerName: entry.workerName,
         destinationName: `${entry.workerName}.md`,
         templateName: 'claudeAgent',
-        text: renderWorkerTemplate(templates.claudeAgent, { ...common, ...entry.claudeAgent }),
+        text: renderAgent(templates.claudeAgent, { ...common, ...entry.claudeAgent }),
       },
       {
         kind: 'agent',
@@ -295,7 +347,7 @@ function materializeWorkerMatrix(matrix, templates) {
         workerName: entry.workerName,
         destinationName: `${entry.workerName}.md`,
         templateName: 'opencodeAgent',
-        text: renderWorkerTemplate(templates.opencodeAgent, {
+        text: renderAgent(templates.opencodeAgent, {
           ...common,
           ...entry.opencodeAgent,
           variantLine: entry.opencodeAgent.variant ? `variant: ${entry.opencodeAgent.variant}` : '',

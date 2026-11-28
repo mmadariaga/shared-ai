@@ -28,6 +28,14 @@ test('the matrix pins one expert review role after the plan roles, on the reques
   assert.ok(entry, 'the manifest should declare the expert review worker');
   assert.equal(entry.workerContract, CARD);
   assert.equal(entry.bindingStem, 'adversarial-expert-review');
+  assert.equal(entry.selfContained, true, 'the reviewer agent body is inlined from its contract');
+  assert.equal(entry.dispatchPrompt,
+    'Return event: ready now; await task disclosure in the same-worker continuation.\n\nReturn exactly:\n```yaml\nevent: ready\nchanged_files: []\n```',
+    'the reviewer is created with a ready-only prompt');
+  for (const other of entries.filter(candidate => candidate.workerName !== WORKER)) {
+    assert.equal(Object.hasOwn(other, 'selfContained'), false,
+      `${other.workerName} should keep its canonical fetch chain`);
+  }
   assert.equal(entry.claudeAgent.model, 'opus');
   assert.equal(entry.claudeAgent.effort, 'high');
   assert.equal(entry.opencodeAgent.model, 'opencode-go/gpt-5.6-luna');
@@ -60,23 +68,132 @@ test('the expert reviewer holds read, edit, write, and shell access with no dele
   }
 });
 
-test('the expert review worker card loads the shared worker protocol and closes with its own report', () => {
+test('the expert review worker prompt is self-contained, carries the protocol, and imports no SAI file', () => {
   const card = read(CARD);
-  assert.match(card, /Fetch `@sai\/commands\/implement\/worker-common\.md`/);
-  assert.match(card, /no step pointer arrives/);
+  assert.doesNotMatch(card, /Fetch\??\s+`@/, 'the self-contained prompt carries no Fetch @ directive');
+  assert.doesNotMatch(card, /@sai\/(?:policies|commands)\//, 'the prompt names no SAI policy or command file to read');
+  assert.doesNotMatch(card, /worker-common/, 'the prompt delegates to no shared worker card');
+  assert.match(card, /```yaml\nevent: ready\nchanged_files: \[\]\n```/);
   assert.match(card, /`--report-dir <path>`/);
   assert.match(card, /`Mode:` `document` or `mutations`/);
-  assert.match(card, /@sai\/policies\/artifact-review-contract\.md/);
+  assert.match(card, /`Transfer path:`/);
+  assert.match(card, /`Document tool path:`/);
+  assert.match(card, /`Verdicts file:`/);
+  assert.match(card, /`Report name:`/);
+  assert.match(card, /`Chat language:`/);
+  assert.match(card, /--exclusive/);
+  assert.match(card, /Return only the `\{path, sha256\}`/);
   assert.match(card, /scope observation/);
-  assert.match(card, /`writing-for-agents`/);
-  assert.match(card, /`node <tool-path> check --document-file <corrected file> --slice`/);
-  assert.doesNotMatch(card, /emit --progress|event: progress/, 'the reviewer emits no progress report');
+  assert.match(card, /`High` — a defect/);
+  assert.match(card, /`Medium` — a material/);
+  assert.match(card, /`Low` — a precision/);
+  assert.match(card, /severity: High\|Medium\|Low/);
   assert.match(card, /status: completed\nsummary: string\nchanged_files: string\[\]\nfindings:/);
   assert.match(card, /corrected_documents: \{path: string, sha256: string, change_name: string\}\[\]/);
+  assert.match(card, /no `outcome` field/);
   assert.match(card, /Run no git command that changes the repository/);
   assert.match(card, /Dispatch no subagent/);
+  assert.match(card, /live --note "check the worker is live"/);
+  assert.match(card, /retired` or `gone/);
+  assert.match(card, /warming chain/);
+  assert.match(card, /no `warming:` line/);
+  assert.doesNotMatch(card, /emit --progress|event: progress/, 'the reviewer emits no progress report');
   assert.equal(fs.existsSync(path.join(repoRoot, 'sai/commands/adversarial-expert-review/coordinator.md')), false,
     'the reviewer has no coordinator of its own');
+});
+
+test('the review brief carries the mode, product, scope, transport paths, and the mode procedure', () => {
+  const brief = read('sai/commands/adversarial-expert-review/brief.md');
+  for (const fragment of [
+    /^Mode: document \| mutations$/m,
+    /^Product: /m,
+    /^Approved scope: /m,
+    /^Allowed write paths: /m,
+    /^Transfer path: /m,
+    /^Document tool path: /m,
+    /^Verdicts file: /m,
+    /^Report name: /m,
+    /^Scratch folder: /m,
+    /^Chat language: /m,
+    /## Procedure for document mode/,
+    /## Procedure for mutations mode/,
+    /check --document-file <corrected file> --slice/,
+    /--verdicts-file/,
+    /writing-for-agents/,
+    /corrected_documents/,
+  ]) assert.match(brief, fragment);
+  assert.doesNotMatch(brief, /Fetch\??\s+`@/, 'the brief travels as message text, not as a fetch chain');
+});
+
+test('the installer inlines the contract as the agent body and renders a ready-only create prompt', () => {
+  const { matrixRenderFor } = require('../bin/install-manifest.js');
+  const contract = read(CARD).trim();
+  for (const harness of ['claude', 'opencode']) {
+    const rendered = matrixRenderFor(manifest, harness, repoRoot);
+    const agent = rendered.find(item => item.kind === 'agent' && item.phase === 'expert-review');
+    assert.ok(agent, `${harness} should render the expert review agent`);
+    const frontmatterEnd = agent.text.indexOf('\n---\n') + '\n---\n'.length;
+    const marker = agent.text.indexOf('<!-- User customizations below this line -->');
+    assert.ok(frontmatterEnd > 0 && marker > frontmatterEnd, `${harness} agent should keep its frontmatter and marker`);
+    assert.equal(agent.text.slice(frontmatterEnd, marker).trim(), contract,
+      `${harness} agent body should be the worker contract, byte for byte`);
+    assert.doesNotMatch(agent.text, /Fetch `@sai\//, `${harness} agent should carry no canonical fetch chain`);
+
+    const binding = rendered.find(item => item.kind === 'binding' && item.phase === 'expert-review');
+    assert.ok(binding, `${harness} should render the expert review binding`);
+    assert.match(binding.text,
+      /prompt: "Return event: ready now; await task disclosure in the same-worker continuation\.\\n\\nReturn exactly:\\n```yaml\\nevent: ready\\nchanged_files: \[\]\\n```"/,
+      `${harness} binding should carry the ready-only create prompt`);
+    assert.doesNotMatch(binding.text, /Worker contract: Fetch/,
+      `${harness} binding should not fetch a contract for the self-contained worker`);
+  }
+  const other = matrixRenderFor(manifest, 'opencode', repoRoot)
+    .find(item => item.kind === 'agent' && item.phase === 'design');
+  assert.match(other.text, /^Fetch `@sai\/commands\/design\/worker\.md` and follow it exactly\.$/m,
+    'every other managed agent keeps its canonical fetch chain');
+});
+
+test('the installer refuses a self-contained contract that is missing, empty, or still fetches', () => {
+  const os = require('node:os');
+  const { matrixRenderFor } = require('../bin/install-manifest.js');
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-self-contained-'));
+  try {
+    const written = {
+      ...manifest,
+      'worker-matrix': {
+        ...manifest['worker-matrix'],
+        templates: {},
+      },
+    };
+    for (const [name, file] of Object.entries(manifest['worker-matrix'].templates)) {
+      const destination = path.join(base, 'templates', `${name}.md`);
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      fs.copyFileSync(path.join(repoRoot, file), destination);
+      written['worker-matrix'].templates[name] = path.relative(base, destination).split(path.sep).join('/');
+    }
+    const contractPath = path.join(base, 'sai/commands/adversarial-expert-review/worker.md');
+    fs.mkdirSync(path.dirname(contractPath), { recursive: true });
+    const render = () => matrixRenderFor(written, 'opencode', base);
+
+    fs.writeFileSync(contractPath, '');
+    assert.throws(render, /self-contained contract is empty/,
+      'an empty self-contained contract should fail the expansion');
+
+    fs.writeFileSync(contractPath, 'Contract body.\nFetch `@sai/policies/worker-lifecycle.md`\n');
+    assert.throws(render, /self-contained contract declares a Fetch @ directive/,
+      'a self-contained contract that still fetches an SAI file should fail the expansion');
+
+    fs.rmSync(contractPath);
+    assert.throws(render, /self-contained contract does not exist/,
+      'a missing self-contained contract should fail the expansion');
+
+    fs.writeFileSync(contractPath, '# Self-contained\n\nContract body.');
+    const agent = render().find(item => item.kind === 'agent' && item.phase === 'expert-review');
+    assert.match(agent.text, /# Self-contained\n\nContract body\./,
+      'a self-contained contract that stands alone should render as the agent body');
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
+  }
 });
 
 test('the shared policy owns the answer, the two questions, the cycle, keep-or-revert, and the closing lines', () => {
@@ -91,6 +208,8 @@ test('the shared policy owns the answer, the two questions, the cycle, keep-or-r
     /restore <before-snapshot> <the group's paths>/,
     /review-delta\.js/,
     /Fetch `@sai\/orchestration\/workers\/bindings\/adversarial-expert-review-worker\.md`/,
+    /`sai\/commands\/adversarial-expert-review\/brief\.md`/,
+    /self-contained prompt/,
     /A missing, invalid, or failed report costs one line in the closing report[\s\S]{0,400}revert every path of the worker's delta from the before-snapshot with `review-delta\.js restore`/,
     /verify the corrected copy against the `sha256` its `corrected_documents` entry reports/,
   ]) assert.match(policy, fragment);

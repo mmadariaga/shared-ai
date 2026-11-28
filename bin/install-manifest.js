@@ -391,12 +391,38 @@ function loadMatrixTemplates(matrix, harness, repoRoot) {
   return templates;
 }
 
+// A self-contained worker inlines its contract as the agent body, so the
+// contract is read here, once per expansion, and travels to the renderer. Such
+// a body must stand on its own: an empty contract or one that still fetches an
+// SAI file defeats the point of the self-contained prompt.
+function loadSelfContainedContracts(matrix, harness, repoRoot) {
+  const contracts = {};
+  if (!matrix || !Array.isArray(matrix.entries)) return contracts;
+  for (const entry of matrix.entries) {
+    if (!entry || entry.selfContained !== true) continue;
+    const contractPath = path.resolve(repoRoot, entry.workerContract);
+    if (!fs.existsSync(contractPath) || !fs.statSync(contractPath).isFile()) {
+      throw new Error(`${harness} worker matrix: self-contained contract does not exist: ${entry.workerContract}`);
+    }
+    const text = fs.readFileSync(contractPath, 'utf8');
+    if (text.trim() === '') {
+      throw new Error(`${harness} worker matrix: self-contained contract is empty: ${entry.workerContract}`);
+    }
+    if (/Fetch\??\s+`@[^`]+`/.test(text)) {
+      throw new Error(`${harness} worker matrix: self-contained contract declares a Fetch @ directive: ${entry.workerContract}`);
+    }
+    contracts[entry.workerName] = text;
+  }
+  return contracts;
+}
+
 function matrixRenderFor(manifest, harness, repoRoot, installRoot) {
   const matrix = manifest['worker-matrix'];
   if (!matrix) return [];
   assertWorkerContractsUseOneStringEnvelope(matrix, { harness, repoRoot });
   const templates = loadMatrixTemplates(matrix, harness, repoRoot);
-  const rendered = materializeWorkerMatrix(defineWorkerMatrix(matrix.entries, manifest.capabilities, { [harness]: installRoot }), templates);
+  const contracts = loadSelfContainedContracts(matrix, harness, repoRoot);
+  const rendered = materializeWorkerMatrix(defineWorkerMatrix(matrix.entries, manifest.capabilities, { [harness]: installRoot }), templates, contracts);
   return rendered
     .filter(item => item.harness === harness)
     .map(item => ({
@@ -417,11 +443,12 @@ function expandWorkerMatrix(matrix, { harness, repoRoot, destinationRoot, capabi
   }
   validateMatrixEntries(matrix.entries, harness);
   const templates = loadMatrixTemplates(matrix, harness, repoRoot);
+  const contracts = loadSelfContainedContracts(matrix, harness, repoRoot);
   let matrixDef;
   let rendered;
   try {
     matrixDef = defineWorkerMatrix(matrix.entries, capabilities, { [harness]: installRoot });
-    rendered = materializeWorkerMatrix(matrixDef, templates);
+    rendered = materializeWorkerMatrix(matrixDef, templates, contracts);
   } catch (error) {
     throw new Error(`${harness} worker matrix: ${error.message}`);
   }

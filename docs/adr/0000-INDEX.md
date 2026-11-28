@@ -588,6 +588,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0231 — Budget agents deliver results as saved report references](./0231-budget-agents-deliver-results-as-saved-report-references.md)
 - [0234 — Coordinators receive worker reports in one recording call](./0234-coordinators-receive-worker-reports-in-one-recording-call.md) — **Amends** 0219
 - [0242 — Adversarial expert review is a pinned routed worker](./0242-adversarial-expert-review-pinned-routed-worker.md)
+- [0250 — Install the expert review worker from a self-contained prompt](./0250-install-the-expert-review-worker-from-a-self-contained-prompt.md) — Refs 0242
 
 ### Testability routing & RED → GREEN
 
