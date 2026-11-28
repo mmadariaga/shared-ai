@@ -23,7 +23,7 @@ The policy accepts the verified sole-self-assignee no-op keep as an advance appr
 - The authorization boundary now includes a verified observed keep.
 - A changed assignee set, a parent issue, or a different authenticated user asks again.
 - No mutation is performed.
-- Every caller of the policy honors it.
+- The policy's only runner, Step 1 of `sai/commands/explore/direct-build-coordinator.md`, honors it; `/sai-direct-build` still skips the policy.
 
 ## Provenance
 
