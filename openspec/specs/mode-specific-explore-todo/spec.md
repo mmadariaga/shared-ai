@@ -34,7 +34,7 @@ The Auto route SHALL contain exactly `sai-1` followed by `sai-2`. A clean spec c
 
 ### Requirement: Direct Build exposes only high-level stages
 
-The Direct Build - Unattended route SHALL contain exactly `Build/Implement`, `Backfill`, and `Archive` in that order. Internal review, the Step 2b suite gate, authorization, ADR/DDR, preparation, the CLI archive invocation, staging, and commit SHALL remain substeps and MUST NOT become additional panel items. `Build/Implement` SHALL become completed only after the implementer and functional fix loop converge and the suite gate is green or skipped because no test suite was found. `Build/Implement` MUST NOT be interpreted as `/sai-build`.
+The Direct Build - Unattended route SHALL contain exactly `Build/Implement`, `Backfill`, and `Archive` in that order. Internal review, the Step 2b suite gate, the Step 2c expert review checkpoint, authorization, ADR/DDR, preparation, the CLI archive invocation, staging, and commit SHALL remain substeps and MUST NOT become additional panel items. `Build/Implement` SHALL become completed only after the implementer and functional fix loop converge, the suite gate is green or skipped because no test suite was found, and Step 2c is handled. `Build/Implement` MUST NOT be interpreted as `/sai-build`.
 
 #### Scenario: Direct Build advances through high-level stages
 - **WHEN** the implementer and functional-fix work, backfill execution, and archive execution each return cleanly

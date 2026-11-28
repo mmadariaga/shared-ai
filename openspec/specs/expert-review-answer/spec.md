@@ -8,7 +8,7 @@ Define the adversarial expert review answer of `/sai-plan` and `/sai-build`, the
 
 ### Requirement: Answer sources and precedence
 
-`/sai-plan` and `/sai-build` SHALL hold one expert review answer of `no`, `auto`, or `ask`, resolved once at Start after the input checks and before the first worker exists, from the `--expert-review [no|auto|ask]` argument, where a bare flag is `auto`, then from the `expert_review` field recorded in `plan-run@1` or `implement-run@1`, then from one native question.
+`/sai-plan`, `/sai-build`, and `/sai-direct-build` SHALL hold one expert review answer of `no`, `auto`, or `ask`, resolved once at Start after the input checks and before the first worker exists, from the `--expert-review [no|auto|ask]` argument, where a bare flag is `auto`, then from the `expert_review` field recorded in `plan-run@1`, `implement-run@1`, or `direct-build-run@1`, then from the project setting (`expertReview.plan` for `/sai-plan`, `expertReview.build` for `/sai-build` and `/sai-direct-build`), read with its warnings printed verbatim and with one line naming the setting id and its value when it answers, then, for `/sai-plan` and `/sai-build` only, from one native question; `/sai-direct-build` runs unattended and an unresolved answer is `no`. `/sai-explore` SHALL read `expertReview.explore` before its per-set question and record no answer.
 
 #### Scenario: Recorded answer after resumption
 
@@ -26,7 +26,7 @@ An `--expert-review` value other than `no`, `auto`, or `ask`, or a second `--exp
 
 ### Requirement: Recorded fields in the run state
 
-`plan-run@1` and `implement-run@1` SHALL provide the closed-choice fields `expert_review`, with the values `no`, `auto`, and `ask`, and `expert_review_checkpoint`, with the values `done` and `skipped`; the shared run core SHALL accept a `choices` declaration that creates one state field, one event, and one `run` view field per declared field.
+`plan-run@1`, `implement-run@1`, and `direct-build-run@1` SHALL provide the closed-choice fields `expert_review`, with the values `no`, `auto`, and `ask`, and `expert_review_checkpoint`, with the values `done` and `skipped`; the shared run core SHALL accept a `choices` declaration that creates one state field, one event, and one `run` view field per declared field.
 
 #### Scenario: Checkpoint runs once
 
@@ -44,7 +44,7 @@ The Start question SHALL be presented through the harness's native picker with t
 
 ### Requirement: Reconciliation modes
 
-In `auto` mode the coordinator SHALL decide the fate of each finding itself; in `ask` mode, and at every explore checkpoint, it SHALL ask the reconciliation question once before keeping any correction.
+In `auto` mode the coordinator SHALL decide the fate of each finding itself; in `ask` mode, and at an explore checkpoint whose answer is `ask` or a yes answer to its question, it SHALL ask the reconciliation question once before keeping any correction; an explore checkpoint answered `auto` SHALL decide each finding without asking.
 
 #### Scenario: Auto mode decides without asking
 
@@ -71,16 +71,16 @@ A dismissed reconciliation question SHALL keep no correction: mutations mode SHA
 
 ### Requirement: Exempt callers
 
-`/sai-explore` SHALL keep no recorded answer and SHALL ask a yes/no question once per crystallized set; the Plan - Unattended route SHALL pass `--expert-review no` because the documents already passed explore's checkpoint; and `/sai-3-implement` SHALL strip and ignore the argument.
+`/sai-explore` SHALL keep no recorded answer, SHALL read `expertReview.explore` before its per-set yes/no question, and SHALL ask that question when the key is absent or invalid; the Plan - Unattended route SHALL pass `--expert-review auto` only when `expertReview.plan` is `auto` and `--expert-review no` otherwise, because the documents already passed explore's checkpoint and a segment never asks the question; and `/sai-3-implement` SHALL strip and ignore the argument.
 
 #### Scenario: Plan route disables the plan checkpoint
 
-- **WHEN** the Plan - Unattended route invokes `/sai-plan`
+- **WHEN** the Plan - Unattended route invokes `/sai-plan` while `expertReview.plan` is absent, `ask`, or `no`
 - **THEN** its `arguments_value` SHALL carry `--expert-review no`, and the plan run SHALL ask no expert review question and create no expert review worker.
 
 ### Requirement: Explore checkpoint question
 
-The explore checkpoint SHALL ask, through the native picker, whether to review the crystallized documents with an independent expert before choosing a route, with the options `Yes` and `No` in that order; `No` and a cancelled question SHALL create no worker, open no report directory, and write nothing.
+The explore checkpoint SHALL ask, through the native picker, whether to review the crystallized documents with an independent expert before choosing a route, with the options `Yes` and `No` in that order, only when `expertReview.explore` is absent or invalid; `auto` and `ask` SHALL run the checkpoint without the question, and `no` SHALL skip it; `No` and a cancelled question SHALL create no worker, open no report directory, and write nothing.
 
 #### Scenario: Explore question declined
 

@@ -165,3 +165,34 @@ test('the validator accepts the expert review report shape and rejects an unknow
   assert.equal(verdict({ ...base, corrected_documents: [{ path: '/tmp/copy.md', sha256: 'a'.repeat(64), change_name: 'x' }] }).ok, true);
   assert.equal(verdict({ status: 'failed', summary: 'x', changed_files: [] }).ok, true);
 });
+
+test('the project setting answers before each question, and Direct Build runs the checkpoint at step-2c', () => {
+  const policy = read(POLICY);
+  assert.match(policy, /`expertReview\.plan` for `\/sai-plan`, `expertReview\.build` for `\/sai-build` and `\/sai-direct-build`/);
+  assert.match(policy, /It reads `expertReview\.explore` before its per-set question/);
+  assert.match(policy, /only `auto` runs the checkpoint/);
+  assert.match(policy, /## Direct Build/);
+  assert.match(policy, /`step-2c`, after the suite gate of Step 2b and before the backfill of Step 3/);
+
+  assert.match(read('sai/commands/plan/coordinator.md'), /the `expertReview\.plan` setting/);
+  assert.match(read('sai/commands/build/coordinator.md'), /the `expertReview\.build` setting/);
+  const selector = read('sai/commands/explore/steps/route-selector.md');
+  assert.match(selector, /expertReview\.explore/);
+  assert.match(selector, /`auto` runs it and decides each finding without asking/);
+  const pipeline = read('sai/commands/explore/steps/pipeline-plan-unattended.md');
+  assert.match(pipeline, /pass `--expert-review auto` only when the value is `auto`/);
+  assert.match(pipeline, /`ask`, `no`, or an absent key it passes `--expert-review no`/);
+
+  const direct = read('sai/commands/explore/direct-build-coordinator.md');
+  assert.match(direct, /2c\. \*\*Expert review\*\*/);
+  assert.match(direct, /only when the resolved answer is `auto`/);
+  assert.match(direct, /`expert_review_checkpoint`/);
+  assert.match(direct, /verified after[\s\S]{0,260}Step 2c/);
+  assert.match(direct, /`backfill` after Step 2c is handled/);
+
+  const command = read('sai/commands/direct-build/coordinator.md');
+  assert.match(command, /Cannot start \/sai-direct-build: --expert-review takes no, auto or ask\./);
+  assert.match(command, /wins over the `expertReview\.build` setting/);
+  assert.match(read('docs/project-settings.md'), /### Expert review/);
+  assert.match(read('docs/project-settings.md'), /Expert review\*\*: opens a submenu with `Explore`, `Plan`, and `Build`/);
+});

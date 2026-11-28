@@ -22,7 +22,7 @@ TBD - created by archiving change goal-driven-commit. Update Purpose after archi
 #### Scenario: The Direct Build card names its step obstacles
 
 - **WHEN** `sai/commands/explore/direct-build-coordinator.md` is read
-- **THEN** it fetches `sai/policies/obstacle-escalation.md`, names one budget of 3 attempts per step from `step-1` to `step-8` including `step-2b`, lists its own force-majeure cases, and writes the hand-over of a new worker itself
+- **THEN** it fetches `sai/policies/obstacle-escalation.md`, names one budget of 3 attempts per step from `step-1` to `step-8` including `step-2b` and `step-2c`, lists its own force-majeure cases, and writes the hand-over of a new worker itself
 
 #### Scenario: Explore stop points keep their recovery choices
 

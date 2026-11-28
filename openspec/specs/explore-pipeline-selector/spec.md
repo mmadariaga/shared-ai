@@ -26,12 +26,12 @@ Selecting Plan - Unattended SHALL dispatch only the existing supervised sai-1 an
 
 ### Requirement: Preserve Direct Build (unattended) behavior
 
-Selecting Direct Build - Unattended SHALL preserve the direct implementation, functional-fix, suite-gate, backfill, archive, and exactly-one-local-commit order. Its route identity SHALL be `direct-build-unattended`, and its panel projection SHALL contain only Build/Implement, Backfill, and Archive.
+Selecting Direct Build - Unattended SHALL preserve the direct implementation, functional-fix, suite-gate, expert-review, backfill, archive, and exactly-one-local-commit order. Its route identity SHALL be `direct-build-unattended`, and its panel projection SHALL contain only Build/Implement, Backfill, and Archive.
 
 #### Scenario: Build uses the existing closed flow
 
 - **WHEN** Direct Build - Unattended is selected for an eligible slice
-- **THEN** the existing eight-step Direct Build flow remains authoritative without re-entering `/sai-build`.
+- **THEN** the existing Direct Build flow, now including the Step 2c expert review checkpoint, remains authoritative without re-entering `/sai-build`.
 
 ### Requirement: Preserve Manual and fast-track gates
 

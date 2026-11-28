@@ -648,3 +648,17 @@ Selecting `Model customization` in the main menu MUST open a submenu titled `Mod
 
 - **WHEN** a user reads `docs/project-settings.md` to change the backlog provider
 - **THEN** its `Post-setup menu` section names the `Backlog and PR settings` submenu and its `Backlog provider` row, and the page does not cite `Project behavior settings`
+
+### Requirement: Every routed worker has a target profile row
+
+The shared target profile mapping SHALL hold one row for every routed worker in the `worker-matrix` of `sai/install-manifest.json`, and `docs/models.md` SHALL list the same routed workers with the same context and difficulty. `worker:sai-adversarial-expert-review-worker` SHALL show `Medium` under `CONTEXT` and `↑↑↑` under `DIFFICULTY`. Configured values SHALL stay within `Small`, `Medium`, `Large` and `↑`, `↑↑`, `↑↑↑`.
+
+#### Scenario: Every routed worker has a profile row
+
+- **WHEN** the target profile mapping is compared with the routed workers of the worker matrix
+- **THEN** every worker name has exactly one `worker:` row and `docs/models.md` names the same set.
+
+#### Scenario: Reviewer shows the user choice
+
+- **WHEN** the checklist displays `worker:sai-adversarial-expert-review-worker`
+- **THEN** its row shows `Medium` under `CONTEXT` and `↑↑↑` under `DIFFICULTY`.

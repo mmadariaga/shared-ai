@@ -81,12 +81,12 @@ The implementer worker SHALL return `failed` with a concrete cause in its `summa
 
 ### Requirement: The implementer window snapshot head is base_sha and guard_base
 
-The Direct Build implementer dispatch SHALL be a no-commit-guard window opened by the Step 1 `snapshot` step, whose returned head SHALL be recorded as both the run's `base_sha` (the diff base for the functional fix loop and the suite-gate classification) and the window's `guard_base`. The window SHALL be verified after the implementer stretch closes — the fix loop converged or the cap was exhausted, and the Step 2b suite gate green, skipped, or stopped — and before the Step 3 path-scoped staging, or before the stop report when the suite gate stops the route, without changing the worker's closed write containment, its mutating-git prohibition prose, or any closed exclusion of its contract.
+The Direct Build implementer dispatch SHALL be a no-commit-guard window opened by the Step 1 `snapshot` step, whose returned head SHALL be recorded as both the run's `base_sha` (the diff base for the functional fix loop and the suite-gate classification) and the window's `guard_base`. The window SHALL be verified after the implementer stretch closes — the fix loop converged or the cap was exhausted, the Step 2b suite gate green, skipped, or stopped, and Step 2c handled when it runs — and before the Step 3 path-scoped staging, or before the stop report when the suite gate stops the route, without changing the worker's closed write containment, its mutating-git prohibition prose, or any closed exclusion of its contract.
 
 #### Scenario: one snapshot serves the diff base and the guard baseline
 
 - **WHEN** the Step 1 snapshot runs immediately before the implementer dispatch
-- **THEN** its returned head is recorded as both `base_sha` and the window's `guard_base`, and the window is verified after the implementer stretch closes and before Step 3 staging
+- **THEN** its returned head is recorded as both `base_sha` and the window's `guard_base`, and the window is verified after the implementer stretch closes, the suite gate, and Step 2c when it runs, and before Step 3 staging
 - **AND** the implementer worker's write containment and git prohibition prose are unchanged
 
 ### Requirement: Implementer reads Request Additional Notes as non-authoritative context

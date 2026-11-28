@@ -13,9 +13,11 @@
 // Events, all JSON with a `kind`:
 //   start        {dir, change}              opens the run of one slice; `dir` is the run directory
 //   resume       {change}                   reopens the parked run of that slice (stopped, escalated, or running)
-//   step         {step}                     the pending step: step-1, step-2, step-2b, step-3 … step-8
+//   step         {step}                     the pending step: step-1, step-2, step-2b, step-2c, step-3 … step-8
 //   field        {field, value}             field: base_sha | slice_snapshot | route (no-specs | worker) |
-//                                           fix_rounds | gate_rounds
+//                                           fix_rounds | gate_rounds | expert_review | expert_review_checkpoint
+//                                           (`expert_review` is no | auto | ask, '' until answered;
+//                                           `expert_review_checkpoint` is done | skipped, '' until handled)
 //   checkpoint   {item}                     the state a route item needs on entry is stored; item:
 //                                           build-implement | backfill | archive. Later items lose their
 //                                           checkpoint, because their state is recomputed from here
@@ -50,7 +52,7 @@ const { DIRECT_BUILD_STEPS: ITEMS } = require('./explore-slice.js');
 
 const machineId = 'direct-build-run@1';
 
-const STEPS = Object.freeze(['step-1', 'step-2', 'step-2b', 'step-3', 'step-4', 'step-5', 'step-6', 'step-7', 'step-8']);
+const STEPS = Object.freeze(['step-1', 'step-2', 'step-2b', 'step-2c', 'step-3', 'step-4', 'step-5', 'step-6', 'step-7', 'step-8']);
 const ITEM_FIRST_STEP = Object.freeze({ 'build-implement': 'step-1', backfill: 'step-3', archive: 'step-7' });
 const ORDERS = Object.freeze(['backfill-execute', 'archive-execute']);
 const ORDER_RESULTS = Object.freeze(['done', 'no-effect', 'uncertain']);
@@ -65,8 +67,8 @@ const NOT_APPLICABLE = 'n/a';
 const BASE_STATE = Object.freeze(['base_sha', 'slice_snapshot', 'report_dirs']);
 const REQUIRED = Object.freeze({
   'build-implement': BASE_STATE,
-  backfill: BASE_STATE.concat(['evidence']),
-  archive: BASE_STATE.concat(['evidence', 'route', 'transfer_dirs']),
+  backfill: BASE_STATE.concat(['evidence', 'expert_review_checkpoint']),
+  archive: BASE_STATE.concat(['evidence', 'route', 'transfer_dirs', 'expert_review_checkpoint']),
 });
 
 const REFS = Object.freeze({
@@ -225,6 +227,7 @@ const machine = createRunMachine({
     consumed: [],
     workers: [],
   },
+  choices: { expert_review: ['no', 'auto', 'ask'], expert_review_checkpoint: ['done', 'skipped'] },
   handleEvent,
   handleRecord: workerHandleRecord,
   onStart,

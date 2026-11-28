@@ -59,6 +59,7 @@ rather than treating model families and effort levels as one ordered scale.
       WORKER        sai-3-green-worker           Medium   ↑↑          opencode-go/deepseek-v4.1-flash (max)
       ORCHESTRATOR  sai-4-review                 Medium   ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
       WORKER        sai-4-review-worker          Large    ↑↑          opencode-go/gpt-5.6-luna (max)
+      WORKER        sai-adversarial-expert-review-worker  Medium  ↑↑↑  opencode-go/glm-5.3 (max)
 
       ORCHESTRATOR  sai-deep-review              Large    ↑↑          opencode-go/muse-spark-1.3-contributor (xhigh)
       ORCHESTRATOR  sai-5-security               Medium   ↑           opencode-go/muse-spark-1.3-contributor (xhigh)

@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const childProcess = require('child_process');
 const { loadInstallManifest } = require('./install-manifest.js');
 const { resolveGlobalRoot } = require('../skills/universal/fetch/harness-root');
-const { createSettingsEditor, LANGUAGE_IDS, BACKLOG_PR_IDS, TELEMETRY_ID } = require('./project-settings-screen.js');
+const { createSettingsEditor, LANGUAGE_IDS, BACKLOG_PR_IDS, EXPERT_REVIEW_IDS, TELEMETRY_ID } = require('./project-settings-screen.js');
 const { runWarmingSetup, HARNESS_OPTIONS } = require('./warming-setup.js');
 const opencodeDispatch = require('../sai/tools/opencode-dispatch.js');
 const claudeDispatch = require('../sai/tools/claude-dispatch.js');
@@ -28,6 +28,7 @@ const MAIN_MENU_TITLE = 'Post-setup customization:';
 const MODEL_CUSTOMIZATION_ENTRY = 'Model customization';
 const LANGUAGE_SETTINGS_ENTRY = 'Language settings';
 const BACKLOG_PR_SETTINGS_ENTRY = 'Backlog and PR settings';
+const EXPERT_REVIEW_SETTINGS_ENTRY = 'Expert review';
 const CACHE_WARMING_ENTRY = 'Cache warming';
 const EXIT_ENTRY = 'Exit';
 // The submenu of `Model customization`; each action keeps its own harness flow.
@@ -40,7 +41,7 @@ const MODEL_ACTION_MODES = Object.freeze({
 });
 
 function mainMenuOptions(telemetryRow) {
-  return [MODEL_CUSTOMIZATION_ENTRY, LANGUAGE_SETTINGS_ENTRY, BACKLOG_PR_SETTINGS_ENTRY, telemetryRow, CACHE_WARMING_ENTRY, EXIT_ENTRY];
+  return [MODEL_CUSTOMIZATION_ENTRY, LANGUAGE_SETTINGS_ENTRY, BACKLOG_PR_SETTINGS_ENTRY, EXPERT_REVIEW_SETTINGS_ENTRY, telemetryRow, CACHE_WARMING_ENTRY, EXIT_ENTRY];
 }
 const CANCELLED = Symbol('CANCELLED');
 const OPENCODE_QUERY_TIMEOUT_MS = 30_000;
@@ -78,6 +79,7 @@ const TARGET_PROFILE = Object.freeze({
   'worker:sai-3-red-worker':             { context: 'Medium',  difficulty: '↑' },
   'worker:sai-3-green-worker':           { context: 'Medium',  difficulty: '↑↑' },
   'worker:sai-4-review-worker':          { context: 'Large',   difficulty: '↑↑' },
+  'worker:sai-adversarial-expert-review-worker': { context: 'Medium', difficulty: '↑↑↑' },
   'agent:budget-explorer':               { context: 'Medium',  difficulty: '↑' },
   'agent:budget-executor':               { context: 'Small',   difficulty: '↑' },
   'agent:budget-subagent':               { context: 'Medium',  difficulty: '↑' },
@@ -1714,7 +1716,7 @@ async function runPostSetupMenuInternal({
           screen = 'model-menu';
           continue;
         }
-        const section = { [LANGUAGE_SETTINGS_ENTRY]: LANGUAGE_IDS, [BACKLOG_PR_SETTINGS_ENTRY]: BACKLOG_PR_IDS }[action];
+        const section = { [LANGUAGE_SETTINGS_ENTRY]: LANGUAGE_IDS, [BACKLOG_PR_SETTINGS_ENTRY]: BACKLOG_PR_IDS, [EXPERT_REVIEW_SETTINGS_ENTRY]: EXPERT_REVIEW_IDS }[action];
         if (section) {
           const outcome = await settingsEditor.runSection({ title: `${action}:`, ids: section });
           if (outcome.status === 'interrupted') return skippedOutcome('cancelled');

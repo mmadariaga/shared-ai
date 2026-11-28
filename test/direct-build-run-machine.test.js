@@ -40,7 +40,7 @@ const worker = [
 
 function atArchive(...more) {
   return run(start, ...base, { kind: 'checkpoint', item: 'build-implement' }, evidence,
-    { kind: 'checkpoint', item: 'backfill' }, ...worker, { kind: 'checkpoint', item: 'archive' }, ...more);
+    { kind: 'expert_review_checkpoint', value: 'skipped' }, { kind: 'checkpoint', item: 'backfill' }, ...worker, { kind: 'checkpoint', item: 'archive' }, ...more);
 }
 
 test('direct-build-run@1 is registered, sits on the run core, and declares the machine contract', () => {
@@ -97,8 +97,9 @@ test('E1: a checkpoint is accepted only when the state its item needs is stored'
   assert.equal(entered.run.step, 'step-1');
 
   const noEvidence = machine.transition(entered.state, { kind: 'checkpoint', item: 'backfill' });
-  assert.deepEqual(noEvidence.missing, ['evidence']);
-  const backfill = run(start, ...base, { kind: 'checkpoint', item: 'build-implement' }, evidence, { kind: 'checkpoint', item: 'backfill' });
+  assert.deepEqual(noEvidence.missing, ['evidence', 'expert_review_checkpoint']);
+  const backfill = run(start, ...base, { kind: 'checkpoint', item: 'build-implement' }, evidence,
+    { kind: 'expert_review_checkpoint', value: 'skipped' }, { kind: 'checkpoint', item: 'backfill' });
   assert.deepEqual(backfill.run.items, ['build-implement', 'backfill']);
   assert.equal(backfill.run.step, 'step-3');
 
@@ -260,7 +261,8 @@ function startedSlice(store, names = ['demo', 'next']) {
   store.slice({ intent: 'route-choice' });
   assert.equal(store.slice({ intent: 'direct-build' }).payload.stage, 'build-implement');
   assert.equal(store.runState(start).payload.stage, 'running');
-  for (const event of [...base, { kind: 'checkpoint', item: 'build-implement' }, evidence, { kind: 'checkpoint', item: 'backfill' }]) store.runState(event);
+  for (const event of [...base, { kind: 'checkpoint', item: 'build-implement' }, evidence,
+    { kind: 'expert_review_checkpoint', value: 'done' }, { kind: 'checkpoint', item: 'backfill' }]) store.runState(event);
   store.slice({ intent: 'complete' });
   store.runState({ kind: 'step', step: 'step-3' });
   for (const event of [...worker, { kind: 'checkpoint', item: 'archive' }]) store.runState(event);
@@ -418,4 +420,28 @@ test('E4: a session that never stored a run state rejects every rewind past the 
   } finally {
     store.close();
   }
+});
+
+test('step-2c sits after the suite gate and before Step 3, and the expert review fields are closed choices', () => {
+  assert.deepEqual(machine.STEPS.slice(0, 5), ['step-1', 'step-2', 'step-2b', 'step-2c', 'step-3']);
+  const open = run(start).state;
+  assert.equal(machine.transition(open, { kind: 'step', step: 'step-2c' }).run.step, 'step-2c');
+  const set = (kind, value) => machine.transition(open, { kind, value });
+  for (const value of ['no', 'auto', 'ask']) assert.equal(set('expert_review', value).run.expert_review, value, value);
+  assert.equal(set('expert_review', 'yes').rejected, 'expert_review must be no or auto or ask');
+  for (const value of ['done', 'skipped']) assert.equal(set('expert_review_checkpoint', value).run.expert_review_checkpoint, value, value);
+  assert.equal(set('expert_review_checkpoint', 'ran').rejected, 'expert_review_checkpoint must be done or skipped');
+  assert.equal(machine.initialState.expert_review, '');
+  assert.equal(machine.initialState.expert_review_checkpoint, '');
+});
+
+test('M1: the backfill checkpoint is refused until the expert review is handled', () => {
+  const beforeReview = run(start, ...base, { kind: 'checkpoint', item: 'build-implement' }, evidence);
+  const refused = machine.transition(beforeReview.state, { kind: 'checkpoint', item: 'backfill' });
+  assert.equal(refused.rejected, 'run state incomplete');
+  assert.deepEqual(refused.missing, ['expert_review_checkpoint']);
+  const handled = machine.transition(beforeReview.state, { kind: 'expert_review_checkpoint', value: 'done' });
+  const accepted = machine.transition(handled.state, { kind: 'checkpoint', item: 'backfill' });
+  assert.equal(accepted.rejected, undefined);
+  assert.equal(accepted.run.step, 'step-3');
 });

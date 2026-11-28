@@ -623,8 +623,9 @@ test('the screen keeps the file byte-identical on an interrupt, backing out of a
 
 // The post-setup menu: each topic is an entry of the main menu, and the warming flow opens from it.
 const MAIN_QUESTION = 'Post-setup customization:';
-const MAIN_ENTRIES = ['Model customization', 'Language settings', 'Backlog and PR settings', 'Telemetry: off', 'Cache warming', 'Exit'];
+const MAIN_ENTRIES = ['Model customization', 'Language settings', 'Backlog and PR settings', 'Expert review', 'Telemetry: off', 'Cache warming', 'Exit'];
 const TELEMETRY_ROW = (_question, options) => options.find(option => option.startsWith('Telemetry'));
+const EXPERT_REVIEW = { title: 'Expert review:', ids: screen.EXPERT_REVIEW_IDS };
 
 function warmingRoots() {
   const roots = Object.fromEntries(['claudeAgents', 'claudeCommands', 'opencodeAgents', 'opencodeCommands'].map(name => [name, fs.mkdtempSync(path.join(os.tmpdir(), `warming-${name}-`))]));
@@ -651,7 +652,7 @@ test('E1: the main menu lists the topics in order, shows the telemetry value, an
   assert.equal(seen[0].options.includes('Project behavior settings'), false);
   const on = [];
   await runMenu(project('{"experimental":{"changeTelemetry":true}}'), ['Exit'], on);
-  assert.equal(on[0].options[3], 'Telemetry: on');
+  assert.equal(on[0].options[4], 'Telemetry: on');
 });
 
 test('E11: outside an interactive terminal the menu does not appear', async () => {
@@ -713,9 +714,9 @@ test('E8: the Telemetry row opens the On/Off picker, saves, and returns to the m
   await runMenu(directory, [TELEMETRY_ROW, 'On', TELEMETRY_ROW, 'Off', 'Exit'], seen);
   assert.deepEqual(seen.map(call => call.question), [MAIN_QUESTION, 'Telemetry:', MAIN_QUESTION, 'Telemetry:', MAIN_QUESTION]);
   assert.deepEqual(seen[1].options, ['On', 'Off']);
-  assert.equal(seen[2].options[3], 'Telemetry: on');
+  assert.equal(seen[2].options[4], 'Telemetry: on');
   assert.equal(seen[2].navigator.initial, 'Telemetry: on', 'the cursor returns to the Telemetry row, which shows the new value');
-  assert.equal(seen[4].options[3], 'Telemetry: off');
+  assert.equal(seen[4].options[4], 'Telemetry: off');
   assert.equal(Object.hasOwn(writer.parseText(read(directory)).root.experimental, 'changeTelemetry'), false);
   assert.equal(writer.parseText(read(directory)).root.other, 1);
 });
@@ -732,11 +733,11 @@ test('E9: Cache warming opens the warming flow from the main menu, and Back retu
   assert.deepEqual(warmingOf(directory), { claude: { rules: [{ provider: 'anthropic', model: 'opus', role: 'agent', interval: 4, max: 30 }] } });
 });
 
-test('E12: the menus show only the eight settings, none of the repository, project, organization, or publish-after-run keys', async () => {
-  assert.deepEqual([...screen.SETTING_IDS], ['explore.readyToProposeLanguage', 'explore.chatPublicLanguage', 'pr.language', 'backlog.provider', 'pr.provider', 'publication.autoApprove', 'experimental.changeTelemetry']);
+test('E12: the menus show only the ten settings, none of the repository, project, organization, or publish-after-run keys', async () => {
+  assert.deepEqual([...screen.SETTING_IDS], ['explore.readyToProposeLanguage', 'explore.chatPublicLanguage', 'pr.language', 'backlog.provider', 'pr.provider', 'publication.autoApprove', 'expertReview.explore', 'expertReview.plan', 'expertReview.build', 'experimental.changeTelemetry']);
   const seen = [];
-  await runMenu(project(), ['Language settings', BACK, 'Backlog and PR settings', BACK, 'Exit'], seen);
-  assert.deepEqual([...seen[1].options, ...seen[3].options], screen.SETTING_IDS.filter(id => id !== 'experimental.changeTelemetry'));
+  await runMenu(project(), ['Language settings', BACK, 'Backlog and PR settings', BACK, 'Expert review', BACK, 'Exit'], seen);
+  assert.deepEqual([...seen[1].options, ...seen[3].options, ...seen[5].options], screen.SETTING_IDS.filter(id => id !== 'experimental.changeTelemetry'));
 });
 
 // The telemetry boolean through its own picker.
@@ -845,4 +846,82 @@ test('E8: a telemetry edit and a nested warming save both persist', async () => 
   assert.deepEqual(root.warming, { claude: { defaults: { agent: { interval: 4, max: 30 } } } });
   assert.equal(root.backlog.provider, 'gitlab');
   assert.equal(root.other.x, 1);
+});
+
+// The expert review section: one row per offering command, its unset text, and the three modes.
+const EXPLORE_REVIEW = 'expertReview.explore';
+const BUILD_REVIEW = 'expertReview.build';
+
+test('E1/E12: the expert review rows show the unset text, a stored value, a local override, or (invalid)', () => {
+  const unset = project('{}');
+  assert.equal(editor(unset, []).rowText(EXPLORE_REVIEW), 'Explore: ask each set');
+  assert.equal(editor(unset, []).rowText('expertReview.plan'), 'Plan: ask at start');
+  assert.equal(editor(unset, []).rowText(BUILD_REVIEW), 'Build: ask at start');
+  const stored = project('{"expertReview":{"explore":"ask","plan":"auto","build":"no"}}');
+  assert.equal(editor(stored, []).rowText(EXPLORE_REVIEW), 'Explore: ask');
+  assert.equal(editor(stored, []).rowText('expertReview.plan'), 'Plan: auto');
+  assert.equal(editor(stored, []).rowText(BUILD_REVIEW), 'Build: no');
+  const local = projectWithLocal('{"expertReview":{"explore":"auto"}}', '{"expertReview":{"explore":"ask"}}');
+  assert.equal(editor(local, []).rowText(EXPLORE_REVIEW), 'Explore: auto -> ask (local)');
+  assert.equal(editor(project('{"expertReview":{"build":"maybe"}}'), []).rowText(BUILD_REVIEW), 'Build: "maybe" (invalid)');
+});
+
+test('E12: the expert review picker offers the unset text first and the three modes, and saves the chosen mode at once', async () => {
+  const directory = project('{"expertReview":{"explore":"auto"}}');
+  const seen = [];
+  await editor(directory, [pick(EXPLORE_REVIEW), 'Yes, ask me before keeping them', BACK, BACK], [], { seen }).runSection(EXPERT_REVIEW);
+  assert.equal(seen[1].question, 'Explore:');
+  assert.deepEqual(seen[1].options, ['ask each set', 'No', 'Yes, decide the corrections', 'Yes, ask me before keeping them']);
+  assert.equal(writer.parseText(read(directory)).root.expertReview.explore, 'ask');
+  assert.equal(texts(seen[2]).at(0), 'Explore: ask');
+});
+
+test('E12: choosing the stored value writes nothing, and the unset text removes the key and restores the absent behavior', async () => {
+  const stored = project('{"expertReview":{"explore":"ask"}}');
+  assert.equal((await editor(stored, [pick(EXPLORE_REVIEW), 'Yes, ask me before keeping them', BACK]).runSection(EXPERT_REVIEW)).status, 'back');
+  assert.equal(read(stored), '{"expertReview":{"explore":"ask"}}');
+  assert.equal((await editor(stored, [pick(EXPLORE_REVIEW), 'ask each set', BACK]).runSection(EXPERT_REVIEW)).status, 'back');
+  assert.equal(Object.hasOwn(writer.parseText(read(stored)).root.expertReview ?? {}, 'explore'), false);
+
+  const fresh = project('{"expertReview":{"build":"no"}}');
+  assert.equal((await editor(fresh, [pick(BUILD_REVIEW), 'ask at start', BACK]).runSection({ title: 'Expert review:', ids: screen.EXPERT_REVIEW_IDS })).status, 'back');
+  assert.equal(Object.hasOwn(writer.parseText(read(fresh)).root.expertReview ?? {}, 'build'), false);
+});
+
+test('E1: a local expert review value saves to the local file and overrides the base key', async () => {
+  const directory = projectWithLocal('{"expertReview":{"explore":"auto"}}', '{"expertReview":{"explore":"auto"}}');
+  assert.equal((await editor(directory, [pick(EXPLORE_REVIEW), 'No', BACK]).runSection(EXPERT_REVIEW)).status, 'back');
+  assert.equal(writer.parseText(readLocal(directory)).root.expertReview.explore, 'no');
+  assert.equal(read(directory), '{"expertReview":{"explore":"auto"}}');
+  assert.equal(editor(directory, []).rowText(EXPLORE_REVIEW), 'Explore: auto -> no (local)');
+});
+
+test('E9: an invalid expert review value warns, and any choice replaces it', async () => {
+  const text = '{ "expertReview": { "plan": "sometimes" } }';
+  const messages = [];
+  assert.equal(editor(project(text), []).rowText('expertReview.plan'), 'Plan: "sometimes" (invalid)');
+  const directory = project(text);
+  assert.equal((await editor(directory, ['Yes, decide the corrections'], [], { log: message => messages.push(message) }).editSetting('expertReview.plan')).status, 'saved');
+  assert.match(messages[0], /Setting expertReview\.plan in \.sai\/settings\.jsonc must be no, auto, or ask; the command behaves as if the key were absent/);
+  assert.equal(writer.parseText(read(directory)).root.expertReview.plan, 'auto');
+});
+
+test('E11: the writer accepts ask as an expert review value and refuses a mode outside the closed set', async () => {
+  assert.deepEqual(writer.checkValue(EXPLORE_REVIEW, ' ASK '), { ok: true, value: 'ask' });
+  assert.equal(writer.checkValue(EXPLORE_REVIEW, 'yes').ok, false);
+  assert.match(writer.checkValue(EXPLORE_REVIEW, 'yes').problem, /expertReview\.explore must be no, auto, or ask/);
+  const directory = project('{}');
+  assert.equal(writer.saveSettings(directory, { [EXPLORE_REVIEW]: 'ask' }, { providerIds }).ok, true);
+  assert.equal(writer.parseText(read(directory)).root.expertReview.explore, 'ask');
+});
+
+test('E12: the Expert review section sits between Backlog and PR settings and Telemetry, and lists its three rows', async () => {
+  const seen = [];
+  await runMenu(project('{"expertReview":{"explore":"auto"}}'), ['Expert review', BACK, 'Exit'], seen);
+  assert.deepEqual(seen.map(call => call.question), [MAIN_QUESTION, 'Expert review:', MAIN_QUESTION]);
+  assert.deepEqual(texts(seen[1]), ['Explore: auto', 'Plan: ask at start', 'Build: ask at start']);
+  assert.equal(seen[2].navigator.initial, 'Expert review', 'the cursor returns to the Expert review section');
+  const entry = seen[0].options.indexOf('Expert review');
+  assert.equal(entry, seen[0].options.indexOf('Backlog and PR settings') + 1);
+  assert.equal(entry, seen[0].options.findIndex(option => option.startsWith('Telemetry')) - 1);
 });
