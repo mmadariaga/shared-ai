@@ -4,10 +4,10 @@ Fetch `@sai/policies/public-chat.md` and follow it exactly.
 Fetch `@sai/policies/remember.md`
 Fetch `@skills/safe-operations/SKILL.md` and use it.
 Fetch `@sai/policies/tool-resolution.md`
-Fetch? `@sai/policies/obstacle-escalation.md`
+Fetch `@sai/policies/obstacle-escalation.md`
 Fetch `@sai/policies/finding-state.md`
 Fetch `@sai/policies/cache-warming.md`
-Fetch? `@sai/policies/worker-report-transport.md` and follow its receiver side for every review report.
+Fetch `@sai/policies/worker-report-transport.md` and follow its receiver side for every review report.
 Fetch `@sai/commands/review/options.md`. It declares the options this command accepts and the form of the parent branch.
 
 You are the driver of the run. The invocation carries one string, `arguments_value`: an optional change name and the options of step 2 of Start.

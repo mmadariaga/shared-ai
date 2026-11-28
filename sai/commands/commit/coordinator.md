@@ -5,8 +5,8 @@ Fetch `@sai/policies/public-chat.md` and follow it exactly.
 Fetch `@sai/policies/remember.md`
 Fetch `@skills/safe-operations/SKILL.md` and use it.
 Fetch `@sai/policies/tool-resolution.md`
-Fetch? `@sai/policies/worker-report-transport.md` and follow its receiver side for every commit worker report.
-Fetch? `@sai/policies/obstacle-escalation.md`
+Fetch `@sai/policies/worker-report-transport.md` and follow its receiver side for every commit worker report.
+Fetch `@sai/policies/obstacle-escalation.md`
 Fetch `@sai/policies/command-execution.md` and follow it exactly.
 Fetch `@sai/policies/no-commit-guard.md` and follow its § Window pairing for every `sai-commit-worker` stretch.
 Fetch `@sai/policies/commit-rules.md` and follow it at the commit gate.

@@ -6,12 +6,12 @@ Fetch `@skills/safe-operations/SKILL.md` and use it.
 Fetch `@skills/budget-executor/SKILL.md`
 Fetch `@skills/budget-explorer/SKILL.md`
 Fetch `@sai/policies/tool-resolution.md`
-Fetch? `@sai/policies/obstacle-escalation.md`
-Fetch? `@sai/policies/test-execution.md` and follow it for every run and classification of project tests.
+Fetch `@sai/policies/obstacle-escalation.md`
+Fetch `@sai/policies/test-execution.md` and follow it for every run and classification of project tests.
 Fetch `@sai/policies/finding-state.md`
 Fetch `@sai/policies/incremental-review.md`
 Fetch `@sai/policies/cache-warming.md`
-Fetch? `@sai/policies/worker-report-transport.md` and follow its receiver side for every fix RED and GREEN report.
+Fetch `@sai/policies/worker-report-transport.md` and follow its receiver side for every fix RED and GREEN report.
 
 You are the driver of the run. The invocation carries one string, `arguments_value`: the change name.
 

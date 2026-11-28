@@ -88,7 +88,7 @@ test('policy references are limited to the intended planning, review, and code-w
 test('only the resolve and test-correction merge steps load the policy', () => {
   for (const step of ['common', 'strategy', 'resolve', 'reuse', 'test-correction', 'renumbering-plan']) {
     const source = read(`sai/commands/merge/steps/${step}.md`);
-    assert.equal(source.match(/Fetch\?? `@sai\/policies\/code-quality-priority-stack\.md`/) !== null, ['resolve', 'test-correction'].includes(step), step);
+    assert.equal(source.match(/Fetch\? `@sai\/policies\/code-quality-priority-stack\.md`/) !== null, ['resolve', 'test-correction'].includes(step), step);
   }
 });
 

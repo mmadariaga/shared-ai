@@ -20,7 +20,8 @@
 //   followed by its dependencies. A node line carries the absolute resolved path and the size in thousands of
 //   characters; a project-local node carries ` (project)`. An edge is conditional when its directive carries the
 //   `?` marker directly after the verb (`Fetch? @<path>`); a node reached only through conditional edges is
-//   conditional. A node already printed renders as an alias line and is never printed twice. A skill directive
+//   conditional, and the tree marks every node of that set with `?`, a nested node included. A node already
+//   printed renders as an alias line and is never printed twice. A skill directive
 //   renders as `[skill] <name>` and is never descended into. An unresolved nested path renders as
 //   `! <subpath>  (unresolved)` and changes no exit code; an unresolved requested subpath prints `! <subpath>`
 //   as its root line and exits 1.
@@ -48,7 +49,7 @@ const LEGEND = 'legend: ? conditional (not now) | ~ already listed | [skill] loa
 const PLACEHOLDER = /[<>{}*$…]/;
 const FENCE_OPEN = /^\s*(```+|~~~+)/;
 const SECTION = /^\s{0,3}##\s+(.*)$/;
-const DIRECTIVE = /(Also fetch|Fetch)(\?)?[ \t]*(`?)(@[^\s`]+)/g;
+const DIRECTIVE = /(?<![A-Za-z0-9_])(Also fetch|Fetch|fetch)(\?)?[ \t]*(`?)(@[^\s`]+)/g;
 
 class FetchError extends Error {
   constructor(message, code = 1) {
@@ -205,7 +206,8 @@ function scanDirectives(text) {
       const pathIndex = verbIndex + phrase.length - rawPath.length;
       const subpath = rawPath.slice(1).replace(/[.,;:]+$/, '');
       const line = paragraph[joined.slice(0, verbIndex).split('\n').length - 1].line;
-      const occurrence = { line, verb, conditional: Boolean(marker), subpath, skill: skillOf(subpath), section, paragraph: joined };
+      const span = spanAt(spans, verbIndex);
+      const occurrence = { line, verb, conditional: Boolean(marker), subpath, skill: skillOf(subpath), section, paragraph: joined, verbSpan: span ? spanText(span) : null };
       if (!subpath || PLACEHOLDER.test(subpath) || subpath.endsWith('/')) {
         found.push({ ...occurrence, active: false, reason: 'template' });
         continue;
@@ -363,6 +365,7 @@ function buildGraph({ harness, entries, cwd, home, env, runOpencodePaths }) {
       failed = true;
       const key = `unresolved:${entry.subpath}`;
       if (!unresolved.has(key)) unresolved.set(key, { kind: 'unresolved', subpath: entry.subpath, key, message: entry.error.message, scopeRejected: true });
+      unresolved.get(key).entry = true;
       place(unresolved.get(key), { conditional: false }, 0, null, roots, true);
       continue;
     }
@@ -377,7 +380,7 @@ function buildGraph({ harness, entries, cwd, home, env, runOpencodePaths }) {
   const flatten = list => { for (const position of list) { positions.push(position); flatten(position.children); } };
   flatten(roots);
 
-  const conditional = conditionalKeys({ files, skills, links });
+  const conditional = conditionalKeys({ files, skills, unresolved, links });
   const nodes = [...files.values(), ...skills.values()];
   return {
     failed,
@@ -399,7 +402,8 @@ function buildGraph({ harness, entries, cwd, home, env, runOpencodePaths }) {
 }
 
 // The required set: entries and every node a path of unmarked edges reaches. Everything else is conditional.
-function conditionalKeys({ files, skills, links }) {
+// An unresolved path joins the set for its `?` mark only; the summary counts resolved nodes.
+function conditionalKeys({ files, skills, unresolved, links }) {
   const required = new Set();
   const outgoing = new Map();
   for (const link of links) {
@@ -407,7 +411,7 @@ function conditionalKeys({ files, skills, links }) {
     if (!outgoing.has(link.parent)) outgoing.set(link.parent, []);
     outgoing.get(link.parent).push(link.child);
   }
-  const queue = [...files.values(), ...skills.values()].filter(node => node.entry).map(nodeKey);
+  const queue = [...files.values(), ...skills.values(), ...unresolved.values()].filter(node => node.entry).map(nodeKey);
   while (queue.length > 0) {
     const key = queue.pop();
     if (required.has(key)) continue;
@@ -415,7 +419,7 @@ function conditionalKeys({ files, skills, links }) {
     for (const child of outgoing.get(key) || []) if (!required.has(child)) queue.push(child);
   }
   const conditional = new Set();
-  for (const key of [...files.keys(), ...skills.keys()]) if (!required.has(key)) conditional.add(key);
+  for (const key of [...files.keys(), ...skills.keys(), ...unresolved.keys()]) if (!required.has(key)) conditional.add(key);
   return conditional;
 }
 
@@ -429,11 +433,12 @@ function nodeLine({ node, entry }) {
 
 function renderGraph(graph) {
   const { entries, nodes, conditional, skills, unresolved } = graph.counts;
+  const conditionalNodes = graph.conditional;
   const summary = `graph: ${entries} entries, ${nodes} nodes, ${conditional} conditional, ${skills} skills, ${unresolved} unresolved, ${size(graph.chars)} chars`;
   const lines = [summary, LEGEND];
   for (const position of graph.positions) {
     const indent = '  '.repeat(position.depth);
-    const prefix = position.conditional ? '? ' : '';
+    const prefix = conditionalNodes.has(nodeKey(position.node)) ? '? ' : '';
     if (position.kind === 'alias') {
       const line = position.node.kind === 'skill'
         ? `~ [skill] ${position.node.name}  (already listed)`

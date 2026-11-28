@@ -33,9 +33,9 @@ test('the coordinator is one goal-driven card that loads only seven policies and
     'Fetch `@sai/policies/remember.md`',
     'Fetch `@skills/safe-operations/SKILL.md`',
     'Fetch `@sai/policies/tool-resolution.md`',
-    'Fetch? `@sai/policies/obstacle-escalation.md`',
+    'Fetch `@sai/policies/obstacle-escalation.md`',
     'Fetch `@sai/policies/incremental-review.md`',
-    'Fetch? `@sai/policies/test-execution.md`',
+    'Fetch `@sai/policies/test-execution.md`',
   ]);
   for (const forbidden of ['command-runner', 'worker-core', 'bounded-recovery', 'stop-options', 'unattended-runtime-recovery',
     'no-commit-guard', 'command-execution', 'commit-rules', 'budget-explorer', 'budget-executor', 'budget-subagent']) {
@@ -269,7 +269,7 @@ test('the worker contract: one standalone worker, steps by pointer, writes only 
   }
   assert.match(card, /Active step: resolve — follow sai\/commands\/merge\/steps\/resolve\.md/);
   assert.match(card, /Active step: reuse — follow sai\/commands\/merge\/steps\/reuse\.md/);
-  assert.match(card, /Fetch\?? `@sai\/orchestration\/workers\/bindings\/merge-worker\.md` and use it\./);
+  assert.match(card, /Fetch\? `@sai\/orchestration\/workers\/bindings\/merge-worker\.md` and use it\./);
   assert.match(read('sai/commands/merge/steps/resolve.md'), /Edit an affected file only through this call/);
 });
 

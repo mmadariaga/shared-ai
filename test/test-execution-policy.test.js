@@ -9,9 +9,9 @@ const root = path.resolve(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 
 const CARDS = [
-  'sai/commands/implement/coordinator.md',
-  'sai/commands/explore/direct-build-coordinator.md',
-  'sai/commands/merge/coordinator.md',
+  ['sai/commands/implement/coordinator.md', 'Fetch '],
+  ['sai/commands/explore/direct-build-coordinator.md', 'Fetch? '],
+  ['sai/commands/merge/coordinator.md', 'Fetch '],
 ];
 
 test('E2 to E9, E13: one policy is the single source of how the three commands choose, run, and classify tests', () => {
@@ -26,8 +26,8 @@ test('E2 to E9, E13: one policy is the single source of how the three commands c
   assert.match(policy, /Never hand over a generic goal such as "run the project's full test suite"/);
   assert.match(policy, /When `restore` answers `failed`, the run blocks: nothing is edited, staged, or committed while base files are in the working tree/);
   assert.match(policy, /When `swap` answers `refused` or a tool error, the failures count as new/);
-  for (const card of CARDS) {
-    assert.match(read(card), /Fetch\?? `@sai\/policies\/test-execution\.md`/, `${card} loads the policy`);
+  for (const [card, marker] of CARDS) {
+    assert.ok(read(card).includes(`${marker}\`@sai/policies/test-execution.md\``), `${card} loads the policy`);
   }
 });
 
