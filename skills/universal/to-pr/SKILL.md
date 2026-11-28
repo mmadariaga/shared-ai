@@ -100,8 +100,8 @@ description: |
 
 Indent every line of the block scalar by the same two spaces: a line indented less than the
 first one is rejected with its line number, and a title that YAML would read as a number or a
-boolean must stay quoted. The tool drops the trailing line breaks of `title` and `description`.
-A JSON request is still accepted. `query` validates
+boolean must stay quoted. The tool drops the trailing line breaks of `title`,
+`description`, and `risk_block`. A JSON request is still accepted. `query` validates
 the title and final description and finds an open request for this exact source and target.
 An existing match selects update, never duplicate creation; multiple matches stop
 for clarification. For update, retain unrelated description content unless the user

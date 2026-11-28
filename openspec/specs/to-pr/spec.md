@@ -883,3 +883,43 @@ When `publication.autoApprove` is `true`, `to-pr.js` `push` and `publish` SHALL 
 
 - **WHEN** `publish` or `recover` returns a result
 - **THEN** it carries `publish_pr_as_draft` with its `value` and `status` and no `draft` or `ready` field
+
+### Requirement: Trailing line breaks in risk_block are accepted
+
+`query` and `publish` SHALL accept a `risk_block` that differs from a valid block only by trailing `\r` and `\n` characters. After normalization the block SHALL end at the END marker, and a request with those line breaks SHALL return the same `confirmation` as the same request without them.
+
+#### Scenario: JSON risk block with trailing line breaks is accepted
+- **WHEN** a `query` request supplies a valid `risk_block` ending in one or more `\n` or `\r\n` characters
+- **THEN** `query` returns `ready` with the same `confirmation` as the request without them and the proposal carries the block ending at the END marker
+
+#### Scenario: YAML block-scalar risk block is accepted
+- **WHEN** a YAML request supplies the block as a `|`, `|-`, or `|+` block scalar read through the shared request reader
+- **THEN** the request carries the same normalized block and the same `confirmation` as the clipped form
+
+#### Scenario: Inner line breaks stay as written
+- **WHEN** the block carries line breaks inside its body and one or more trailing line breaks
+- **THEN** only the trailing line breaks are removed and the inner line breaks stay as written
+
+#### Scenario: Other malformations stay rejected
+- **WHEN** the block carries a line break before START, text or spaces after END, a missing or repeated marker, or no `## Inherent Risk` heading
+- **THEN** `query` rejects the request with the complete-block error
+
+#### Scenario: A non-string risk block stays rejected
+- **WHEN** `risk_block` is not a string
+- **THEN** `query` rejects the request with the complete-block error
+
+### Requirement: Normalized risk block feeds every later use
+
+The risk-block planner SHALL strip trailing `\r` and `\n` from `risk_block` exactly once, after its string-type check, and SHALL use the stripped block for the marker checks, the description comparison, the comment-overflow length check, the returned proposal `block`, and the managed comment body.
+
+#### Scenario: Description placement compares the normalized block
+- **WHEN** description placement is selected and the request `risk_block` ends with line breaks
+- **THEN** the placement check accepts a description that carries the normalized block and rejects a description whose block differs in content
+
+#### Scenario: Comment placement writes the normalized block
+- **WHEN** comment placement is selected and the request `risk_block` ends with line breaks
+- **THEN** the managed comment body carries the normalized block, equal to the reported `inherent_risk.block`
+
+#### Scenario: Publication accepts the unnormalized request
+- **WHEN** `publish` receives the same request with trailing line breaks and the `confirmation` returned for the normalized request
+- **THEN** the approval check passes and the published request and managed comment carry the normalized block

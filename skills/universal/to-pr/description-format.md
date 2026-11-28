@@ -59,7 +59,8 @@ When using a comment, remove the block from the description yourself and pass
 `description_overflow:{length,limit}` (the original oversized draft, before the
 tool adds closing references; Azure's limit is exactly 4000) to
 `query` and `publish`. Otherwise pass `risk_placement:"description"` and the
-same complete `risk_block`. The tool executes this allocation; it does not move
+same complete `risk_block`. The tool drops the trailing line breaks of
+`risk_block` and executes this allocation; it does not move
 text. The final composed description must fit the supplied overflow limit,
 including any tool-added closing references. The accepted original length and
 limit are part of the approved proposal and must stay unchanged at publication.

@@ -7,6 +7,7 @@ const path = require('node:path');
 const os = require('node:os');
 const { execFileSync, spawnSync } = require('node:child_process');
 const tool = require('../sai/tools/to-pr');
+const { readRequest } = require('../sai/tools/yaml-subset');
 const { resolveTempRoot } = require('../sai/tools/temp-root');
 const registry = require('../skills/universal/to-pr/providers/registry.json');
 const { linkDirectory, linkFile } = require('./helpers/links');
@@ -308,6 +309,61 @@ for (const provider of ['github', 'gitlab']) {
     assert.equal((await tool.query({ ...request, publish_pr_as_draft: false }, io)).proposal.publish_pr_as_draft, false);
     assert.equal((await tool.query(request, io)).proposal.publish_pr_as_draft, true);
     assert.equal((await tool.query({ ...request, risk_placement: undefined, risk_block: undefined, description: 'x'.repeat(4001) }, io)).status, 'ready');
+  });
+  test(`${provider} trailing line breaks in risk_block are dropped once and the other boundaries stay rejected`, async t => {
+    const { io, request, state } = commentFixture(provider), clean = await tool.query(request, io);
+    // E1/E4: JSON endings, one or more line breaks, keep the confirmation and the normalized block.
+    for (const ending of ['\n', '\r\n', '\n\n', '\r\n\r\n']) {
+      const ready = await tool.query({ ...request, risk_block: riskBlock + ending }, io);
+      assert.equal(ready.status, 'ready');
+      assert.equal(ready.confirmation, clean.confirmation);
+      assert.equal(ready.proposal.inherent_risk.block, riskBlock);
+      assert.equal(ready.proposal.inherent_risk.body, `<!-- sai-to-pr:inherent-risk -->\n${riskBlock}`);
+      const described = { ...request, risk_placement: 'description', description: `${request.description}\n${riskBlock}`, risk_block: riskBlock + ending };
+      assert.equal((await tool.query(described, io)).proposal.inherent_risk.block, riskBlock);
+    }
+    // E1: YAML `|`, `|-` and `|+` block scalars read through the shared request reader.
+    const yaml = header => [
+      `provider: ${provider}`,
+      `repository: ${request.repository}`,
+      'base: main',
+      'remote: origin',
+      'title: "feat: add feature"',
+      'description: |',
+      '  ## Summary',
+      '  Committed feature',
+      'risk_placement: comment',
+      `risk_block: ${header}`,
+      ...riskBlock.split('\n').map(line => `  ${line}`),
+      ...(header === '|+' ? [''] : []),
+      'description_overflow:',
+      '  length: 5000',
+      '  limit: 4000'
+    ].join('\n') + '\n';
+    const clipped = await tool.query(readRequest(yaml('|')), io);
+    assert.equal(clipped.proposal.inherent_risk.block, riskBlock);
+    for (const header of ['|-', '|+']) {
+      const parsed = await tool.query(readRequest(yaml(header)), io);
+      assert.equal(parsed.proposal.inherent_risk.block, riskBlock);
+      assert.equal(parsed.confirmation, clipped.confirmation);
+    }
+    // E3: internal line breaks are kept as written; a break before START, text or spaces after END stay rejected.
+    assert.equal((await tool.query({ ...request, risk_block: `${riskBlock.replace(/\n/g, '\r\n')}\r\n` }, io)).proposal.inherent_risk.block, riskBlock.replace(/\n/g, '\r\n'));
+    for (const rejected of [`${riskBlock}\ntrailing`, `${riskBlock} `, `\n${riskBlock}`, riskBlock.replace('<!-- sai-inherent-risk:end -->', ''),
+      `${riskBlock}\n${riskBlock}`, riskBlock.replace('## Inherent Risk', '## Risk')]) {
+      await assert.rejects(async () => await tool.query({ ...request, risk_block: rejected }, io), /complete/);
+    }
+    await assert.rejects(async () => await tool.query({ ...request, risk_block: 42 }, io), /complete/);
+    // E4: description placement still compares the block with the normalized value.
+    const described = { ...request, risk_placement: 'description', description: `${request.description}\n${riskBlock}` };
+    await assert.rejects(async () => await tool.query({ ...described, risk_block: `${riskBlock.replace('Complete ratings', 'Other ratings')}\n` }, io), /Keep exactly one complete risk block/);
+    // E2/E5: publish accepts the same unnormalized request and writes the normalized managed comment.
+    const ready = await tool.query({ ...request, risk_block: `${riskBlock}\n` }, io);
+    const published = await tool.publish({ ...request, risk_block: `${riskBlock}\r\n`, approved: true, confirmation: ready.confirmation, receipt: receipt(t) }, io);
+    assert.equal(published.status, 'complete');
+    assert.equal(published.comment.status, 'complete');
+    assert.equal(state.comments[0].body, `<!-- sai-to-pr:inherent-risk -->\n${riskBlock}`);
+    assert.doesNotMatch(state.rows[0].body ?? state.rows[0].description, /sai-inherent-risk:start/);
   });
   test(`${provider} an unconfirmed absent comment cannot be blindly retried and baseline edits invalidate approval`, async t => {
     const { io, request, state } = commentFixture(provider, true);
