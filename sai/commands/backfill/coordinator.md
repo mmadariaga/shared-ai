@@ -5,8 +5,8 @@ Fetch `@sai/policies/public-chat.md` and follow it exactly.
 Fetch `@sai/policies/remember.md`
 Fetch `@skills/safe-operations/SKILL.md` and use it.
 Fetch `@sai/policies/tool-resolution.md`
-Fetch `@sai/policies/worker-report-transport.md` and follow its receiver side for every backfill worker report of the ordinary route.
-Fetch `@sai/policies/obstacle-escalation.md`
+Fetch? `@sai/policies/worker-report-transport.md` and follow its receiver side for every backfill worker report of the ordinary route.
+Fetch? `@sai/policies/obstacle-escalation.md`
 Fetch `@sai/policies/prereqs-paths.md`
 Fetch `@sai/policies/no-commit-guard.md` and follow its § Window pairing for every `sai-backfill-worker` stretch.
 
@@ -20,7 +20,7 @@ Reconstruct `proposal.md` and capability specs for a change that was already imp
 
 1. **Transfer directory.** Resolve `transfer.js` per `@sai/policies/tool-resolution.md`, substituting `transfer.js` for the filename placeholder `<name>`. Before the first worker dispatch, run `node <transfer-path> open --note "open the transfer directory" --harness <claude|opencode>` (the active harness) and keep the returned `dir` as invocation-scoped state. Exit 2 (for example a missing harness temp root, which the helper never creates or repairs) is a blocker: report the verbatim error and stop with no dispatch and no write.
 2. **Report directory.** Run `node <transfer-path> open --note "open the report directory" --harness <claude|opencode>` once more and keep the returned `dir` as the invocation-scoped report directory, separate from the transfer directory: reports and drafts never share one. The same exit 2 blocker applies, before any dispatch.
-3. **Create the worker.** `Fetch @sai/orchestration/workers/bindings/backfill-worker.md and use it.` The creation dispatch carries only the ready prompt; the worker returns `event: ready`. Deliver the directories only in the task-disclosure message that follows, as two extra first lines `--report-dir <report dir>` and `--transfer-dir <transfer dir>`, in that order, ahead of `arguments_value`, which goes to the same worker byte-for-byte (the creation dispatch carries no task content, and the envelope stays exactly `arguments_value`). A worker that returns no ready is an obstacle (see Obstacles).
+3. **Create the worker.** Fetch `@sai/orchestration/workers/bindings/backfill-worker.md` and use it. The creation dispatch carries only the ready prompt; the worker returns `event: ready`. Deliver the directories only in the task-disclosure message that follows, as two extra first lines `--report-dir <report dir>` and `--transfer-dir <transfer dir>`, in that order, ahead of `arguments_value`, which goes to the same worker byte-for-byte (the creation dispatch carries no task content, and the envelope stays exactly `arguments_value`). A worker that returns no ready is an obstacle (see Obstacles).
 4. **Open the guard window.** Take a `snapshot` and hold the returned SHA as the invocation-scoped `guard_base`.
 
 Run `node <transfer-path> close --note "close the transfer directory" --dir <dir>` for the transfer directory when the invocation closes, whether it completed, failed, or was cancelled; `close` removes only that directory, and the directory stays available until then, including between Direct Build prepare and execute. The report directory closes the same way, except that a run stopped on an unresolved obstacle keeps it. At an accepted closure (validated drafts written), also remove each temporary validation project (the `project_dir` returned by `validate-backfill-drafts.js`) with `temp-root.js remove --harness <claude|opencode> --dir <project_dir>`, resolved per `@sai/policies/tool-resolution.md`; a failed or escalated closure keeps them as evidence.

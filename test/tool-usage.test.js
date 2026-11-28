@@ -41,7 +41,7 @@ const TOOLS = [
   { name: 'project-settings', file: 'sai/tools/project-settings.js', kind: 'json', keep: { status: 'error' }, subcommands: ['get', 'warming'] },
   { name: 'archive-plan', file: 'sai/tools/archive-plan.js', kind: 'json', keep: { ok: false }, subcommands: ['plan', 'footer'] },
   { name: 'check-cited-paths', file: 'sai/tools/check-cited-paths.js', kind: 'text', subcommands: ['sai-1', 'sai-2', 'audit-report'] },
-  { name: 'lint', file: 'sai/tools/lint.js', kind: 'text', subcommands: ['commit-rules', 'pr-title-rules', 'glossary-format', 'change-document', 'artifact-review', 'audit-report', 'sai-learnings-format', 'worker-emission-ownership'] },
+  { name: 'lint', file: 'sai/tools/lint.js', kind: 'text', subcommands: ['commit-rules', 'pr-title-rules', 'glossary-format', 'change-document', 'artifact-review', 'audit-report', 'sai-learnings-format', 'worker-emission-ownership', 'fetch-directives'] },
   { name: 'merge', file: 'sai/tools/merge.js', kind: 'json', keep: { outcome: 'failure' }, subcommands: ['preflight', 'provenance', 'simulate', 'conflicts', 'correction', 'bundle', 'write', 'valid', 'resolution', 'verify', 'collision', 'duplicates', 'status'] },
   { name: 'worktree', file: 'sai/tools/worktree.js', kind: 'text', subcommands: ['inventory', 'create', 'index', 'remove', 'delete-branch'] },
   { name: 'review-delta', file: 'sai/tools/review-delta.js', kind: 'text', subcommands: ['snapshot', 'delta', 'restore'] },

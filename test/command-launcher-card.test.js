@@ -323,7 +323,7 @@ test('the utility body cards check the capability profile and load public chat a
     const card = read(`sai/commands/${folder}/body.md`);
     assert.match(card, /Fetch `@sai\/policies\/public-chat\.md` and follow it exactly\./, `${folder} loads public chat`);
     assert.match(card, /First step: Fetch `@sai\/policies\/tool-access\.md` and check the wrapper's required capability profile\./, `${folder} checks its capability profile`);
-    assert.match(card, /Fetch `@sai\/policies\/obstacle-escalation\.md` and close the stop with its § Escalate to the user\./, `${folder} closes unplanned stops through the obstacle policy`);
+    assert.match(card, /Fetch\?? `@sai\/policies\/obstacle-escalation\.md` and close the stop with its § Escalate to the user\./, `${folder} closes unplanned stops through the obstacle policy`);
     assert.match(card, /Fetch `@sai\/policies\/verified-precondition-handback\.md`/, `${folder} keeps the precondition hand-back policy`);
     assert.doesNotMatch(card, /boot-provided|command-runner|stop-options|boot adapter/i, `${folder} names no retired entry surface`);
   }

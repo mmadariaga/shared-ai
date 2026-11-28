@@ -13,7 +13,7 @@ const AUDITS = ['security', 'performance', 'accessibility'];
 test('the deep-review coordinator loads only the cross-cutting policies and none of the shared orchestration', () => {
   const coordinator = read('sai/commands/deep-review/coordinator.md');
   const head = coordinator.slice(0, coordinator.indexOf('## Goal'));
-  const fetched = [...head.matchAll(/^Fetch `?@([^\s`]+)/gm)].map(match => match[1]);
+  const fetched = [...head.matchAll(/^Fetch\?? `?@([^\s`]+)/gm)].map(match => match[1]);
   assert.deepEqual(fetched, [
     'sai/policies/public-chat.md',
     'sai/policies/remember.md',

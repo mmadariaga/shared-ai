@@ -76,7 +76,7 @@ test('Claude Code retains equivalent research tool access and both harnesses loa
     assert.ok(tools.includes(tool), `Claude Code must retain ${tool}`);
   }
   for (const text of [source, claude]) {
-    assert.match(text, /Fetch `@sai\/policies\/explore-agent\.md`/);
+    assert.match(text, /Fetch\?? `@sai\/policies\/explore-agent\.md`/);
   }
 });
 
@@ -94,7 +94,7 @@ test('the shared explorer policy states the single-command shell rule and its ou
 test('the explorer saves every report through the budget-agent transport, and may run only transfer.js put to do so', () => {
   const policy = fs.readFileSync(path.join(repoRoot, 'sai/policies/explore-agent.md'), 'utf8');
   const saved = policy.slice(policy.indexOf('## Saved report'), policy.indexOf('A dispatch that carries no goal'));
-  assert.match(saved, /Fetch `@sai\/policies\/worker-report-transport\.md` and follow its § Budget agents, agent side/);
+  assert.match(saved, /Fetch\?? `@sai\/policies\/worker-report-transport\.md` and follow its § Budget agents, agent side/);
   assert.match(saved, /first line is `--report-dir <path>`/);
   assert.match(saved, /reply is its `\{path, sha256\}` and the `warming` line only/);
   assert.match(saved, /A task without the `--report-dir` line gets no research/);

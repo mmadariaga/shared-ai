@@ -152,9 +152,9 @@ test('Direct Build contracts bind all three workers while preserving other route
   const policy = read(POLICY);
   for (const worker of ['explore/direct-build-worker', 'backfill/worker', 'archive/worker']) {
     const loaded = worker === 'explore/direct-build-worker' ? 'implement/worker-common' : worker;
-    assert.match(read(`sai/commands/${loaded}.md`), /Fetch `@sai\/policies\/worker-report-transport.md`/);
+    assert.match(read(`sai/commands/${loaded}.md`), /Fetch\?? `@sai\/policies\/worker-report-transport.md`/);
   }
-  assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /Fetch `@sai\/policies\/worker-report-transport.md`/);
+  assert.match(read('sai/commands/explore/direct-build-coordinator.md'), /Fetch\?? `@sai\/policies\/worker-report-transport.md`/);
   for (const evidence of [/Claude Code and opencode/, /initial `event: ready` return is unchanged/,
     /The `--no-specs` POC keeps its existing transport/,
     /call that returns no response establishes neither/, /never resends an execute order/,
@@ -211,7 +211,7 @@ test('a completed review report carries its outcome through the file transport',
 
 test('RED, GREEN, and the Direct Build worker report through the policy in the unified schema', () => {
   const common = read('sai/commands/implement/worker-common.md');
-  assert.match(common, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its author side/);
+  assert.match(common, /Fetch\?? `@sai\/policies\/worker-report-transport.md` and follow its author side/);
   assert.match(common, /--report-dir <path>/);
   assert.match(common, /status: completed \| needs_input \| failed \| cancelled/);
   assert.match(common, /`done` and `blocked` are retired/);
@@ -229,7 +229,7 @@ test('RED, GREEN, and the Direct Build worker report through the policy in the u
 
 test('the implement coordinator opens the report directory, validates every report, and answers questions', () => {
   const card = read('sai/commands/implement/coordinator.md');
-  assert.match(card, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its receiver side/);
+  assert.match(card, /Fetch\?? `@sai\/policies\/worker-report-transport.md` and follow its receiver side/);
   assert.match(card, /`transfer\.js`, resolved per `tool-resolution\.md`\) and emit `record` \(`report-dir`\)/);
   assert.match(card, /opens with the line `--report-dir <report directory>`/);
   assert.match(card, /`node <transfer-path> receive --note "receive the step report" --kind terminal --command implement` on its reference/);
@@ -307,7 +307,7 @@ test('spec and design reports are validated per command; done and blocked are in
 
 test('the plan workers report through the policy in the unified schema', () => {
   const common = read('sai/commands/plan/worker-common.md');
-  assert.match(common, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its author side/);
+  assert.match(common, /Fetch\?? `@sai\/policies\/worker-report-transport.md` and follow its author side/);
   assert.match(common, /opens with the line `--report-dir <path>`/);
   assert.match(common, /status: completed \| needs_input \| failed \| cancelled/);
   assert.match(common, /`done` and `blocked` are retired/);
@@ -326,7 +326,7 @@ test('the plan workers report through the policy in the unified schema', () => {
 
 test('the plan cycle opens and records the report directory, validates every report, and reuses it on resume', () => {
   const cycle = read('sai/commands/plan/cycle.md');
-  assert.match(cycle, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its receiver side/);
+  assert.match(cycle, /Fetch\?? `@sai\/policies\/worker-report-transport.md` and follow its receiver side/);
   assert.match(cycle, /`node <transfer-path> open --note "open the report directory" --harness <claude\|opencode>`[^\n]*emits `record` \(`report-dir`\)/);
   assert.match(cycle, /opens with the line `--report-dir <report directory>`/);
   assert.match(cycle, /`node <transfer-path> receive --note "receive the plan worker report" --kind terminal --command <spec\|design>` on its reference/);
@@ -350,7 +350,7 @@ test('the plan cycle opens and records the report directory, validates every rep
 
 test('the review worker reports progress and its terminal result as files, with no-changes as an outcome', () => {
   const worker = read('sai/commands/review/worker.md');
-  assert.match(worker, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its author side/);
+  assert.match(worker, /Fetch\?? `@sai\/policies\/worker-report-transport.md` and follow its author side/);
   assert.match(worker, /opens with the line `--report-dir <path>`/);
   assert.match(worker, /event: progress\nstep_ids: string\[\]/);
   assert.match(worker, /Its file name starts with `progress-`/);
@@ -369,7 +369,7 @@ test('the review worker reports progress and its terminal result as files, with 
 
 test('the review coordinator validates every report and feeds progress reports to the step machine', () => {
   const card = read('sai/commands/review/coordinator.md');
-  assert.match(card, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its receiver side/);
+  assert.match(card, /Fetch\?? `@sai\/policies\/worker-report-transport.md` and follow its receiver side/);
   assert.match(card, /Open the report directory of the run with `node <transfer-path> open --note "open the report directory" --harness <claude\|opencode>`/);
   assert.match(card, /opens with the line `--report-dir <report directory>`/);
   assert.match(card, /a name that starts with `progress-` is a progress report, received with `--kind progress` and then passed to the machine emit below, which verifies and validates it itself/);
@@ -417,7 +417,7 @@ test('the audit workers report progress, questions, and results as files through
   assert.match(policy, /the audit workers of `\/sai-5-security`, `\/sai-6-performance`, and `\/sai-7-accessibility`/);
   assert.match(policy, /`security`, `performance`, or `accessibility` for the audit worker of that audit/);
   const common = read('sai/commands/audit/worker-common.md');
-  assert.match(common, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its author side/);
+  assert.match(common, /Fetch\?? `@sai\/policies\/worker-report-transport.md` and follow its author side/);
   assert.match(common, /preceded by the line `--report-dir <path>`/);
   assert.match(common, /Its file name starts with `progress-`/);
   assert.match(common, /event: progress\nstep_ids: string\[\]\nchanged_files: \[\]/);
@@ -435,7 +435,7 @@ test('the audit workers report progress, questions, and results as files through
 
 test('the audit coordinator opens a report directory per cycle, validates every report, and feeds progress to the machine', () => {
   const card = read('sai/commands/audit/coordinator.md');
-  assert.match(card, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its receiver side/);
+  assert.match(card, /Fetch\?? `@sai\/policies\/worker-report-transport.md` and follow its receiver side/);
   assert.match(card, /Open the report directory of the cycle with `node <transfer-path> open --note "open the report directory" --harness <claude\|opencode>`/);
   assert.match(card, /opens with the line `--report-dir <report directory>`/);
   assert.match(card, /a progress report, received with `--kind progress` and then passed to the machine emit below, which verifies and validates it itself/);
@@ -450,7 +450,7 @@ test('the audit coordinator opens a report directory per cycle, validates every 
 
 test('deep-review opens a report directory per audit cycle and validates and emits audit reports one at a time', () => {
   const card = read('sai/commands/deep-review/coordinator.md');
-  assert.match(card, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its receiver side/);
+  assert.match(card, /Fetch\?? `@sai\/policies\/worker-report-transport.md` and follow its receiver side/);
   assert.match(card, /its steps 5 and 6 of Start/);
   assert.match(card, /Each activated audit cycle opens its own report directory/);
   assert.match(card, /You validate every audit report[^\n]*and issue every `sai-state` call and every commit one at a time, in the fixed order security, performance, accessibility/);
@@ -510,12 +510,12 @@ test('the commit, archive, and backfill workers report as files and their coordi
   const commands = { commit: 'commit', archive: 'archive', backfill: 'backfill' };
   for (const command of Object.keys(commands)) {
     const worker = read(`sai/commands/${command}/worker.md`);
-    assert.match(worker, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its author side for every report/, command);
+    assert.match(worker, /Fetch\?? `@sai\/policies\/worker-report-transport.md` and follow its author side for every report/, command);
     assert.match(worker, /--report-dir/, command);
     assert.match(worker, /a result carried inline is an\s+invalid report|message that carries the result inline is an invalid report/, command);
     assert.doesNotMatch(worker, /final message, in the shape|The coordinator reads only your final message/, command);
     const coordinator = read(`sai/commands/${command}/coordinator.md`);
-    assert.match(coordinator, /Fetch `@sai\/policies\/worker-report-transport.md` and follow its receiver side/, command);
+    assert.match(coordinator, /Fetch\?? `@sai\/policies\/worker-report-transport.md` and follow its receiver side/, command);
     assert.match(coordinator, new RegExp(`receive --kind terminal --command ${commands[command]}`), command);
     assert.match(coordinator, /transfer\.js (open|close)|node <transfer-path> (open|close)|`node <tool-path> open --harness|--report-dir <report directory>/, command);
     assert.match(coordinator, /second consecutive invalid report from that worker replaces it/, command);

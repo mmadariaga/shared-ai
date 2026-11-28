@@ -176,6 +176,6 @@ test('the instructions tell the agent to run the global copy as the absolute pat
   assert.match(resolution, /node "<absolute path>"/);
   assert.match(read('sai/policies/prereqs-check.md'), /@sai\/policies\/tool-resolution\.md/);
   assert.match(read('sai/policies/tool-resolution.md'), /never a path you composed/);
-  assert.match(read('sai/policies/cache-warming.md'), /absolute path its block printed/);
+  assert.match(read('sai/policies/cache-warming.md'), /absolute path that root line printed/);
   assert.match(read('sai/policies/tool-resolution.md'), /fetch tool in path mode/, 'tools resolve through the fetch tool, with no ~ candidate list');
 });

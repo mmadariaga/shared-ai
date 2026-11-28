@@ -1,14 +1,14 @@
 # Merge step: resolve
 
 Fetch `@sai/commands/merge/steps/common.md` and read it once.
-Fetch `@sai/commands/merge/steps/strategy.md` and read it once.
+Fetch? `@sai/commands/merge/steps/strategy.md` and read it once.
 
 Goal: decide how every conflict of the files you are given resolves, write the resolution, and report exactly what you wrote, in this one step. The brief names the snapshot record and its hash, the files you resolve, the method, the run directory, and, when they exist, the paths of findings to fix, the decisions the user chose for escalated conflicts, and the correction snapshot of a test or final-tree correction.
 
 Decide as `steps/strategy.md` says. When that leaves an escalation, you are in its strategy-only step: write nothing, and save the report it defines. Otherwise write what you decided without a pause for approval: the coordinator reviews the written text together with your decisions. A decision the brief carries from the user stands, and is written as given.
 
 Before authoring a code resolution or a coordinator-authorized code correction,
-Fetch `@sai/policies/code-quality-priority-stack.md`
+Fetch? `@sai/policies/code-quality-priority-stack.md`
 Apply it within your decisions by commit intent, behavior-preservation requirements, and authorized ranges; those restrictions prevail. Choosing a complete existing version (`git-ours` or `git-theirs`) alone requires no policy load.
 
 ## Writing

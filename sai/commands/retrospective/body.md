@@ -3,7 +3,7 @@
   Fetch `@sai/policies/verified-precondition-handback.md`
   Fetch `@sai/policies/public-chat.md` and follow it exactly.
   First step: Fetch `@sai/policies/tool-access.md` and check the wrapper's required capability profile.
-  When a run stops on an error or an unexpected condition, Fetch `@sai/policies/obstacle-escalation.md` and close the stop with its § Escalate to the user.
+  When a run stops on an error or an unexpected condition, Fetch? `@sai/policies/obstacle-escalation.md` and close the stop with its § Escalate to the user.
 
   ## Load instructions (in order)
   Fetch `@sai/policies/question-context.md` and follow it for every decision prompt.

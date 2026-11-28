@@ -6,7 +6,7 @@ Fetch `@sai/policies/remember.md`
 Fetch `@sai/policies/repository-artifact-scope.md` and use it as the shared protected-surface rule. Your role's allowed files below are narrower and prevail.
 Fetch `@sai/policies/code-quality-priority-stack.md`
 Apply it within your role and the brief; it grants no path or permission.
-Fetch `@sai/policies/worker-report-transport.md` and follow its author side for every report.
+Fetch? `@sai/policies/worker-report-transport.md` and follow its author side for every report.
 
 ## Lifetime
 

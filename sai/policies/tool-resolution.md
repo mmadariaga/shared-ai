@@ -17,10 +17,11 @@ the one user-global root of your harness, which it resolves itself:
 candidates of its own: the first copy the fetch tool returns is the copy to run,
 and it defines the version.
 
-Pass the tool's subpath, never a path you composed. Path mode (resolution blocks
-only, no file content) starts at two subpaths in one call: name every tool the
-step needs together, and when it needs one, name that subpath twice, because a
-one-subpath call prints the whole file after its header. A subpath names one file under the root and
+Pass the tool's subpath, never a path you composed. To get a tool's location
+without its content, name its subpath twice in one call: the fetch tool prints a
+tree whose root line carries the absolute resolved path, and no file content,
+because a one-subpath call returns the file itself. Name every tool the
+step needs together, each twice. A subpath names one file under the root and
 begins with `sai/`, `commands/`, or `skills/`: a bare `bin/...` subpath is
 rejected by the fetch scope.
 
@@ -36,13 +37,14 @@ rejected by the fetch scope.
 node "<fetch tool>" --harness <claude|opencode> sai/tools/<name> sai/tools/<name>
 ```
 
-Each resolution block prints `path:` (absolute, `/` separators) and `root:`.
+Each root line of the tree prints the absolute resolved path; a project-local
+node carries ` (project)` and a user-global node carries no suffix.
 Run the tool as follows, the same way on both harnesses:
 
-- `root: project`: run the project-local form exactly as written, relative to the
+- `(project)`: run the project-local form exactly as written, relative to the
   working directory (`node .claude/sai/tools/<name>` on Claude Code,
   `node .opencode/sai/tools/<name>` on opencode).
-- `root: global`: run the `path:` the block printed, double-quoted:
+- No suffix: run the absolute path the root line printed, double-quoted:
   `node "<absolute path>"`. PowerShell does not expand `~` in the arguments of a
   native executable, so no `~` text ever reaches the shell. Forward slashes and
   the quotes keep the command text identical across Bash and PowerShell, and a
@@ -56,8 +58,8 @@ instruction names. Two tools have their own marker: `<transfer-path>` is the
 run form of `sai/tools/transfer.js` and `<sai-state-path>` that of
 `sai/bin/sai-state.js`.
 
-A call whose block carries `error:` for a subpath resolved nothing for it: the
-message names the paths tried, and that subpath is unresolved.
+A root line marked `!` for a subpath resolved nothing for it: the message on
+stderr names the paths tried, and that subpath is unresolved.
 
 ## Invocation
 

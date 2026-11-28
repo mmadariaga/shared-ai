@@ -5,8 +5,8 @@ Fetch `@sai/policies/public-chat.md` and follow it exactly.
 Fetch `@sai/policies/remember.md`
 Fetch `@skills/safe-operations/SKILL.md` and use it.
 Fetch `@sai/policies/tool-resolution.md`
-Fetch `@sai/policies/worker-report-transport.md` and follow its receiver side for every commit worker report.
-Fetch `@sai/policies/obstacle-escalation.md`
+Fetch? `@sai/policies/worker-report-transport.md` and follow its receiver side for every commit worker report.
+Fetch? `@sai/policies/obstacle-escalation.md`
 Fetch `@sai/policies/command-execution.md` and follow it exactly.
 Fetch `@sai/policies/no-commit-guard.md` and follow its § Window pairing for every `sai-commit-worker` stretch.
 Fetch `@sai/policies/commit-rules.md` and follow it at the commit gate.
@@ -21,7 +21,7 @@ Commit the staged changes with a Conventional Commits message that the user auth
 
 1. Keep `arguments_value` byte-for-byte and hand it to the worker unchanged. The only fact you read from it yourself is whether the user typed `--allow-attribution`.
 2. Open the report directory of the run with `node <transfer-path> open --note "open the report directory" --harness <claude|opencode>` (resolved per `tool-resolution.md`) and keep the `dir` it returns in the conversation, as the run's only memory of it. When the tool cannot open the directory, print its error and end the run before any dispatch, with the staged changes untouched.
-3. Create the worker: `Fetch @sai/orchestration/workers/bindings/commit-worker.md and use it.` The creation dispatch carries only the ready prompt; the worker returns `event: ready`, and `arguments_value` goes to the same worker in the next message, which opens with the line `--report-dir <report directory>`. A worker that returns no ready is an obstacle (see Obstacles).
+3. Create the worker: Fetch `@sai/orchestration/workers/bindings/commit-worker.md` and use it. The creation dispatch carries only the ready prompt; the worker returns `event: ready`, and `arguments_value` goes to the same worker in the next message, which opens with the line `--report-dir <report directory>`. A worker that returns no ready is an obstacle (see Obstacles).
 4. Open the guard window: take a `snapshot` and hold the returned SHA as `guard_base` for the invocation.
 
 ## The run

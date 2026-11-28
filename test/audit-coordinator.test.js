@@ -24,7 +24,7 @@ test('the shared audit coordinator follows the review coordinator shape: Goal, S
 
 test('the audit coordinator loads only the cross-cutting policies that never stop a run', () => {
   const coordinator = read('sai/commands/audit/coordinator.md');
-  const fetched = [...coordinator.matchAll(/^Fetch `?@([^\s`]+)/gm)].map(match => match[1]);
+  const fetched = [...coordinator.matchAll(/^Fetch\?? `?@([^\s`]+)/gm)].map(match => match[1]);
   assert.deepEqual(fetched, [
     'sai/policies/public-chat.md',
     'sai/policies/remember.md',

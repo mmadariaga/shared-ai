@@ -124,7 +124,7 @@ test('Step 2 the audit coordinator creates one worker per cycle and never audits
   assert.match(coordinator, /key: `\{audit\}-\{name\}`/);
   assert.match(coordinator, /commit nothing but this one file/);
   for (const loaded of ['public-chat', 'remember', 'safe-operations', 'tool-resolution', 'finding-state']) {
-    assert.match(coordinator, new RegExp(`Fetch \`?@(?:sai/policies|skills)/${loaded}`), `the coordinator loads ${loaded}`);
+    assert.match(coordinator, new RegExp(`Fetch\\?? \`?@(?:sai/policies|skills)/${loaded}`), `the coordinator loads ${loaded}`);
   }
   for (const forbidden of ['command-runner', 'worker-core', 'bounded-recovery', 'stop-options', 'unattended-runtime-recovery', 'no-commit-guard', 'bounded-dispatch-retry', 'composition']) {
     assert.doesNotMatch(coordinator, new RegExp(`Fetch \`?@[^\\n]*${forbidden}`), `the coordinator must not load ${forbidden}`);

@@ -1,7 +1,7 @@
 # Archive Worker
 
 Fetch `@sai/policies/verified-precondition-handback.md`
-Fetch `@sai/policies/worker-report-transport.md` and follow its author side for every report.
+Fetch? `@sai/policies/worker-report-transport.md` and follow its author side for every report.
 Fetch `@sai/policies/public-chat.md` and follow it exactly.
 Fetch `@sai/commands/archive/instructions.md` and use it to run the archive plan tool.
 Fetch `@sai/commands/archive/retirement-declaration.md`

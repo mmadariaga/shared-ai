@@ -7,26 +7,26 @@ Keep SAI tool-copy selection deterministic across Claude Code and opencode while
 
 ### Requirement: Shared tool resolution order
 
-The system SHALL resolve every installed tool copy with the fetch tool in path mode, the same tool that resolves every `Fetch @` directive, passing the tool's subpath and never a path composed from a root string: `sai/tools/<name>` for a tool of `sai/tools/`, `sai/bin/sai-state.js` for the state CLI, and `skills/sai-cache-warmer/wait.js` for the cache-warm wait tool. A step that needs one tool SHALL name its subpath twice in one call, so the call prints resolution blocks only. The fetch tool looks in the project-local root of the working directory and then in the one user-global root it resolves itself (`CLAUDE_CONFIG_DIR`, else `~/.claude`, on Claude Code; the reported opencode config directory, else `$XDG_CONFIG_HOME/opencode`, else `~/.config/opencode`, on opencode); the first copy it returns wins and defines the version. The installed instruction files SHALL list no home-directory root candidates of their own. A `root: project` result SHALL run as the project-local form exactly as written, relative to the working directory. A `root: global` result SHALL run as the `path:` the block printed, double-quoted (`node "<absolute path>"`), so no `~` text reaches the shell. The same rule SHALL apply to `prereqs.js` in `sai/policies/prereqs-check.md` and to the cache-warming `<wait-path>` in `sai/policies/cache-warming.md`. If the fetch tool resolves no copy, the system SHALL name the paths its error block lists and stop with no prose fallback, except when the consuming instruction explicitly declares its gate optional on a missing tool; then only that gate is skipped, without replacing the check in prose.
+The system SHALL resolve every installed tool copy with the fetch tool in path mode, the same tool that resolves every `Fetch @` directive, passing the tool's subpath and never a path composed from a root string: `sai/tools/<name>` for a tool of `sai/tools/`, `sai/bin/sai-state.js` for the state CLI, and `skills/sai-cache-warmer/wait.js` for the cache-warm wait tool. A step that needs one tool SHALL name its subpath twice in one call, so the call prints a tree whose root line carries the absolute resolved path and no file content. The fetch tool looks in the project-local root of the working directory and then in the one user-global root it resolves itself (`CLAUDE_CONFIG_DIR`, else `~/.claude`, on Claude Code; the reported opencode config directory, else `$XDG_CONFIG_HOME/opencode`, else `~/.config/opencode`, on opencode); the first copy it returns wins and defines the version. The installed instruction files SHALL list no home-directory root candidates of their own. A root line carrying ` (project)` SHALL run as the project-local form exactly as written, relative to the working directory. A root line with no suffix SHALL run as the absolute path it printed, double-quoted (`node "<absolute path>"`), so no `~` text reaches the shell. The same rule SHALL apply to `prereqs.js` in `sai/policies/prereqs-check.md` and to the cache-warming `<wait-path>` in `sai/policies/cache-warming.md`. If the fetch tool resolves no copy, the system SHALL name the paths its stderr message lists and stop with no prose fallback, except when the consuming instruction explicitly declares its gate optional on a missing tool; then only that gate is skipped, without replacing the check in prose.
 
 #### Scenario: Resolve tool copy
 
 - **WHEN** a command needs `sai/tools/<name>`
-- **THEN** it uses the copy the fetch tool returns in path mode and stops naming the paths tried when it returns none, unless the consuming instruction explicitly declares the missing-tool exception for that gate
+- **THEN** it uses the copy the fetch tool returns in path mode by naming the subpath twice, and stops naming the paths the tool wrote on stderr when it returns none, unless the consuming instruction explicitly declares the missing-tool exception for that gate
 
 #### Scenario: Optional gate declares a missing-tool exception
 
 - **WHEN** an instruction explicitly permits skipping its named gate if no tool copy resolves
-- **THEN** it names the paths tried, skips only that gate, and performs no prose replacement check
+- **THEN** it names the paths the tool tried, skips only that gate, and performs no prose replacement check
 
 #### Scenario: Global candidate runs from the returned absolute path
 
-- **WHEN** the fetch tool returns a `root: global` block on Claude Code or opencode
-- **THEN** the agent runs `node "<absolute path>"` with the path that block printed, in Bash and PowerShell 7 alike
+- **WHEN** the fetch tool's tree root line for a tool carries no root suffix on Claude Code or opencode
+- **THEN** the agent runs `node "<absolute path>"` with the path that root line printed, in Bash and PowerShell 7 alike
 
 #### Scenario: Project-local candidate runs as written
 
-- **WHEN** the fetch tool returns a `root: project` block
+- **WHEN** the fetch tool's tree root line for a tool carries ` (project)`
 - **THEN** the agent runs `.claude/sai/tools/<name>` or `.opencode/sai/tools/<name>` exactly as written, relative to the working directory
 
 #### Scenario: Bare bin subpath is out of scope
@@ -78,7 +78,7 @@ Shared tool-resolution instructions SHALL declare that `risk-signals.js` always 
 
 ### Requirement: Tool help is the source of invocation forms
 
-The shared tool-resolution policy SHALL name `node <tool-path> <subcommand> --help` (`node <tool-path> --help` for a tool without subcommands) as the source of a tool's invocation form, to be run when an agent is unsure of the form of a call or a call ends with a usage error, and SHALL NOT keep a catalog of per-tool invocation forms. `to-pr.js`, `to-backlog.js`, and `from-backlog.js` SHALL remain called as their owning universal skill defines. The policy SHALL keep what `--help` does not carry: the meaning of each tool's verdicts, printed fields, and exit codes, the structured-input `--input-file` rule, the `root: project` and `root: global` rule, and what to do when a tool does not resolve. Command cards and other policies SHALL keep their own exact invocation lines. The rule SHALL apply identically on Claude Code and opencode.
+The shared tool-resolution policy SHALL name `node <tool-path> <subcommand> --help` (`node <tool-path> --help` for a tool without subcommands) as the source of a tool's invocation form, to be run when an agent is unsure of the form of a call or a call ends with a usage error, and SHALL NOT keep a catalog of per-tool invocation forms. `to-pr.js`, `to-backlog.js`, and `from-backlog.js` SHALL remain called as their owning universal skill defines. The policy SHALL keep what `--help` does not carry: the meaning of each tool's verdicts, printed fields, and exit codes, the structured-input `--input-file` rule, the ` (project)` and suffix-free root-line rule, and what to do when a tool does not resolve. Command cards and other policies SHALL keep their own exact invocation lines. The rule SHALL apply identically on Claude Code and opencode.
 
 #### Scenario: Agent unsure of an invocation form
 

@@ -2,7 +2,7 @@
 
 Write the failing tests your brief asks for. Two briefs reach this file: the plan brief of the plan RED (`/sai-2-design`) and the finding brief of the fix RED (`/sai-3-implement`, `/sai-build`, `/sai-deep-review`).
 
-Read the project's existing tests only to match their framework, naming, and fixtures. When the brief names `SAI_LEARNINGS.md`, Fetch `@sai/policies/sai-learnings-format.md`, read its § Consumption, and follow the file's entries in the tests and stubs you write.
+Read the project's existing tests only to match their framework, naming, and fixtures. When the brief names `SAI_LEARNINGS.md`, Fetch? `@sai/policies/sai-learnings-format.md`, read its § Consumption, and follow the file's entries in the tests and stubs you write.
 
 ## Plan brief
 

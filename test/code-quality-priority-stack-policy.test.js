@@ -10,6 +10,7 @@ const manifest = require('../sai/install-manifest.json');
 const repoRoot = path.join(__dirname, '..');
 const POLICY = 'sai/policies/code-quality-priority-stack.md';
 const FETCH_LINE = 'Fetch `@sai/policies/code-quality-priority-stack.md`';
+const CONDITIONAL_FETCH_LINE = 'Fetch? `@sai/policies/code-quality-priority-stack.md`';
 const REVIEW_PASS_6 = 'sai/commands/review/steps/resolve-review-analysis.md';
 const STACK_HEADING = '## Code Quality Priority Stack';
 const CODE_WRITERS = [
@@ -42,7 +43,7 @@ test('the Priority Stack section lives only in the policy', () => {
 });
 
 test('review pass 6 loads the policy on a tension', () => {
-  assert.ok(read(REVIEW_PASS_6).includes(FETCH_LINE));
+  assert.ok(read(REVIEW_PASS_6).includes(CONDITIONAL_FETCH_LINE));
 });
 
 test('code-writing workers explicitly load the single-source policy within their boundaries', () => {
@@ -58,25 +59,25 @@ test('code-writing workers explicitly load the single-source policy within their
 
 test('merge loads the policy conditionally for code resolutions and proposed corrections', () => {
   const writing = read(MERGE_RESOLVE);
-  assert.ok(writing.includes(FETCH_LINE));
+  assert.ok(writing.includes(CONDITIONAL_FETCH_LINE));
   assert.match(writing, /Before authoring a code resolution or a coordinator-authorized code correction/);
   assert.match(writing, /your decisions by commit intent, behavior-preservation requirements/);
   assert.match(writing, /authorized ranges; those restrictions prevail/);
   assert.match(writing, /complete existing version.*\) alone requires no policy load/);
   const correction = read(MERGE_TEST_CORRECTION);
-  assert.ok(correction.includes(FETCH_LINE));
+  assert.ok(correction.includes(CONDITIONAL_FETCH_LINE));
   assert.match(correction, /Before authoring a proposed code correction/);
   assert.match(correction, /approved strategy and behavior-preservation requirements/);
   assert.match(correction, /those restrictions prevail/);
   assert.match(correction, /grants no write/);
   assert.match(correction, /authorize and capture the correction ranges before application/);
-  assert.ok(!read('sai/commands/merge/worker.md').includes(FETCH_LINE));
+  assert.ok(!read('sai/commands/merge/worker.md').includes(CONDITIONAL_FETCH_LINE));
 });
 
 test('policy references are limited to the intended planning, review, and code-writing surfaces', () => {
   const holders = walk(path.join(repoRoot, 'sai'))
     .filter(file => file.endsWith('.md'))
-    .filter(file => fs.readFileSync(file, 'utf8').includes(FETCH_LINE))
+    .filter(file => fs.readFileSync(file, 'utf8').match(/Fetch\?? `@sai\/policies\/code-quality-priority-stack\.md`/))
     .map(file => path.relative(repoRoot, file).split(path.sep).join('/'));
   assert.deepEqual(holders.sort(), [REVIEW_PASS_6, ...CODE_WRITERS, ...MERGE_STEPS].sort());
   for (const file of [...CODE_WRITERS, ...MERGE_STEPS]) {
@@ -87,7 +88,7 @@ test('policy references are limited to the intended planning, review, and code-w
 test('only the resolve and test-correction merge steps load the policy', () => {
   for (const step of ['common', 'strategy', 'resolve', 'reuse', 'test-correction', 'renumbering-plan']) {
     const source = read(`sai/commands/merge/steps/${step}.md`);
-    assert.equal(source.includes(FETCH_LINE), ['resolve', 'test-correction'].includes(step), step);
+    assert.equal(source.match(/Fetch\?? `@sai\/policies\/code-quality-priority-stack\.md`/) !== null, ['resolve', 'test-correction'].includes(step), step);
   }
 });
 

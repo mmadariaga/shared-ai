@@ -97,3 +97,35 @@ The `lint.js change-document` check SHALL obtain its verdict from the structural
 
 - **WHEN** the `lint.js` source is read
 - **THEN** it requires `./change-document.js`, does not mention `ready-to-propose`, and contains no list of document section names
+
+### Requirement: The fetch-directives check reports directive-form violations
+
+The `lint.js fetch-directives` check SHALL validate `Fetch` directives in a Markdown file or in every Markdown file below a directory. It SHALL report `FETCH_DIRECTIVE_FORM` for a marker not directly after the verb, a space between the marker and the verb, or a line that starts with a directive phrase whose whole phrase sits in a code span. It SHALL reuse the fetch tool's directive parser and SHALL treat a template path and a fenced or prose-span directive as payload.
+
+#### Scenario: a marker separated from its verb is reported
+- **WHEN** the check runs on a file that writes `Fetch ? @sai/policies/example.md`
+- **THEN** it reports `FETCH_DIRECTIVE_FORM` at that line and exits 1
+
+#### Scenario: a directive phrase in a code span is reported
+- **WHEN** the check runs on a file whose directive puts the whole phrase in a code span instead of only its path
+- **THEN** it reports `FETCH_DIRECTIVE_FORM` at that line and exits 1
+
+#### Scenario: a conforming instruction root passes
+- **WHEN** the check runs on the installed instruction roots, whose conditional directives carry the marker directly after the verb and whose paths sit alone in their code spans
+- **THEN** it reports no violation and exits 0
+
+### Requirement: The fetch-directives check reports marker and section-gate violations
+
+`FETCH_MARKER_WITHOUT_CONDITION` SHALL be reported when a marked directive has no condition in its paragraph or its `##` section. `FETCH_UNMARKED_CONDITIONAL` SHALL be reported when an unmarked directive sits under a conditional `##` heading. The check SHALL report one finding per line, with the file, its one-based line, the problem code, and a detail, and SHALL exit 0 when conformant, 1 when findings are reported, and 2 on a usage or I/O error.
+
+#### Scenario: a marked directive without a condition is reported
+- **WHEN** the check runs on a marked directive whose paragraph and section state no condition
+- **THEN** it reports `FETCH_MARKER_WITHOUT_CONDITION` at that line
+
+#### Scenario: an unmarked directive under a conditional heading is reported
+- **WHEN** an unmarked directive sits under a `##` heading that states a condition
+- **THEN** it reports `FETCH_UNMARKED_CONDITIONAL` at that line with the heading in the detail
+
+#### Scenario: a directory is checked file by file
+- **WHEN** the check runs with a directory argument
+- **THEN** every Markdown file below it is checked and each finding names its own file
