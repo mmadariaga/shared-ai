@@ -43,6 +43,10 @@
     "model": "openai/gpt-6.1-sol",
     "variant": "high"
   },
+  "worker:sai-adversarial-expert-review-worker": {
+    "model": "openai/gpt-6.1-sol",
+    "variant": "high"
+  },
   "command:sai-build": {
     "model": "openai/gpt-6.1-sol",
     "variant": "high"

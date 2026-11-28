@@ -27,6 +27,9 @@
 //   close      {outcome}                 outcome: completed | escalated | stopped
 //   publication {value}                  records the publication answer (yes | no | draft) of `/sai-build`;
 //                                        an explicit later value replaces it; no other command emits it
+//   expert_review {value}                records the adversarial expert review answer of `/sai-build`
+//                                        (no | auto | ask); an explicit later value replaces it
+//   expert_review_checkpoint {value}     records `done` or `skipped` once that run's checkpoint is handled
 //   status     {}                        changes nothing; returns the run state
 
 const { createRunMachine, workerHandleRecord } = require('./run-core.js');
@@ -74,6 +77,7 @@ module.exports = createRunMachine({
   extraState: { step: '', committed: [], workers: [] },
   publication: true,
   publicationAnswers: ['yes', 'no', 'draft'],
+  choices: { expert_review: ['no', 'auto', 'ask'], expert_review_checkpoint: ['done', 'skipped'] },
   handleEvent,
   handleRecord: workerHandleRecord,
   onClose(current) {

@@ -4,7 +4,7 @@ The single source of the artifact review finding format: severity, finding shape
 
 ## Scope
 
-**Artifact review** is a read-only review of OpenSpec change artifacts: `proposal.md` and `specs/**` for sai-1; `design.md`, `tasks.md`, and the plan tests and stubs the plan RED writes for sai-2. Two surfaces form findings under this contract: the manual `sai-explore` post-crystallization Review Engine and the incremental review rounds of the plan coordinators (`/sai-1-spec`, `/sai-2-design`, and `/sai-plan`).
+**Artifact review** is a read-only review of OpenSpec change artifacts: `proposal.md` and `specs/**` for sai-1; `design.md`, `tasks.md`, and the plan tests and stubs the plan RED writes for sai-2. Three surfaces form findings under this contract: the manual `sai-explore` post-crystallization Review Engine, the incremental review rounds of the plan coordinators (`/sai-1-spec`, `/sai-2-design`, and `/sai-plan`), and the adversarial expert review checkpoint of `/sai-explore`, `/sai-plan`, and `/sai-build` (`sai/policies/adversarial-expert-review.md`), whose reviewer corrects what it may correct and whose coordinator keeps or reverts each correction.
 
 The audit commands `sai-4-review`, `sai-5-security`, `sai-6-performance`, and `sai-7-accessibility` keep their own severity vocabularies and identifier schemes and never emit this contract's `Summary:` tally.
 

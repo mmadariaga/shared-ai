@@ -43,6 +43,10 @@
     "model": "opencode-go/deepseek-v4.1-flash",
     "variant": "max"
   },
+  "worker:sai-adversarial-expert-review-worker": {
+    "model": "opencode-go/glm-5.3",
+    "variant": "max"
+  },
   "command:sai-build": {
     "model": "opencode-go/deepseek-v4.1-flash",
     "variant": "max"

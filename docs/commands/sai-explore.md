@@ -86,8 +86,9 @@ cannot be amended. Manual gives you the change document to paste into a new chat
 For the technical storage and verification rules, see
 [change document transport](../../sai/policies/issue-format.md#change-document).
 
-After displaying the complete change document set, Explore normally asks
-in three conditional rounds, each one native interaction (on opencode, one call
+After displaying the complete change document set, Explore asks whether to review it with an independent expert before choosing a route. On `Yes`, one `sai-adversarial-expert-review-worker` reads every document of the set against its agreed Goal, Scope, Capabilities, and Edge cases, and proposes corrections; you then decide once whether to keep the recommended corrections, keep all of them, or discard all of them, and may name identifiers in a free-text answer. Each document whose correction you keep is re-validated and re-emitted as an amendment, then printed again, so the documents you see are the documents that travel; a corrected copy that fails `change-document.js check` is discarded and its stored document stays. On `No`, or with the question cancelled, no worker starts and nothing is written. This review is independent of the producing framing: it is not a review round of the plan commands.
+
+It then asks, normally, in three conditional rounds, each one native interaction (on opencode, one call
 per question when its picker takes a single question; on Claude Code, a round with
 more than four questions takes consecutive calls that count as one round). Round 1: whether to
 create or update a backlog item through `to-backlog` and whether to continue to

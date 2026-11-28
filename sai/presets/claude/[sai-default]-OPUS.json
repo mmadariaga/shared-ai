@@ -43,6 +43,10 @@
     "model": "sonnet",
     "effort": "high"
   },
+  "worker:sai-adversarial-expert-review-worker": {
+    "model": "opus",
+    "effort": "high"
+  },
   "command:sai-build": {
     "model": "opus",
     "effort": "medium"

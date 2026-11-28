@@ -103,8 +103,9 @@ test('the manifest retires every removed or renamed wrapper and agent for both h
   }
   const active = new Set(manifest.projections.map(projection => `${projection.destination.class}/${projection.destination.path}`));
   assert.equal(active.has('commands/sai-build.md') || manifest['worker-matrix'].entries.length > 0, true);
-  assert.deepEqual(manifest['worker-matrix'].entries.map(entry => entry.workerName).slice(-5),
-    ['sai-direct-build-worker', 'sai-3-red-worker', 'sai-3-green-worker', 'sai-4-review-worker', 'sai-2-red-worker']);
+  assert.deepEqual(manifest['worker-matrix'].entries.map(entry => entry.workerName).slice(-6),
+    ['sai-direct-build-worker', 'sai-3-red-worker', 'sai-3-green-worker', 'sai-4-review-worker', 'sai-2-red-worker',
+      'sai-adversarial-expert-review-worker']);
 });
 
 test('the sai-workflow schema no longer carries implementation.md', () => {

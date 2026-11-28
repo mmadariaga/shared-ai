@@ -268,6 +268,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0173b — Build composition inherits pointer delivery with no opt-out special case](./0173b-build-composition-inherits-pointer-delivery.md) — Refs 0172c, Refs 0163, Refs 0156
 - [0174 — Relax the artifact-content-inference prohibition in chained composition successor activation](./0174-relax-composition-successor-inference-prohibition.md) — Refs 0147a, Refs 0151, Refs 0152b, Refs 0173b
 - [0187 — Composition rules live in their own orchestration file](./0187-composition-rules-live-in-their-own-orchestration-file.md) — Supersedes 0147a, Refs 0083, Refs 0152b — Superseded by 0200
+- [0244 — The build expert reviewer writes production files only](./0244-build-expert-reviewer-writes-production-files-only.md)
 
 ### `/sai-build-new`, `/sai-3-implement-new`, and `/sai-4-review-new`
 
@@ -581,6 +582,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0241 — A Claude-routed worker runs as the Claude Code session agent](./0241-claude-routed-worker-runs-as-claude-code-session-agent.md) — Refs 0221, Refs 0240
 - [0231 — Budget agents deliver results as saved report references](./0231-budget-agents-deliver-results-as-saved-report-references.md)
 - [0234 — Coordinators receive worker reports in one recording call](./0234-coordinators-receive-worker-reports-in-one-recording-call.md) — **Amends** 0219
+- [0242 — Adversarial expert review is a pinned routed worker](./0242-adversarial-expert-review-pinned-routed-worker.md)
 
 ### Testability routing & RED → GREEN
 
@@ -610,6 +612,7 @@ This index groups the ADRs in `docs/adr/` by **command** and by **cross-cutting 
 - [0150b — Supervised visible reports stay post-proceed (fetching-body order)](./0150b-supervised-visible-reports-stay-post-proceed.md) — Refs 0147b, Refs ddr:0150
 - [0160b — Interactive artifact feedback gate gains a non-option review-loop note only](./0160b-interactive-gate-review-loop-note-only.md) — Refs 0028, Refs ddr:0150, Refs 0158c
 - [0175a — Merge renders user-facing output through a coordinator-owned presentation seam](./0175a-merge-renders-through-a-coordinator-owned-presentation-seam.md) — Refs 0075, Refs 0083, Refs 0086 — Superseded by 0201
+- [0243 — Expert review answer is resolved once at Start](./0243-expert-review-answer-resolved-at-start.md)
 
 ### Explore crystallization & the review loop
 

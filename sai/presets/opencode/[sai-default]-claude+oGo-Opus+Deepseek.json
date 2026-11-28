@@ -43,6 +43,10 @@
     "model": "opencode-go/deepseek-v4.1-flash",
     "variant": "max"
   },
+  "worker:sai-adversarial-expert-review-worker": {
+    "model": "claude-agent/opus",
+    "variant": "high"
+  },
   "command:sai-build": {
     "model": "claude-agent/opus",
     "variant": "medium"

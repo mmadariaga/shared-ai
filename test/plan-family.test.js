@@ -113,12 +113,12 @@ test('the plan coordinators load only the policies that never stop a run', () =>
     'sai/commands/design/coordinator.md': [
       '@sai/policies/public-chat.md', '@sai/policies/remember.md', '@skills/safe-operations/SKILL.md', '@skills/budget/SKILL.md',
       '@sai/policies/tool-resolution.md', '@sai/commands/plan/cycle.md', '@sai/orchestration/workers/bindings/design-worker.md', '@sai/policies/cache-warming.md',
-      '@sai/orchestration/workers/bindings/design-red-worker.md',
+      '@sai/orchestration/workers/bindings/design-red-worker.md', '@sai/policies/adversarial-expert-review.md',
     ],
     'sai/commands/plan/coordinator.md': [
       '@sai/policies/public-chat.md', '@sai/policies/tool-resolution.md', '@sai/commands/plan/cycle.md',
       '@sai/commands/spec/coordinator.md', '@sai/commands/design/coordinator.md', '@sai/policies/cache-warming.md',
-      '@sai/commands/plan/publication.md', '@sai/policies/change-telemetry.md',
+      '@sai/commands/plan/publication.md', '@sai/policies/change-telemetry.md', '@sai/policies/adversarial-expert-review.md',
     ],
     'sai/commands/plan/cycle.md': [
       '@sai/commands/plan/worker-common.md', '@sai/policies/incremental-review.md', '@sai/policies/artifact-review-contract.md',
@@ -416,6 +416,32 @@ test('I5: plan-run@1 records the publication answer, an explicit value replaces 
   assert.equal(Object.hasOwn(implement.transition(implement.initialState, { kind: 'start', dir: '/tmp/implement-run-x' }).run, 'publication'), true);
 });
 
+test('I5: plan-run@1 records the expert review answer and the checkpoint state, and replaces an explicit value', () => {
+  assert.equal(planRun.initialState.expert_review, '');
+  assert.equal(planRun.initialState.expert_review_checkpoint, '');
+  assert.equal(planRun.transition(planRun.initialState, { kind: 'expert_review', value: 'auto' }).rejected, 'run is not running');
+  let run = planRun.transition(planRun.initialState, { kind: 'start', dir: '/tmp/plan-expert' });
+  assert.equal(run.run.expert_review, '');
+  for (const value of ['yes', 'true', '', undefined, true]) {
+    assert.equal(planRun.transition(run.state, { kind: 'expert_review', value }).rejected, 'expert_review must be no or auto or ask', 'only the three recorded values are admitted');
+  }
+  run = planRun.transition(run.state, { kind: 'expert_review', value: 'ask' });
+  assert.equal(run.run.expert_review, 'ask');
+  assert.equal(planRun.project(run.state).run.expert_review, 'ask', 'a resumed run reads the recorded answer');
+  assert.equal(planRun.transition(run.state, { kind: 'expert_review', value: 'auto' }).run.expert_review, 'auto', 'an explicit --expert-review replaces the recorded answer');
+  for (const value of ['done', 'skipped']) {
+    assert.equal(planRun.transition(run.state, { kind: 'expert_review_checkpoint', value }).run.expert_review_checkpoint, value);
+  }
+  assert.equal(planRun.transition(run.state, { kind: 'expert_review_checkpoint', value: 'ran' }).rejected, 'expert_review_checkpoint must be done or skipped');
+  const implement = require('../sai-state/machines/implement-run.js');
+  const started = implement.transition(implement.initialState, { kind: 'start', dir: '/tmp/implement-run-e' });
+  assert.equal(started.run.expert_review, '');
+  assert.equal(implement.transition(started.state, { kind: 'expert_review', value: 'ask' }).run.expert_review, 'ask');
+  const merge = require('../sai-state/machines/merge-run.js');
+  const merged = merge.transition(merge.initialState, { kind: 'start', dir: '/tmp/merge-run-e' });
+  assert.equal(Object.hasOwn(merged.run, 'expert_review'), false, 'only the plan and build run machines carry the answer');
+});
+
 test('the implement-run machine keeps its behavior over the same core', () => {
   const implementRun = require('../sai-state/machines/implement-run.js');
   assert.equal(implementRun.machineId, 'implement-run@1');
@@ -428,7 +454,7 @@ test('the spec, design, and plan commands hold a coordinator profile that can ed
   const delegates = {
     'sai-1-spec': ['executor', 'explorer', 'sai-1-spec-proposal-worker'],
     'sai-2-design': ['executor', 'explorer', 'sai-2-design-worker', 'sai-2-red-worker'],
-    'sai-plan': ['executor', 'explorer', 'sai-1-spec-proposal-worker', 'sai-2-design-worker', 'sai-2-red-worker'],
+    'sai-plan': ['executor', 'explorer', 'sai-1-spec-proposal-worker', 'sai-2-design-worker', 'sai-2-red-worker', 'sai-adversarial-expert-review-worker'],
   };
   const profiles = { 'sai-1-spec': 'spec-command', 'sai-2-design': 'design-command', 'sai-plan': 'plan-command' };
   for (const [command, profile] of Object.entries(profiles)) {
