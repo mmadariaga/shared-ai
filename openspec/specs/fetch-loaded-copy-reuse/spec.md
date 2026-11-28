@@ -40,7 +40,7 @@ The Claude Code and opencode fetch skills SHALL instruct the agent to follow a `
 
 ### Requirement: Content that is not a complete loaded copy is loaded again
 
-The fetch skills SHALL instruct the agent to run the fetch tool or the skill tool again when the loaded content has left its context (a compaction or summary kept only a mention of it), when it is unsure the content is still there, or when the earlier read was partial. A file the harness attached from an `@path` mention and a Read of another copy of the file MUST NOT count as loaded copies.
+The fetch skills SHALL instruct the agent to run the fetch tool or the skill tool again when the loaded content has left its context (a compaction or summary kept only a mention of it), or when it is unsure the content is still there. A partial read SHALL NOT be a loaded copy: the agent SHALL read the same path again until the read is complete, and SHALL NOT replace it with another fetch call. A file the harness attached from an `@path` mention and a Read of another copy of the file MUST NOT count as loaded copies.
 
 #### Scenario: Content left the context after a compaction
 
@@ -50,7 +50,7 @@ The fetch skills SHALL instruct the agent to run the fetch tool or the skill too
 #### Scenario: Partial earlier read
 
 - **WHEN** the agent's earlier read of a subpath was header-only or partial
-- **THEN** the directive runs the fetch tool
+- **THEN** the agent reads the same path again until it is complete and runs no fetch tool in place of that read
 
 #### Scenario: Harness-attached file
 

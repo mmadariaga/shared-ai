@@ -43,7 +43,7 @@ const HARNESSES = {
 };
 const PREFIXES = ['sai', 'commands', 'skills'];
 const USAGE = 'Usage: node fetch.js --harness claude|opencode <subpath> [<subpath> ...]';
-const LEGEND = 'legend: ? conditional (not now) | ~ already listed | [skill] load with the skill tool | ! unresolved | § section of the parent';
+const LEGEND = 'legend: ? conditional (not now) | ~ already listed | [skill] load with the skill tool | ! unresolved';
 // A template path names no file: it is prose, never an edge.
 const PLACEHOLDER = /[<>{}*$…]/;
 const FENCE_OPEN = /^\s*(```+|~~~+)/;
@@ -325,7 +325,7 @@ function buildGraph({ harness, entries, cwd, home, env, runOpencodePaths }) {
   const pendingMarked = [];
 
   const place = (node, edge, depth, parent, siblings, entry = false) => {
-    const position = { depth, parent, conditional: Boolean(edge.conditional), section: edge.section, node, entry, children: [] };
+    const position = { depth, parent, conditional: Boolean(edge.conditional), node, entry, children: [] };
     if (node.kind !== 'unresolved' && node.printed) position.kind = 'alias';
     else position.kind = 'node';
     siblings.push(position);
@@ -363,13 +363,13 @@ function buildGraph({ harness, entries, cwd, home, env, runOpencodePaths }) {
       failed = true;
       const key = `unresolved:${entry.subpath}`;
       if (!unresolved.has(key)) unresolved.set(key, { kind: 'unresolved', subpath: entry.subpath, key, message: entry.error.message, scopeRejected: true });
-      place(unresolved.get(key), { conditional: false, section: null }, 0, null, roots, true);
+      place(unresolved.get(key), { conditional: false }, 0, null, roots, true);
       continue;
     }
     const node = load(entry.subpath);
     if (node.kind === 'unresolved') failed = true;
     node.entry = true;
-    walkRequired(place(node, { conditional: false, section: null }, 0, null, roots, true));
+    walkRequired(place(node, { conditional: false }, 0, null, roots, true));
   }
   for (const position of pendingMarked) {
     for (const item of position.node.edges.filter(edge => edge.conditional)) walkAll(follow(position, item));
@@ -431,14 +431,8 @@ function renderGraph(graph) {
   const { entries, nodes, conditional, skills, unresolved } = graph.counts;
   const summary = `graph: ${entries} entries, ${nodes} nodes, ${conditional} conditional, ${skills} skills, ${unresolved} unresolved, ${size(graph.chars)} chars`;
   const lines = [summary, LEGEND];
-  const lastSection = new Map();
   for (const position of graph.positions) {
     const indent = '  '.repeat(position.depth);
-    const sectionKey = `${position.parent ?? ''}\u0000${position.section ?? ''}`;
-    if (position.node.kind !== 'unresolved' && position.section && lastSection.get(position.depth) !== sectionKey) {
-      lines.push(`${indent}§ ${position.section}`);
-      lastSection.set(position.depth, sectionKey);
-    }
     const prefix = position.conditional ? '? ' : '';
     if (position.kind === 'alias') {
       const line = position.node.kind === 'skill'
