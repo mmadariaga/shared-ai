@@ -170,6 +170,8 @@ test('round 3 carries the publication question once per set and records it in ex
   assert.match(publication, /PUBLICATION_ALREADY_RECORDED/);
   assert.match(publication, /clears it together with the slice inventory/);
   assert.match(publication, /Spanish form, used verbatim:/);
+  assert.match(publication, /In that text, call each slice a “change”, the request a “pull request”, and each route by its picker label/);
+  assert.doesNotMatch(publication, /same text and options on both, localized/);
   assert.match(publication, /“Should a pull request be published when each change's automatic run ends\?”/);
   assert.match(publication, /“¿Quieres que se publique una pull request al terminar la ejecución automática de cada cambio\?”/);
   for (const fixed of [
