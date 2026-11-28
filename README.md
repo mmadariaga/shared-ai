@@ -138,7 +138,8 @@ on a model you choose in `setup` for the `sai-adversarial-expert-review-worker`
 role. Each one resolves its answer from the `--expert-review [no|auto|ask]` flag
 where it has one, the answer a resumed run recorded, and its project setting
 (`expertReview.explore`, `expertReview.plan`, or `expertReview.build`), then asks
-when none answered:
+when none answered, except in Direct Build, which asks nothing and runs no
+review:
 
 - **`/sai-explore`** asks right after it prints the crystallized change documents,
   before the backlog, branch, route, and publication questions, unless
