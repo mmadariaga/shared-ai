@@ -125,7 +125,7 @@ When a one-subpath call exits with an error, Claude SHALL stop the directive and
 - **AND** Claude reads the file from its node path only when it needs the text
 
 ### Requirement: The fetch skill batches directives and reads returned paths in parallel
-The Claude Code fetch skill SHALL instruct the agent to collect the unconditional `Fetch @` directives known at that moment that have no loaded copy, send the subpaths of every `Fetch @<subpath>` directive of that batch in one fetch tool call, load each `Fetch @skills/<name>/SKILL.md` directive of the batch with the `Skill` tool in the same turn, and then Read every node path the tree lists for the required set in parallel, in a single turn. A directive is unconditional when it is unmarked and no condition such as "When ..." or "Before ..." governs it; a marked directive SHALL join a batch only once its condition holds. A one-subpath call whose closure is one leaf returns its content already and needs no Read. When a call reports a requested subpath unresolved, the agent SHALL stop only that subpath's directive and report the message the tool wrote on stderr, and the other directives of the batch SHALL continue. When the Read of a node path fails (permission rejected or file unreadable), the agent SHALL stop that directive and report the failure, and SHALL NOT compose or guess another path.
+The Claude Code fetch skill SHALL instruct the agent to collect the unconditional `Fetch @` directives known at that moment that have no loaded copy, send the subpaths of every `Fetch @<subpath>` directive of that batch in one fetch tool call, load each `Fetch @skills/<name>/SKILL.md` directive of the batch with the `Skill` tool in the same turn, and then Read every node path the tree lists for the required set in parallel, in a single turn. A directive is unconditional when it is unmarked and no condition such as "When ..." or "Before ..." governs it; a marked directive SHALL join a batch only once its condition holds. A one-subpath call whose closure is one leaf returns its content already and needs no Read. The agent SHALL read a resolved subpath from the node path the tree printed and SHALL NOT request that subpath from the fetch tool again within the same load, even when a later tree lists it; it SHALL read only the unconditional nodes, and a conditional node SHALL be read when the condition its parent states holds. The agent SHALL resolve every tool path the load's unconditional steps need in one path-mode call, naming each subpath twice, and SHALL read no tool file's content; a tool that only a conditional branch needs SHALL be resolved when that branch runs. When a call reports a requested subpath unresolved, the agent SHALL stop only that subpath's directive and report the message the tool wrote on stderr, and the other directives of the batch SHALL continue. When the Read of a node path fails (permission rejected or file unreadable), the agent SHALL stop that directive and report the failure, and SHALL NOT compose or guess another path.
 
 #### Scenario: unconditional directives go out in one call
 - **WHEN** a loaded file contains three unconditional `Fetch @sai/...` directives with no loaded copy and one `Fetch @skills/budget/SKILL.md` directive
@@ -143,6 +143,18 @@ The Claude Code fetch skill SHALL instruct the agent to collect the unconditiona
 #### Scenario: a failed read stops the directive without a composed path
 - **WHEN** the Read of a node path listed by a batch call is rejected or the file is unreadable
 - **THEN** the agent stops that directive and reports the failure without composing or guessing another path
+
+#### Scenario: a resolved subpath is read from its node path
+- **WHEN** a later tree of the same load lists a subpath the load already resolved, whose content the agent already read from the printed node path
+- **THEN** the agent follows that read content and makes no fetch tool call for the subpath
+
+#### Scenario: tool paths resolve in one path-mode call
+- **WHEN** the load's unconditional steps need several tool paths and no tool file's content
+- **THEN** the agent resolves every one of those tool paths in one path-mode call, naming each subpath twice, and reads no tool file's content
+
+#### Scenario: a conditional-only tool waits for its branch
+- **WHEN** a tool path is needed only by a conditional branch whose condition does not hold yet
+- **THEN** the agent resolves that tool path when the branch runs, not in the unconditional call
 
 ### Requirement: The fetch tool resolves the closure of a call
 The fetch tool SHALL resolve the full closure of its requested subpaths through the `Fetch @` edges of Markdown files, files and skills together, and SHALL deduplicate it by resolved path. A node of any other file type SHALL be a leaf. The closure SHALL contain the requested entries, every file and skill reachable from them, and no other path.
@@ -184,7 +196,7 @@ Every call that is not the single-leaf content call SHALL print, on stdout, a su
 - **THEN** the call exits with code 2 and reads no file
 
 ### Requirement: The tree summary and legend lines carry the counts and symbols
-The tree's first line SHALL read `graph: <entries> entries, <nodes> nodes, <conditional> conditional, <skills> skills, <unresolved> unresolved, <chars>k chars`, and its second line SHALL be a fixed legend naming the `?`, `~`, `[skill]`, `!`, and `§` symbols. The counts SHALL describe the closure: distinct entries, resolved files, conditional nodes, skills, unresolved paths, and total file characters in thousands with one decimal.
+The tree's first line SHALL read `graph: <entries> entries, <nodes> nodes, <conditional> conditional, <skills> skills, <unresolved> unresolved, <chars>k chars`, and its second line SHALL be a fixed legend naming the `?`, `~`, `[skill]`, and `!` symbols. The counts SHALL describe the closure: distinct entries, resolved files, conditional nodes, skills, unresolved paths, and total file characters in thousands with one decimal.
 
 #### Scenario: the summary reports the closure's counts
 - **WHEN** a call resolves two files, one skill, and one nested unresolved path, with one conditional node
@@ -192,7 +204,7 @@ The tree's first line SHALL read `graph: <entries> entries, <nodes> nodes, <cond
 
 #### Scenario: the legend is always present in the tree shape
 - **WHEN** any call prints the tree
-- **THEN** its second line is exactly `legend: ? conditional (not now) | ~ already listed | [skill] load with the skill tool | ! unresolved | § section of the parent`
+- **THEN** its second line is exactly `legend: ? conditional (not now) | ~ already listed | [skill] load with the skill tool | ! unresolved`
 
 ### Requirement: A tree node line names the resolved path and its size
 A resolved file node SHALL print on its own line the absolute resolved path with `/` separators and its size in thousands of characters with one decimal. A node resolved in the project-local root SHALL carry ` (project)`; a user-global node SHALL carry no suffix. The tree SHALL print each resolved node once and SHALL render a node listed earlier as `~ <path>  (<size>)  (already listed)` with no children, and a skill listed earlier as `~ [skill] <name>  (already listed)`.
@@ -209,25 +221,6 @@ A resolved file node SHALL print on its own line the absolute resolved path with
 - **WHEN** a node reachable from two parents is printed a second time
 - **THEN** the second line reads `~ <path>  (<size>)  (already listed)` and has no children
 
-### Requirement: The tree marks sections, conditional edges, skills, and unresolved paths
-The tree SHALL print `§ <heading>` above the nodes a parent's `##` section names. It SHALL prefix a node reached only through marked edges with `? `. A skill SHALL render as `[skill] <name>` and SHALL never be descended into. A requested subpath that did not resolve SHALL print a `! <subpath>` root line, its message on stderr, and SHALL fail the call; a nested unresolved path SHALL render as `! <subpath>  (unresolved)` and SHALL change no exit code.
-
-#### Scenario: a section gate is printed once per section
-- **WHEN** a parent file's `##` section names several directives
-- **THEN** the tree prints `§ <heading>` once above them and not for the following section
-
-#### Scenario: a conditional edge is prefixed
-- **WHEN** a node is reached only through a marked edge
-- **THEN** its line starts with `? ` and the summary counts it as conditional
-
-#### Scenario: a skill is terminal
-- **WHEN** a file names a `skills/<name>/SKILL.md` directive
-- **THEN** the tree prints `[skill] <name>` and lists none of the skill's files
-
-#### Scenario: a nested unresolved path does not fail the call
-- **WHEN** a resolved file names a path that resolves in neither root
-- **THEN** the tree prints `! <subpath>  (unresolved)` at its position and the call keeps exit code 0
-
 ### Requirement: A single-leaf call keeps the content shape
 A call with exactly one requested subpath whose closure is exactly one file with no edges SHALL print `path: <absolute resolved path>`, `root: project|global`, one blank line, and the unchanged content, or the header and the `too-large` line when the header and content exceed the output cap. Naming a subpath twice SHALL print a tree with one root line and no content, which is how a tool's location is obtained.
 
@@ -242,3 +235,22 @@ A call with exactly one requested subpath whose closure is exactly one file with
 #### Scenario: a repeated subpath returns its root line only
 - **WHEN** a tool subpath is named twice in one call
 - **THEN** the call prints a tree whose single root line carries the absolute resolved path and no file content
+
+### Requirement: The tree marks conditional edges, skills, and unresolved paths
+The tree SHALL NOT print a `§ <heading>` section line; a conditional directive's gate is read in the parent's prose. The tree SHALL prefix a node reached only through marked edges with `? `. A skill SHALL render as `[skill] <name>` and SHALL never be descended into. A requested subpath that did not resolve SHALL print a `! <subpath>` root line, its message on stderr, and fail the call; a nested unresolved path SHALL render as `! <subpath>  (unresolved)` with no exit-code change.
+
+#### Scenario: no section line is printed
+- **WHEN** a parent file's `##` section names several directives
+- **THEN** the tree prints no `§ <heading>` line above them, and a reader takes a conditional directive's gate from the parent's prose
+
+#### Scenario: a conditional edge is prefixed
+- **WHEN** a node is reached only through a marked edge
+- **THEN** its line starts with `? ` and the summary counts it as conditional
+
+#### Scenario: a skill is terminal
+- **WHEN** a file names a `skills/<name>/SKILL.md` directive
+- **THEN** the tree prints `[skill] <name>` and lists none of the skill's files
+
+#### Scenario: a nested unresolved path does not fail the call
+- **WHEN** a resolved file names a path that resolves in neither root
+- **THEN** the tree prints `! <subpath>  (unresolved)` at its position and the call keeps exit code 0

@@ -60,16 +60,14 @@ root: project|global
 
 ```
 graph: <n> entries, <n> nodes, <n> conditional, <n> skills, <n> unresolved, <n>k chars
-legend: ? conditional (not now) | ~ already listed | [skill] load with the skill tool | ! unresolved | § section of the parent
+legend: ? conditional (not now) | ~ already listed | [skill] load with the skill tool | ! unresolved
 <absolute resolved path>  (<size>) (project)
-  § <heading>
   <absolute resolved path>  (<size>)
     ? [skill] <name>
 ```
 
 - A node line carries the absolute resolved path and the size in thousands of characters; a node resolved in the project-local root carries ` (project)` and no suffix otherwise. Use the path as given, and never compose a path yourself.
 - `?` marks a conditional edge, a directive written `Fetch? `@<path>`` or `Also fetch? `@<path>``. Read that node only when its condition, stated in the parent, holds now. A node reached only through marked edges is conditional even when its own edges are unmarked.
-- `§ <heading>` names the `##` section of the parent that holds the directives below it; that section is their base gate.
 - `[skill] <name>` is a skill: load it with the `Skill` tool. The tool never descends into a skill's files.
 - `~ <path>  (<size>)  (already listed)` repeats a node printed earlier and adds no children.
 - `! <subpath>` is a requested subpath that did not resolve, and `! <subpath>  (unresolved)` is a nested path that did not resolve. The tool's message for a requested subpath is on stderr: stop that directive and report the message.
@@ -85,7 +83,8 @@ Resolve directives in batches, not one per turn:
 
 1. Collect the unconditional directives known at that moment that have no loaded copy. A directive is unconditional when it is unmarked and no condition such as "When ..." or "Before ..." governs it; a marked directive joins a batch only once its condition holds.
 2. Send the subpaths of every `Fetch @<subpath>` directive of the batch in one fetch call. In the same turn, load each `Fetch @skills/<name>/SKILL.md` directive of the batch with the `Skill` tool.
-3. Read every node path the tree lists for the required set in parallel, in a single turn. A call that held one subpath and returned its content already needs no Read.
+3. Read every node path the tree lists for the required set in parallel, in a single turn. A call that held one subpath and returned its content already needs no Read. Read a resolved subpath from the node path the tree printed, never from another fetch call within the same load, even when a later tree lists it, and read only the unconditional nodes: a conditional node is read when the condition its parent states holds.
+4. Resolve every tool path the load's unconditional steps need in one path-mode call, naming each subpath twice, and read no tool file's content. A tool that only a conditional branch needs is resolved when that branch runs.
 
 ### Path scope
 
@@ -101,7 +100,7 @@ Follow a copy you already loaded in this conversation instead of loading it agai
 
 - A `Fetch @<subpath>` directive whose subpath the fetch tool already returned in this conversation, with that complete content still in your context, is followed from the loaded copy, with no tool call. A complete result is the full output of a one-subpath call, the full Read of the header `path` after a `too-large` result, or the full Read of a file whose node the tree listed.
 - A `Fetch @skills/<name>/SKILL.md` directive for a skill already loaded through the `Skill` tool, with its content still in your context, is followed from the loaded skill, with no second `Skill` call.
-- Run the tool or the `Skill` tool again when the loaded content has left your context (a compaction or summary that kept only a mention of it), when you are unsure it is still there, or when the earlier read was partial. A file the harness attached from an `@path` mention, and a Read of another copy of the file, are not loaded copies.
+- Run the tool or the `Skill` tool again when the loaded content has left your context (a compaction or summary that kept only a mention of it), or when you are unsure it is still there. A partial read is not a loaded copy: read the same path again until it is complete, and never replace it with another fetch call. A file the harness attached from an `@path` mention, and a Read of another copy of the file, are not loaded copies.
 - The copy is keyed on the subpath: a copy installed under another root after the first load is picked up once the loaded content has left your context.
 - Only content you loaded yourself counts. A subagent or worker never reuses the loaded copy of the agent that dispatched it, and a continued subagent reuses only what it loaded itself.
 

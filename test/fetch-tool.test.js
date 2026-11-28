@@ -14,7 +14,7 @@ const lint = require('../sai/tools/lint');
 
 const repoRoot = path.join(__dirname, '..');
 const script = path.join(repoRoot, 'skills/universal/fetch/fetch.js');
-const LEGEND = 'legend: ? conditional (not now) | ~ already listed | [skill] load with the skill tool | ! unresolved | § section of the parent';
+const LEGEND = 'legend: ? conditional (not now) | ~ already listed | [skill] load with the skill tool | ! unresolved';
 
 function fixture() {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'sai-fetch-tool-'));
@@ -197,7 +197,7 @@ test('E11 a conditional edge is marked, and a node reached only through marked e
   const result = run(['--harness', 'claude', 'sai/policies/a.md'], { cwd, home });
   assert.equal(result.code, 0);
   assert.match(result.out, /2 conditional/);
-  assert.match(result.out, new RegExp(`  § Later\\n  \\? ${slashes(path.join(cwd, '.claude/sai/policies/b.md'))}  \\(0\\.0k\\) \\(project\\)`));
+  assert.match(result.out, new RegExp(`  \\? ${slashes(path.join(cwd, '.claude/sai/policies/b.md'))}  \\(0\\.0k\\) \\(project\\)`));
   assert.match(result.out, new RegExp(`    ${slashes(path.join(cwd, '.claude/sai/policies/c.md'))}  \\(0\\.0k\\) \\(project\\)`));
 });
 
@@ -358,22 +358,17 @@ test('I6 the golden tree of sai/commands/explore/body.md plus sai/adapters/openc
     `  ${node(path.join(cwd, '.opencode/sai/policies/verified-precondition-handback.md'))}`,
     `  ${node(path.join(cwd, '.opencode/sai/policies/public-chat.md'))}`,
     `  ${node(path.join(cwd, '.opencode/sai/policies/tool-access.md'))}`,
-    '  § Prerequisite checks',
     `  ${node(path.join(cwd, '.opencode/sai/policies/prereqs-paths.md'))}`,
     `  ${node(path.join(cwd, '.opencode/sai/policies/prereqs-check.md'))}`,
-    '  § Behaviors',
     '  [skill] safe-operations',
     '  [skill] budget',
-    '  § Load instructions (in order)',
     `  ${node(path.join(cwd, '.opencode/sai/commands/explore/instructions.md'))}`,
     '  [skill] openspec-explore',
     `  ${node(path.join(cwd, '.opencode/sai/policies/remember.md'))}`,
     `  ${node(path.join(cwd, '.opencode/sai/policies/question-context.md'))}`,
     `  ${node(path.join(cwd, '.opencode/sai/policies/tool-resolution.md'))}`,
     `  ? ${node(path.join(cwd, '.opencode/sai/policies/obstacle-escalation.md'))}`,
-    '  § Behaviors',
     `  ? ${node(path.join(cwd, '.opencode/sai/policies/investigation-batch.md'))}`,
-    '  § Load instructions (in order)',
     `  ? ${node(path.join(cwd, '.opencode/sai/policies/worker-lifecycle.md'))}`,
     '  ? [skill] from-backlog',
     `${slashes(renderFile)}  (${k(renderText)}) (project)`,
@@ -394,7 +389,7 @@ test('both fetch skills describe the tree, the marked form, and the batch in the
     assert.ok(text.includes('Fetch? `@<subpath>`'), harness);
     assert.ok(text.includes('**The content shape.**'), harness);
     assert.ok(text.includes('**The tree shape.**'), harness);
-    assert.ok(text.includes('legend: ? conditional (not now) | ~ already listed | [skill] load with the skill tool | ! unresolved | § section of the parent'), harness);
+    assert.ok(text.includes('legend: ? conditional (not now) | ~ already listed | [skill] load with the skill tool | ! unresolved'), harness);
     assert.ok(text.includes('A node line carries the absolute resolved path and the size in thousands of characters'), harness);
     assert.ok(text.includes('name the subpath twice in one call'), harness);
     assert.ok(text.includes('### Batching'), harness);
