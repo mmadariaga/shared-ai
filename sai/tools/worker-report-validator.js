@@ -89,6 +89,7 @@ const COMMAND_OUTCOMES = Object.freeze({
   backfill: [],
   merge: [],
   'direct-build': [],
+  'adversarial-expert-review': [],
 });
 
 /** Keys every terminal report may carry, whatever its command. */
@@ -105,6 +106,12 @@ const counts = (...keys) => ({ kind: 'counts', keys });
 const records = (...keys) => ({ kind: 'records', keys });
 const oneOf = (...values) => ({ kind: 'enum', values });
 const PLAN_TESTS = { kind: 'plan-tests' };
+const FINDINGS = { kind: 'findings' };
+
+/** The closed severity set and finding keys of the adversarial expert review report. */
+const FINDING_SEVERITIES = Object.freeze(['High', 'Medium', 'Low']);
+const FINDING_REQUIRED_KEYS = Object.freeze(['identifier', 'severity', 'location', 'issue', 'correction']);
+const FINDING_KEYS = Object.freeze([...FINDING_REQUIRED_KEYS, 'paths']);
 
 /**
  * The role fields of each command's terminal reports: the single source of the
@@ -176,6 +183,12 @@ const COMMAND_FIELDS = Object.freeze({
   'direct-build': {
     resolved_change_name: { type: STRING },
     ...FAILURE_FIELDS,
+  },
+  'adversarial-expert-review': {
+    // The closed artifact review finding list of the reviewed product, and the
+    // corrected change documents of document mode, each with its hash and name.
+    findings: { type: FINDINGS, required: ['completed'] },
+    corrected_documents: { type: records('path', 'sha256', 'change_name'), only: ['completed'] },
   },
 });
 
@@ -288,6 +301,27 @@ function checkType(name, value, type) {
           if (typeof test.path !== 'string' || test.path === '') return `${where}.path must be a non-empty string`;
           if (typeof test.name !== 'string' || test.name === '') return `${where}.name must be a non-empty string`;
           if ('regression_guard' in test && typeof test.regression_guard !== 'boolean') return `${where}.regression_guard must be a boolean`;
+        }
+      }
+      return null;
+    }
+    case 'findings': {
+      // The closed artifact review finding list: five required string fields and,
+      // in mutations mode, the working-tree paths the correction changed.
+      if (!Array.isArray(value)) return `${name} must be an array, got ${describe(value)}`;
+      for (const [index, item] of value.entries()) {
+        const at = `${name}[${index}]`;
+        if (!isRecord(item)) return `${at} must be an object`;
+        const extra = Object.keys(item).find((k) => !FINDING_KEYS.includes(k));
+        if (extra) return `${at} has the unknown key ${extra}`;
+        for (const key of FINDING_REQUIRED_KEYS) {
+          if (typeof item[key] !== 'string' || item[key] === '') return `${at}.${key} must be a non-empty string`;
+        }
+        if (!FINDING_SEVERITIES.includes(item.severity)) {
+          return `${at}.severity must be one of [${FINDING_SEVERITIES.join(', ')}], got "${item.severity}"`;
+        }
+        if ('paths' in item && (!Array.isArray(item.paths) || item.paths.some((p) => typeof p !== 'string' || p === ''))) {
+          return `${at}.paths must be an array of non-empty strings`;
         }
       }
       return null;

@@ -281,6 +281,23 @@ const MANAGED_WORKER_PROJECTIONS = {
       destinationPath: 'sai-2-red-worker.md',
     },
   },
+  'sai-adversarial-expert-review-worker': {
+    claudeBinding: {
+      id: 'claude-adversarial-expert-review-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/claude/adversarial-expert-review-worker.md',
+       destinationPath: 'orchestration/workers/bindings/adversarial-expert-review-worker.md',
+    },
+    opencodeBinding: {
+      id: 'opencode-adversarial-expert-review-worker-binding',
+      sourcePath: 'sai/orchestration/workers/bindings/opencode/adversarial-expert-review-worker.md',
+       destinationPath: 'orchestration/workers/bindings/adversarial-expert-review-worker.md',
+    },
+    claudeAgent: {
+      id: 'claude-sai-adversarial-expert-review-worker',
+      sourcePath: 'agents/claude/sai-adversarial-expert-review-worker.md',
+      destinationPath: 'sai-adversarial-expert-review-worker.md',
+    },
+  },
 };
 
 const ROUTED_PHASES = ['spec', 'design', 'implement', 'review', 'security', 'performance', 'accessibility'];

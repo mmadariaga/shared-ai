@@ -13,6 +13,7 @@
       "worker-research": { "extends": "worker-write", "delegate": ["explorer"] },
       "worker-design": { "extends": "worker-write", "codegraph": false, "delegate": ["explorer", "budget"] },
       "worker-backfill": { "extends": "worker-write", "delegate": ["explorer"] },
+      "worker-expert": { "extends": "worker-write" },
       "coordinator": { "extends": "boot", "search": true, "write": "temp", "question": true, "panel": true, "message": true, "shell": ["node {sai}/tools/worker-report-validator.js *", "node {sai}/tools/transfer.js open *", "node {sai}/tools/transfer.js accept *", "node {sai}/tools/transfer.js receive *", "node {sai}/tools/transfer.js status *", "node {sai}/tools/transfer.js watch *", "node {sai}/tools/opencode-dispatch.js *", "node {sai}/tools/claude-dispatch.js *", "node {sai}/tools/no-commit-guard.js *", "node {sai}/bin/sai-state.js *", "git reset *", "node {skills}/sai-cache-warmer/wait.js *"] },
       "audit-command": { "extends": "coordinator", "write": true, "shell": ["*"], "skills": ["safe-operations", "fetch"] },
       "security-command": { "extends": "audit-command", "delegate": ["sai-5-security-worker"] },
@@ -21,9 +22,9 @@
       "implement-command": { "extends": "coordinator", "write": true, "shell": ["*"], "skills": ["safe-operations", "fetch"], "delegate": ["executor", "explorer", "sai-3-red-worker", "sai-3-green-worker"] },
       "spec-command": { "extends": "implement-command", "delegate": ["executor", "explorer", "sai-1-spec-proposal-worker"] },
       "design-command": { "extends": "implement-command", "delegate": ["executor", "explorer", "sai-2-design-worker", "sai-2-red-worker"] },
-      "plan-command": { "extends": "implement-command", "skills": ["fetch", "to-pr", "safe-operations"], "delegate": ["executor", "explorer", "sai-1-spec-proposal-worker", "sai-2-design-worker", "sai-2-red-worker"] },
+      "plan-command": { "extends": "implement-command", "skills": ["fetch", "to-pr", "safe-operations"], "delegate": ["executor", "explorer", "sai-1-spec-proposal-worker", "sai-2-design-worker", "sai-2-red-worker", "sai-adversarial-expert-review-worker"] },
       "review-command": { "extends": "implement-command", "delegate": ["sai-4-review-worker"] },
-      "build-command": { "extends": "implement-command", "skills": ["fetch", "to-pr", "safe-operations"], "delegate": ["executor", "explorer", "sai-3-red-worker", "sai-3-green-worker", "sai-4-review-worker"] },
+      "build-command": { "extends": "implement-command", "skills": ["fetch", "to-pr", "safe-operations"], "delegate": ["executor", "explorer", "sai-3-red-worker", "sai-3-green-worker", "sai-4-review-worker", "sai-adversarial-expert-review-worker"] },
       "deep-review-command": { "extends": "implement-command", "delegate": ["executor", "explorer", "sai-3-red-worker", "sai-3-green-worker", "sai-4-review-worker", "sai-5-security-worker", "sai-6-performance-worker", "sai-7-accessibility-worker"] },
       "mutation-coordinator": { "extends": "coordinator", "write": true, "shell": ["*"] },
       "commit-command": { "extends": "mutation-coordinator", "write": "temp", "skills": ["safe-operations", "fetch"], "delegate": ["sai-commit-worker"] },
@@ -31,7 +32,7 @@
       "backfill-command": { "extends": "mutation-coordinator", "skills": ["safe-operations", "fetch"], "shell": ["*", "node {sai}/tools/transfer.js *"], "delegate": ["sai-backfill-worker"] },
       "merge-command": { "extends": "mutation-coordinator", "skills": ["safe-operations", "fetch"], "delegate": ["sai-merge-worker"] },
       "direct-build-command": { "extends": "mutation-coordinator", "write": "temp", "stopTask": true, "skills": ["safe-operations", "fetch"], "shell": ["*", "node {sai}/tools/transfer.js *"], "delegate": ["executor", "explorer", "sai-direct-build-worker", "sai-backfill-worker", "sai-archive-worker"] },
-      "explore-command": { "extends": "coordinator", "write": true, "stopTask": true, "codegraph": true, "webfetch": true, "websearch": true, "shell": ["openspec *", "git *", "node {sai}/*", "node {sai}/tools/to-backlog.js *", "node {skills}/to-backlog/scripts/prepare-temp.js {harness}", "node {skills}/to-backlog/scripts/prepare-temp.js {harness} *", "node {skills}/sai-cache-warmer/wait.js *"], "delegate": ["explorer", "executor", "budget", "sai-1-spec-proposal-worker", "sai-2-design-worker", "sai-2-red-worker", "sai-direct-build-worker", "sai-backfill-worker", "sai-archive-worker"] },
+      "explore-command": { "extends": "coordinator", "write": true, "stopTask": true, "codegraph": true, "webfetch": true, "websearch": true, "shell": ["openspec *", "git *", "node {sai}/*", "node {sai}/tools/to-backlog.js *", "node {skills}/to-backlog/scripts/prepare-temp.js {harness}", "node {skills}/to-backlog/scripts/prepare-temp.js {harness} *", "node {skills}/sai-cache-warmer/wait.js *"], "delegate": ["explorer", "executor", "budget", "sai-1-spec-proposal-worker", "sai-2-design-worker", "sai-2-red-worker", "sai-direct-build-worker", "sai-backfill-worker", "sai-archive-worker", "sai-adversarial-expert-review-worker"] },
       "utility-write": { "extends": "boot", "search": true, "write": true, "codegraph": true, "shell": ["*"], "question": true },
       "status-command": { "extends": "boot", "search": true, "question": true, "shell": ["openspec *", "node {sai}/tools/status.js *", "node {sai}/tools/change-picker.js *"] },
       "worktree-command": { "extends": "boot", "search": true, "question": true, "shell": ["*"] },
@@ -58,6 +59,7 @@
         "sai-commit-worker": "worker-read", "sai-archive-worker": "worker-read",
         "sai-backfill-worker": "worker-backfill", "sai-merge-worker": "worker-write",
         "sai-direct-build-worker": "worker-write",
+        "sai-adversarial-expert-review-worker": "worker-expert",
         "sai-3-red-worker": "worker-execution", "sai-3-green-worker": "worker-execution",
         "sai-4-review-worker": "worker-research"
       },
@@ -351,6 +353,24 @@
         "opencodeAgent": {
           "description": "Plan RED worker for /sai-2-design and /sai-plan, dispatched only by their coordinators. Writes the interface stubs and the failing tests of the whole change that the build later turns green.",
           "model": "opencode-go/deepseek-v4.1-flash",
+          "variant": "max"
+        }
+      },
+      {
+        "phase": "expert-review",
+        "workerName": "sai-adversarial-expert-review-worker",
+        "workerContract": "sai/commands/adversarial-expert-review/worker.md",
+        "bindingStem": "adversarial-expert-review",
+        "tier": "expert",
+        "claudeAgent": {
+          "agentName": "sai-adversarial-expert-review-worker",
+          "description": "Adversarial expert review worker for /sai-explore, /sai-plan, and /sai-build, dispatched only by their coordinators. Reviews a product against its approved scope and corrects the defects it finds.",
+          "model": "opus",
+          "effort": "high"
+        },
+        "opencodeAgent": {
+          "description": "Adversarial expert review worker for /sai-explore, /sai-plan, and /sai-build, dispatched only by their coordinators. Reviews a product against its approved scope and corrects the defects it finds.",
+          "model": "opencode-go/gpt-5.6-luna",
           "variant": "max"
         }
       }
@@ -1285,6 +1305,44 @@
       "matrix": {
         "kind": "agent",
         "phase": "design-red"
+      }
+    },
+    {
+      "id": "claude-sai-adversarial-expert-review-worker",
+      "source": "agents/claude/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-adversarial-expert-review-worker.md"
+      },
+      "harnesses": [
+        "claude"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "expert-review"
+      }
+    },
+    {
+      "id": "opencode-sai-adversarial-expert-review-worker",
+      "source": "agents/opencode/worker-template.md",
+      "destination": {
+        "class": "agents",
+        "path": "sai-adversarial-expert-review-worker.md"
+      },
+      "harnesses": [
+        "opencode"
+      ],
+      "strategy": "tunable-seed",
+      "recursive": false,
+      "ownership": "managed",
+      "drift": "content",
+      "matrix": {
+        "kind": "agent",
+        "phase": "expert-review"
       }
     },
     {

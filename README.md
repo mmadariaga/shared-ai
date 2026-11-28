@@ -114,7 +114,7 @@ When a change is too large to implement and review safely as one unit, `/sai-exp
 
 ### Choose your implementation strategy
 
-Once the idea is clear, `/sai-explore` displays the crystallized proposal, asks in three conditional rounds (backlog, branch and assignment; publication approval; route, Direct Build continuation, branch base and publication) that cover backlog capture through `/to-backlog`, local branch preparation through `/new-change-branch`, and the route choice, each answer authorizing only its own action. The continuation answer applies only to Direct Build. The optional questions accept Yes, No, or free text (a slice set's branch question has three choices). New branches are named `<type>/<id>_<name_with_underscores>`; for a multi-slice proposal the branch question offers one shared branch, one chained branch per slice, or none. Each skill keeps its validation and details. Planning or implementation starts only after rounds 1 and 2 finish or are skipped and you explicitly choose a route; the branch is created right after that choice. See the [Explore usage page](docs/commands/sai-explore.md).
+Once the idea is clear, `/sai-explore` displays the crystallized proposal, optionally reviews it with an independent expert (see [adversarial expert review](#adversarial-expert-review)), asks in three conditional rounds (backlog, branch and assignment; publication approval; route, Direct Build continuation, branch base and publication) that cover backlog capture through `/to-backlog`, local branch preparation through `/new-change-branch`, and the route choice, each answer authorizing only its own action. The continuation answer applies only to Direct Build. The optional questions accept Yes, No, or free text (a slice set's branch question has three choices). New branches are named `<type>/<id>_<name_with_underscores>`; for a multi-slice proposal the branch question offers one shared branch, one chained branch per slice, or none. Each skill keeps its validation and details. Planning or implementation starts only after rounds 1 and 2 finish or are skipped and you explicitly choose a route; the branch is created right after that choice. See the [Explore usage page](docs/commands/sai-explore.md).
 
 | Option | Choose it when | What happens |
 |--------|----------------|--------------|
@@ -129,13 +129,53 @@ A change with no spec-level behavior, such as a pure refactor, tooling, or docum
 Choose the planned route when you need tests-first implementation. Direct Build
 does not use the same RED → GREEN process; check its results before publishing.
 
+### Adversarial expert review
+
+Each product is reviewed by the workers and framing that produced it, so a defect
+that producer and reviewer share can reach you. Three commands offer an
+independent, adversarial opinion at the moment their product is about to settle,
+on a model you choose in `setup` for the `sai-adversarial-expert-review-worker`
+role:
+
+- **`/sai-explore`** asks right after it prints the crystallized change documents,
+  before the backlog, branch, route, and publication questions. The reviewer reads
+  every document of the set against its agreed Goal, Scope, Capabilities, and Edge
+  cases, and returns findings in the shared artifact review format with corrected
+  copies of the documents it would change. You decide once whether to keep the
+  recommended corrections, keep all of them, or discard all of them, and each kept
+  correction is re-validated and re-emitted as an amendment, then printed again.
+- **`/sai-plan`** asks at its start, beside the publication question:
+  `--expert-review [no|auto|ask]`, where a bare flag is `auto`. With `auto` or
+  `ask`, the reviewer reads the design segment's plan documents, plan tests, and
+  stubs after the review rounds and before the commits. `auto` keeps or reverts
+  each correction itself; `ask` asks you once first. Kept corrections are
+  re-checked (every mechanical check, and every plan test still red by assertion)
+  and travel in the design segment's own commits.
+- **`/sai-build`** asks the same start question. After the last implementation
+  segment and before the decision records, the telemetry, and the publication,
+  the reviewer reads the production files the change modifies against its change
+  base, test files excluded. Kept corrections run the tests related to them and
+  are committed in one local commit; an existing inherent-risk block is refreshed
+  in its own commit. A finding about a missing or weak test is reported, not
+  fixed, for a later `/sai-3-implement` run, and `review.md` stays as the review
+  segment wrote it.
+
+In every case the worker corrects only what it is allowed to touch: a correction
+outside its allowed paths is reverted and reported, and a kept correction that
+fails its check reverts every worker change, so the product equals its state
+before the checkpoint. The closing report lists the kept and discarded findings
+with one reason each, the findings that carried no correction, and the scope
+observations. A missing or failed reviewer report costs one line and the run
+continues as after `no`. A run with a `no` answer creates no worker, and nothing
+is pushed by this checkpoint.
+
 ## Main commands
 
 | Command | Role | Output |
 |---------|------|--------|
 | [`/sai-explore`](docs/commands/sai-explore.md) | Clarify the idea and choose how to build it | Proposal handoff, reviewed plan, or completed Direct Build |
-| [`/sai-plan`](docs/commands/sai-plan.md) | Plan a change in one run: specs, then design; optionally publish a draft PR/MR (answered at the start) | `proposal.md`, `specs/`, `design.md`, `tasks.md`, the interface stubs and failing plan tests, and local commits per segment; a `yes` or `draft` answer to the start question is the only approval publication needs |
-| [`/sai-build`](docs/commands/sai-build.md) | Build and review a change in one run | Tests, production code, one local commit per step, a `review.md`, and fixes for the findings it judges justified |
+| [`/sai-plan`](docs/commands/sai-plan.md) | Plan a change in one run: specs, then design; optionally publish a draft PR/MR and optionally run an adversarial expert review (both answered at the start) | `proposal.md`, `specs/`, `design.md`, `tasks.md`, the interface stubs and failing plan tests, and local commits per segment; a `yes` or `draft` answer to the start question is the only approval publication needs |
+| [`/sai-build`](docs/commands/sai-build.md) | Build and review a change in one run, optionally closing with an adversarial expert review (answered at the start) | Tests, production code, one local commit per step, a `review.md`, and fixes for the findings it judges justified |
 | [`/sai-deep-review`](docs/commands/sai-deep-review.md) | Coordinate code review and specialized audits, then fix the findings it judges justified, with no human in the loop | Reports, a commit per audit report, and one local commit per fix step |
 | [`/sai-archive`](docs/commands/sai-archive.md) | Sync specs and archive the completed change | Archived change, optional local commit, and optional push |
 

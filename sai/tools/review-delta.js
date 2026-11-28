@@ -28,17 +28,30 @@
  *                         write the tree, and report its identifier.
  *   delta <from> <to>     Report the paths that differ between two tree-ish
  *                         references and their diff.
+ *   restore <tree> <path ...>
+ *                         Write the named working-tree paths back to their
+ *                         content in the tree, and remove the named paths the
+ *                         tree does not hold. The index is never touched, so a
+ *                         caller reverts the changes of a worker between two
+ *                         snapshots without changing what is staged.
  *
  * Verdicts:
  *   clean     snapshot: the tree was written.
  *   changed   delta: at least one path differs.
  *   empty     delta: nothing differs.
+ *   restored  restore: every named path holds its snapshot content again.
+ *   refused   restore: no write happened: a named path lies outside the
+ *             repository, or the tree holds a directory or a submodule
+ *             there. Every path is checked before the first write.
+ *   failed    restore: a git or file-system operation failed; `paths` lists
+ *             the paths already restored.
  *   n/a       No result was possible: not a git repository, git missing, or the
  *             SAI temp root unusable. The caller reviews the full diff instead.
  *
  * Usage:
  *   node sai/tools/review-delta.js snapshot [--cwd <dir>] [path ...]
  *   node sai/tools/review-delta.js delta <from> <to> [--cwd <dir>]
+ *   node sai/tools/review-delta.js restore <tree> [--cwd <dir>] <path ...>
  *
  * Output is JSON on stdout. Exit codes: 0 = a verdict was reported (including
  * `n/a`); 2 = usage error or an unexpected git failure.
@@ -73,6 +86,12 @@ function git(args, cwd, env) {
   });
   if (result.error) return { available: false, status: null, stdout: '', stderr: result.error.message };
   return { available: true, status: result.status, stdout: result.stdout || '', stderr: result.stderr || '' };
+}
+
+function gitRaw(args, cwd) {
+  const result = spawnSync('git', args, { cwd, windowsHide: true, maxBuffer: 512 * 1024 * 1024, encoding: 'buffer' });
+  if (result.error) return { available: false, status: null, stdout: Buffer.alloc(0), stderr: result.error.message };
+  return { available: true, status: result.status, stdout: result.stdout || Buffer.alloc(0), stderr: result.stderr || '' };
 }
 
 function isDirectory(target) {
@@ -187,8 +206,131 @@ function delta(from, to, cwd) {
   return { action: 'delta', verdict: 'changed', from: fromTree, to: toTree, paths, diff: diff.stdout, reason: null };
 }
 
-const RD = 'node sai/tools/review-delta.js';
+/**
+ * The tree entry of one repository-relative path, or null when the tree does
+ * not hold it. A directory entry is reported so the caller can refuse it.
+ */
+function treeEntry(root, tree, relativePath) {
+  const listing = git(['ls-tree', '-z', '--full-tree', tree, '--', relativePath], root);
+  if (!listing.available || listing.status !== 0) {
+    throw new ToolError(`git ls-tree failed: ${(listing.stderr || '').trim() || `exit ${listing.status}`}`);
+  }
+  for (const record of listing.stdout.split('\0')) {
+    if (record === '') continue;
+    const tab = record.indexOf('\t');
+    if (tab === -1) continue;
+    const [mode, type, object] = record.slice(0, tab).split(' ');
+    if (record.slice(tab + 1) !== relativePath) continue;
+    return { mode, type, object };
+  }
+  return null;
+}
 
+/** Remove the now-empty directories above a removed file, inside the repository only. */
+function pruneEmptyParents(root, relativePath) {
+  let current = path.dirname(path.resolve(root, relativePath));
+  while (current !== root) {
+    const relative = path.relative(root, current);
+    if (relative === '' || relative.startsWith('..') || path.isAbsolute(relative)) return;
+    try {
+      if (fs.readdirSync(current).length !== 0) return;
+      fs.rmdirSync(current);
+    } catch (err) {
+      return;
+    }
+    current = path.dirname(current);
+  }
+}
+
+/**
+ * The real form of a path whose trailing components may no longer exist: the
+ * nearest existing ancestor is resolved and the missing components appended.
+ */
+function realPathAllowingMissing(absolute) {
+  const missing = [];
+  let current = absolute;
+  for (;;) {
+    try {
+      return path.join(fs.realpathSync.native(current), ...missing.reverse());
+    } catch (err) {
+      const parent = path.dirname(current);
+      if (parent === current) throw err;
+      missing.push(path.basename(current));
+      current = parent;
+    }
+  }
+}
+
+/**
+ * Write the named working-tree paths back to their content in the tree, and
+ * remove the named paths the tree does not hold. The real index is untouched.
+ * Every path is checked before the first write, so a refusal writes nothing.
+ */
+function restore(tree, names, cwd) {
+  const state = repoState(cwd);
+  if (!state.root) return { action: 'restore', verdict: 'n/a', tree: null, paths: [], reason: state.reason };
+  const root = state.root;
+  const realRoot = fs.realpathSync.native(root);
+  const targets = [];
+  for (const candidate of names) {
+    const absolute = path.resolve(cwd, candidate);
+    const real = path.join(realPathAllowingMissing(path.dirname(absolute)), path.basename(absolute));
+    const relative = path.relative(realRoot, real);
+    if (relative === '' || relative.startsWith('..') || path.isAbsolute(relative)) {
+      return { action: 'restore', verdict: 'refused', tree: null, paths: [], reason: `path outside the repository: ${candidate}` };
+    }
+    targets.push(relative.split(path.sep).join('/'));
+  }
+  const resolved = resolveTree(tree, root);
+  const plan = [];
+  for (const relativePath of targets) {
+    const entry = treeEntry(root, resolved, relativePath);
+    if (entry && entry.type !== 'blob') {
+      return { action: 'restore', verdict: 'refused', tree: resolved, paths: [], reason: `the tree holds a ${entry.type === 'tree' ? 'directory' : entry.type} there: ${relativePath}` };
+    }
+    plan.push({ relativePath, entry });
+  }
+  const done = [];
+  const fail = (relativePath, message) => ({ action: 'restore', verdict: 'failed', tree: resolved, paths: done, reason: `${relativePath}: ${message}` });
+  for (const { relativePath, entry } of plan) {
+    const absolute = path.join(root, relativePath);
+    let existed = true;
+    try {
+      fs.lstatSync(absolute);
+    } catch (err) {
+      existed = false;
+    }
+    if (entry) {
+      const content = gitRaw(['cat-file', 'blob', entry.object], root);
+      if (!content.available || content.status !== 0) return fail(relativePath, 'git cat-file failed');
+      try {
+        fs.mkdirSync(path.dirname(absolute), { recursive: true });
+        fs.rmSync(absolute, { force: true, recursive: true });
+        if (entry.mode === '120000') {
+          fs.symlinkSync(content.stdout.toString('utf8'), absolute);
+        } else {
+          fs.writeFileSync(absolute, content.stdout, { mode: entry.mode === '100755' ? 0o755 : 0o644 });
+        }
+      } catch (err) {
+        return fail(relativePath, err.message);
+      }
+      done.push({ path: relativePath, action: 'written' });
+    } else {
+      if (existed) {
+        try {
+          fs.rmSync(absolute, { force: true, recursive: true });
+        } catch (err) {
+          return fail(relativePath, err.message);
+        }
+        pruneEmptyParents(root, relativePath);
+      }
+      done.push({ path: relativePath, action: existed ? 'removed' : 'absent' });
+    }
+  }
+  return { action: 'restore', verdict: 'restored', tree: resolved, paths: done, reason: null };
+}
+
+const RD = 'node sai/tools/review-delta.js';
 const USAGE = {
   subcommands: {
     snapshot: {
@@ -207,6 +349,16 @@ const USAGE = {
       examples: [`${RD} delta 4b825dc642cb6eb9a060e54bf8d69288fbee4904 HEAD --cwd /path/to/project`],
       flags: { '--cwd': true },
       positionals: { min: 2, max: 2, names: ['from', 'to'] },
+    },
+    restore: {
+      usage: [`${RD} restore <tree> [--cwd <dir>] <path ...>`],
+      notes: [
+        'Writes each named working-tree path back to its content in the tree, and removes the named paths the tree does not hold.',
+        'The index, the staging, and every other working-tree file stay untouched. Verdict restored, refused, failed, or n/a.',
+      ],
+      examples: [`${RD} restore 4b825dc642cb6eb9a060e54bf8d69288fbee4904 --cwd /path/to/project src/app.js src/new.js`],
+      flags: { '--cwd': true },
+      positionals: { min: 2, max: null, names: ['tree', 'path'] },
     },
   },
 };
@@ -240,12 +392,16 @@ function main(argv) {
     process.stdout.write(`${usage()}\n`);
     return opts.help ? 0 : 2;
   }
-  if (opts.command !== 'snapshot' && opts.command !== 'delta') {
+  if (opts.command !== 'snapshot' && opts.command !== 'delta' && opts.command !== 'restore') {
     process.stderr.write(`unknown sub-command: ${opts.command}\n${usage()}\n`);
     return 2;
   }
   if (opts.command === 'delta' && opts.positional.length !== 2) {
     process.stderr.write(`delta takes exactly two references\n${usage()}\n`);
+    return 2;
+  }
+  if (opts.command === 'restore' && opts.positional.length < 2) {
+    process.stderr.write(`restore takes a tree and at least one path\n${usage()}\n`);
     return 2;
   }
   if (opts.cwd === undefined || (opts.cwd !== null && opts.cwd === '')) {
@@ -261,9 +417,11 @@ function main(argv) {
   try {
     const payload = opts.command === 'snapshot'
       ? snapshot(cwd, opts.positional)
-      : delta(opts.positional[0], opts.positional[1], cwd);
+      : opts.command === 'delta'
+        ? delta(opts.positional[0], opts.positional[1], cwd)
+        : restore(opts.positional[0], opts.positional.slice(1), cwd);
     process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
-    return 0;
+    return ['refused', 'failed'].includes(payload.verdict) ? 1 : 0;
   } catch (err) {
     process.stderr.write(`${err.message}\n`);
     return err instanceof ToolError ? err.code : 2;
@@ -274,4 +432,4 @@ if (require.main === module) {
   process.exitCode = main(process.argv.slice(2));
 }
 
-module.exports = { main, snapshot, delta, parseNameStatus, usage, USAGE };
+module.exports = { main, snapshot, delta, restore, parseNameStatus, usage, USAGE };

@@ -89,6 +89,7 @@ test('the implement, review, and build coordinators load only the policies that 
     '@sai/commands/build/publication.md',
     '@sai/policies/cache-warming.md',
     '@sai/policies/worker-report-transport.md',
+    '@sai/policies/adversarial-expert-review.md',
   ];
   for (const file of COORDINATORS) {
     for (const line of fetches(read(file))) {
@@ -338,7 +339,7 @@ test('the build and implement commands hold a coordinator profile that can edit,
   const delegates = {
     'sai-3-implement': ['executor', 'explorer', 'sai-3-red-worker', 'sai-3-green-worker'],
     'sai-4-review': ['sai-4-review-worker'],
-    'sai-build': ['executor', 'explorer', 'sai-3-red-worker', 'sai-3-green-worker', 'sai-4-review-worker'],
+    'sai-build': ['executor', 'explorer', 'sai-3-red-worker', 'sai-3-green-worker', 'sai-4-review-worker', 'sai-adversarial-expert-review-worker'],
   };
   const profiles = {
     'sai-3-implement': 'implement-command',

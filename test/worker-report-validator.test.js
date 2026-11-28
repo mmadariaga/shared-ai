@@ -506,6 +506,13 @@ const CONTRACT_REPORTS = {
   backfill: base({ resolved_change_name: 'x', draft_references: [{ path: '/tmp/a', sha256: 'f'.repeat(64), destination: 'openspec/changes/x/proposal.md' }], corrected_specs: [{ destination: 'd', content: 'c' }] }),
   merge: base({ strategy: 's', decisions: [{ conflict_id: 'code:a#1', decision: 'ours' }], escalations: [], analysis: 'a', corrections: [], applicability: 'no-collision', renames: [], reference_updates: [], recipe: [{ path: '/tmp/run/recipes/lock.md', signature: 'a'.repeat(64) }] }),
   'direct-build': base({ resolved_change_name: 'x' }),
+  'adversarial-expert-review': base({
+    findings: [
+      { identifier: 'H1', severity: 'High', location: 'openspec/changes/x/proposal.md § Scope', issue: 'a behavior the scope asks for is missing', correction: 'state it' },
+      { identifier: 'M1', severity: 'Medium', location: 'src/app.js', issue: 'a case is unhandled', correction: 'handle it', paths: ['src/app.js'] },
+    ],
+    corrected_documents: [{ path: '/tmp/report/document.md', sha256: 'f'.repeat(64), change_name: 'x' }],
+  }),
 };
 
 test('the role-field table covers every command that has an outcome entry, and each contract report is accepted', () => {
@@ -528,6 +535,24 @@ test('a spec report lists its research_files as {path, sha256} references, and a
   assert.deepEqual(verdict({ ...spec, status: 'failed' }, 'spec').errors, [], 'a failed spec report owes no research_files');
   assert.deepEqual(verdict({ ...spec, status: 'failed', research_files: undefined }, 'spec').errors, []);
   assert.ok(verdict({ ...CONTRACT_REPORTS.design, research_files: [] }, 'design').errors.some(error => /research_files/.test(error)), 'design does not list research_files');
+});
+
+test('an adversarial expert review report carries its closed finding list and document copies', () => {
+  const review = CONTRACT_REPORTS['adversarial-expert-review'];
+  assert.deepEqual(verdict({ ...review, findings: [] }, 'adversarial-expert-review').errors, [], 'an empty finding list is valid');
+  const noFindings = { ...review };
+  delete noFindings.findings;
+  assert.deepEqual(verdict(noFindings, 'adversarial-expert-review').errors, ['findings is missing']);
+  const wrongSeverity = { ...review, findings: [{ ...review.findings[0], severity: 'Critical' }] };
+  assert.ok(verdict(wrongSeverity, 'adversarial-expert-review').errors.some(error => /findings\[0\]\.severity must be one of \[High, Medium, Low\]/.test(error)));
+  const missingCorrection = { ...review, findings: [{ identifier: 'H1', severity: 'High', location: 'a', issue: 'b' }] };
+  assert.ok(verdict(missingCorrection, 'adversarial-expert-review').errors.some(error => /findings\[0\]\.correction must be a non-empty string/.test(error)));
+  const unknownKey = { ...review, findings: [{ ...review.findings[0], summary: 'x' }] };
+  assert.ok(verdict(unknownKey, 'adversarial-expert-review').errors.some(error => /findings\[0\] has the unknown key summary/.test(error)));
+  const wrongPaths = { ...review, findings: [{ ...review.findings[1], paths: 'src/app.js' }] };
+  assert.ok(verdict(wrongPaths, 'adversarial-expert-review').errors.some(error => /findings\[0\]\.paths must be an array of non-empty strings/.test(error)));
+  assert.deepEqual(verdict({ status: 'failed', summary: 'x', changed_files: [] }, 'adversarial-expert-review').errors, [], 'a failed report owes no finding list');
+  assert.ok(verdict(base({ ...review, status: 'failed' }), 'adversarial-expert-review').errors.some(error => error.includes('corrected_documents is allowed only on a completed report')));
 });
 
 test('E1: a role field of the wrong type is rejected, and a missing required one too', () => {
@@ -633,6 +658,7 @@ test('every role field a worker card shapes is in its command\'s table', () => {
     accessibility: 'sai/commands/audit/worker-common.md',
     archive: 'sai/commands/archive/worker.md',
     commit: 'sai/commands/commit/worker.md',
+    'adversarial-expert-review': 'sai/commands/adversarial-expert-review/worker.md',
   };
   const baseKeys = new Set(['status', 'summary', 'changed_files', 'outcome', 'question', 'options', 'event', 'step_ids']);
   for (const [command, card] of Object.entries(cards)) {

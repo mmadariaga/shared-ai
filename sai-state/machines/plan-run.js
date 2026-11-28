@@ -21,6 +21,11 @@
 //                                        `publicationAnswers` (yes | no), returned in the `run` view
 //                                        (`''` until answered); an explicit later value replaces the
 //                                        recorded one
+//   expert_review {value}                the adversarial expert review answer of the run, `no`, `auto`,
+//                                        or `ask` ('' until answered); an explicit later value replaces
+//                                        the recorded one
+//   expert_review_checkpoint {value}     `done` or `skipped` once the run's checkpoint has been handled,
+//                                        so a resumed run runs it once ('' until then)
 //   close         {outcome}              outcome: completed | escalated | stopped
 //   status        {}                     changes nothing; returns the run state
 
@@ -74,6 +79,7 @@ module.exports = createRunMachine({
   extraState: { segment: '', completed: [] },
   publication: true,
   publicationAnswers: ['yes', 'no'],
+  choices: { expert_review: ['no', 'auto', 'ask'], expert_review_checkpoint: ['done', 'skipped'] },
   handleEvent,
   onClose(current) {
     current.segment = '';

@@ -33,6 +33,10 @@
 //                `publicationAnswers` names the values the machine accepts (yes | no by default),
 //                so each run machine opens only its own surface. The answer survives a
 //                resumption; a fresh run starts with none.
+//   choices      extra closed-choice fields of the machine, `{field: [value ...]}`: each one is a
+//                state field ('' until answered), an event of the field's name, and a field of the
+//                `run` view, exactly like `publication` above. An explicit later value replaces the
+//                recorded one.
 
 const ATTEMPT_BUDGET = 3;
 const STAGES = Object.freeze(['idle', 'running', 'escalated', 'completed', 'stopped']);
@@ -75,14 +79,18 @@ function workerHandleRecord(ctx, current, sig) {
   return ctx.outcome(current);
 }
 
-function createRunMachine({ machineId, hint, refs, extraState, handleEvent, handleRecord, onClose, onStart, publication, publicationAnswers }) {
+function createRunMachine({ machineId, hint, refs, extraState, handleEvent, handleRecord, onClose, onStart, publication, publicationAnswers, choices }) {
+  const declared = Object.assign({}, choices && typeof choices === 'object' && !Array.isArray(choices) ? choices : {});
   const answers = publication === true
     ? Object.freeze(Array.isArray(publicationAnswers) && publicationAnswers.length > 0
       ? publicationAnswers.slice()
       : PUBLICATION_ANSWERS)
     : null;
-  const withPublication = answers !== null;
-  const extra = Object.freeze(Object.assign({}, extraState, withPublication ? { publication: '' } : {}));
+  if (answers !== null) declared.publication = answers;
+  const choiceFields = Object.freeze(Object.fromEntries(
+    Object.entries(declared).map(([field, values]) => [field, Object.freeze(Array.isArray(values) ? values.slice() : [])]),
+  ));
+  const extra = Object.freeze(Object.assign({}, extraState, Object.fromEntries(Object.keys(choiceFields).map((field) => [field, '']))));
   const refFields = Object.freeze(Object.assign({}, refs));
   const fieldNames = Object.keys(extra).concat(Object.keys(refFields).map((kind) => refFields[kind]));
 
@@ -167,6 +175,15 @@ function createRunMachine({ machineId, hint, refs, extraState, handleEvent, hand
     const reject = (reason, more) => outcome(current, Object.assign({ rejected: reason }, more || {}));
     const running = current.stage === 'running';
 
+    // A declared closed-choice field: its event name is the field name.
+    if (Object.prototype.hasOwnProperty.call(choiceFields, sig.kind)) {
+      const values = choiceFields[sig.kind];
+      if (!running) return reject('run is not running');
+      if (values.indexOf(sig.value) === -1) return reject(sig.kind + ' must be ' + values.join(' or '));
+      current[sig.kind] = sig.value;
+      return outcome(current);
+    }
+
     switch (sig.kind) {
       case 'status':
         return outcome(current);
@@ -238,11 +255,9 @@ function createRunMachine({ machineId, hint, refs, extraState, handleEvent, hand
       }
 
       case 'publication': {
-        if (!withPublication) return handleEvent ? handleEvent({ outcome, reject, running, usableId, usablePath }, current, sig) : null;
-        if (!running) return reject('run is not running');
-        if (answers.indexOf(sig.value) === -1) return reject('publication must be ' + answers.join(' or '));
-        current.publication = sig.value;
-        return outcome(current);
+        // A declared `publication` field is handled above as a closed choice; an
+        // undeclared machine hands the event to its own vocabulary.
+        return handleEvent ? handleEvent({ outcome, reject, running, usableId, usablePath }, current, sig) : null;
       }
 
       case 'close': {

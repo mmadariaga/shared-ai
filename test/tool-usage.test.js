@@ -44,7 +44,7 @@ const TOOLS = [
   { name: 'lint', file: 'sai/tools/lint.js', kind: 'text', subcommands: ['commit-rules', 'pr-title-rules', 'glossary-format', 'change-document', 'artifact-review', 'audit-report', 'sai-learnings-format', 'worker-emission-ownership'] },
   { name: 'merge', file: 'sai/tools/merge.js', kind: 'json', keep: { outcome: 'failure' }, subcommands: ['preflight', 'provenance', 'simulate', 'conflicts', 'correction', 'bundle', 'write', 'valid', 'resolution', 'verify', 'collision', 'duplicates', 'status'] },
   { name: 'worktree', file: 'sai/tools/worktree.js', kind: 'text', subcommands: ['inventory', 'create', 'index', 'remove', 'delete-branch'] },
-  { name: 'review-delta', file: 'sai/tools/review-delta.js', kind: 'text', subcommands: ['snapshot', 'delta'] },
+  { name: 'review-delta', file: 'sai/tools/review-delta.js', kind: 'text', subcommands: ['snapshot', 'delta', 'restore'] },
   { name: 'slice-path-scope', file: 'sai/tools/slice-path-scope.js', kind: 'text', subcommands: ['snapshot', 'verify'] },
   { name: 'no-commit-guard', file: 'sai/tools/no-commit-guard.js', kind: 'text', subcommands: ['snapshot', 'verify'] },
   { name: 'status', file: 'sai/tools/status.js', kind: 'text', subcommands: ['panel', 'bulk'] },

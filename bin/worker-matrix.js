@@ -69,9 +69,23 @@ const PLAN_ROLES = Object.freeze([
   }),
 ]);
 
+// Closed adversarial expert review role of `/sai-explore`, `/sai-plan`, and
+// `/sai-build`, appended after the plan roles. The reviewer is an independent
+// worker on the expert tier: it reads a product and corrects it, and its
+// coordinator keeps or reverts each correction.
+const EXPERT_REVIEW_ROLES = Object.freeze([
+  Object.freeze({
+    phase: 'expert-review',
+    workerName: 'sai-adversarial-expert-review-worker',
+    workerContract: 'sai/commands/adversarial-expert-review/worker.md',
+    bindingStem: 'adversarial-expert-review',
+    tier: 'expert',
+  }),
+]);
+
 // Every role that pins its own contract and is validated by position after the
 // canonical phases.
-const PINNED_ROLES = Object.freeze([...DIRECT_BUILD_ROLES, ...IMPLEMENT_ROLES, ...PLAN_ROLES]);
+const PINNED_ROLES = Object.freeze([...DIRECT_BUILD_ROLES, ...IMPLEMENT_ROLES, ...PLAN_ROLES, ...EXPERT_REVIEW_ROLES]);
 const PINNED_ROLE_BY_WORKER = Object.freeze(Object.fromEntries(
   PINNED_ROLES.map(role => [role.workerName, role]),
 ));
@@ -322,6 +336,8 @@ module.exports = {
   PHASE_ORDER,
   DIRECT_BUILD_ROLES,
   IMPLEMENT_ROLES,
+  PLAN_ROLES,
+  EXPERT_REVIEW_ROLES,
   defineWorkerMatrix,
   renderWorkerTemplate,
   materializeWorkerMatrix,

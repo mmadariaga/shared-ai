@@ -10,7 +10,10 @@
   --document-hash <sha256 returned by export>
   --publish <yes|no>
   --build-publish <yes|no|draft>
+  --expert-review no
   ```
+
+  **Expert review.** The `--expert-review no` line disables the plan checkpoint: a segment never asks the expert review question, and explore offered its own checkpoint over the documents (`route-selector.md` § Expert review checkpoint), so the plan run asks nothing and creates no expert review worker.
 
   **Optional publication.** The publication answer is the set-wide answer of `route-selector.md` § Publication question, recorded in `explore-slice@1` before this route started: the `--publish` line carries it (`no` while `publication_withheld` is set, `route-selector.md` § Branch creation point), and the plan coordinator asks no publication question of its own and reads no `pr.publishAfterRun` setting in this route. The accepted answer authorizes the exact current-change plan paths through `to-pr.js plan-commit --unattended`; this gives Explore no direct repository write authority and changes no ordinary segment ignore rule. Planning completion and the slice transition remain successful whatever the publication does. The `--build-publish` line carries the build hint value derived from the `run` view of `explore-slice@1` (`publication`, `branch_strategy`, `pending`): `no` when the set holds no answer or a `no`; `draft` when the set holds `yes`, the `branch_strategy` is `shared` or `none`, and the `pending` list holds a slice other than this one; `yes` otherwise (a `per-slice` strategy or the last pending slice). The plan coordinator prints the only build hint.
 
