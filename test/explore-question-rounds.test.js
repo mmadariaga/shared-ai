@@ -363,3 +363,20 @@ test('the implementation-start policy accepts the sole-self-assignee no-op keep 
   assert.match(start, /A changed assignee set, a\s+parent issue, or a different authenticated user is not a no-op keep and asks\s+again through steps 2–3/);
   assert.match(start, /the sole-self-assignee no-op keep\s+below is the one form that needs no explicit choice/);
 });
+
+test('the published state outlives its crystallization so a later round 1 can compare against it', () => {
+  assert.match(actions, /keep the published state in conversation for the current invocation/);
+  assert.match(actions, /It outlives the crystallized set it describes, because the backlog omission is evaluated in the round 1 of a later crystallization: a new crystallization does not reset it, only the next completed set publication replaces it/);
+  assert.match(actions, /reset them when a new crystallization replaces the set \(the published state above is the one exception\)/);
+  assert.doesNotMatch(actions, /A new crystallization replaces it with its set/);
+});
+
+test('an artifact review whose dominant intent is also entering the loop appends no invitation', () => {
+  const gate = read('sai/commands/explore/steps/artifact-review-language-gate.md');
+  assert.match(gate, /When the same turn also fires the `review-loop` token, or its dominant intent is also entering item 9's loop, item 9's \*\*Mixed trigger\*\* rule governs instead/);
+});
+
+test('the crystallization language gate does not inherit the explicit-statement level', () => {
+  const gates = read('sai/commands/explore/steps/crystallization-language-gates.md');
+  assert.match(gates, /The artifact-review gate's \*\*Explicit language statement\*\* level is not part of that machinery: this gate keeps its own order/);
+});
