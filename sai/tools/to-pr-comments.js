@@ -3,14 +3,15 @@
 const MARKER = '<!-- sai-to-pr:inherent-risk -->';
 const START = '<!-- sai-inherent-risk:start -->', END = '<!-- sai-inherent-risk:end -->';
 const BLOCK = /<!-- sai-inherent-risk:start -->[\s\S]*?<!-- sai-inherent-risk:end -->/g;
+const INCOMPLETE = 'A complete marked Inherent Risk block and valid placement are required';
 async function plan(request, description, provider, target, existing, io) {
   if (request.risk_placement === undefined && request.risk_block === undefined) return undefined;
   const placement = request.risk_placement || 'description', raw = request.risk_block;
-  if (!['description', 'comment'].includes(placement) || typeof raw !== 'string') throw new Error('A complete marked Inherent Risk block and valid placement are required');
-  // Normalize once: a block scalar always keeps a trailing line break, so every check below reads the stripped block.
+  if (!['description', 'comment'].includes(placement) || typeof raw !== 'string') throw new Error(INCOMPLETE);
+  // A YAML `|` or `|+` block scalar keeps its trailing line breaks; every check and use below reads the stripped block.
   const block = raw.replace(/[\r\n]+$/, '');
   if (!block.startsWith(START) || !block.endsWith(END) || block.split(START).length !== 2 || block.split(END).length !== 2 ||
-      !block.includes('## Inherent Risk')) throw new Error('A complete marked Inherent Risk block and valid placement are required');
+      !block.includes('## Inherent Risk')) throw new Error(INCOMPLETE);
   const blocks = description.match(BLOCK) || [];
   if (placement === 'description' ? blocks.length !== 1 || blocks[0] !== block || description.split(START).length !== 2 || description.split(END).length !== 2
     : blocks.length !== 0 || description.includes(START) || description.includes(END)) throw new Error('Keep exactly one complete risk block in the selected location');
